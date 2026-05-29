@@ -1,15 +1,19 @@
 import type { ComponentProps, ComponentType } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, Text, View, Pressable } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CalvesIcon, CowsIcon, BullsIcon } from '../components/MetricIcons';
+import type { RootStackParamList } from '../navigation/types';
 
 type MetricIconProps = {
   size?: number;
   color?: string;
 };
 
-export function DashboardScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+
+export function DashboardScreen({ navigation }: Props) {
   return (
     <View className="flex-1 bg-[#EEF4F4]">
       <View className="rounded-b-[44px] bg-[#0A9A9D] px-6 pb-8 pt-16">
@@ -68,21 +72,21 @@ export function DashboardScreen() {
 
           <Text className="mt-8 text-[24px] font-extrabold text-[#0A9A9D]">Quick Links</Text>
           <View className="mt-4 flex-row flex-wrap justify-between gap-y-6">
-            <QuickLink icon="truck" label="Cattle" />
-            <QuickLink icon="coffee" label="Milk Records" />
-            <QuickLink icon="calendar" label="Events" />
-            <QuickLink icon="dollar-sign" label="Transactions" />
-            <QuickLink icon="settings" label="Farm Setup" />
+            <QuickLink icon="truck" label="Cattle" onPress={() => navigation.navigate('CattleList')} />
+            <QuickLink icon="coffee" label="Milk Records" onPress={() => navigation.navigate('MilkRecords')} />
+            <QuickLink icon="calendar" label="Events" onPress={() => navigation.navigate('Events')} />
+            <QuickLink icon="dollar-sign" label="Transactions" onPress={() => navigation.navigate('Transactions')} />
+            <QuickLink icon="settings" label="Farm Setup" onPress={() => navigation.navigate('FarmSetup')} />
           </View>
         </View>
       </ScrollView>
 
       <View className="absolute bottom-0 left-0 right-0 flex-row justify-between rounded-t-[22px] bg-[#0A9A9D] px-4 pb-6 pt-3">
-        <BottomNavItem icon="home" label="Home" />
-        <BottomNavItem icon="briefcase" label="Manage" />
-        <BottomNavItem icon="compass" label="Explore" />
-        <BottomNavItem icon="archive" label="Reports" />
-        <BottomNavItem icon="user" label="Profile" />
+        <BottomNavItem icon="home" label="Home" onPress={() => navigation.navigate('Dashboard')} />
+        <BottomNavItem icon="briefcase" label="Manage" onPress={() => navigation.navigate('ManageExpenses')} />
+        <BottomNavItem icon="compass" label="Explore" onPress={() => navigation.navigate('Events')} />
+        <BottomNavItem icon="archive" label="Reports" onPress={() => navigation.navigate('Reports')} />
+        <BottomNavItem icon="user" label="Profile" onPress={() => navigation.navigate('SignUp')} />
       </View>
 
       <StatusBar style="light" />
@@ -94,18 +98,13 @@ function MetricCard({ title, value, icon: Icon }: { title: string; value: string
   return (
     <View className="flex-1 rounded-[24px] bg-[#DDECEE] px-4 py-4">
       <View className="items-center">
-          <Icon size={30} color="#008B8B" />
-          <Text className="mt-1 text-[18px] font-semibold text-[#596A6D]">{title}</Text>
-          <Text className="text-[28px] font-extrabold text-[#4B5A5E]">{value}</Text>
-        </View>
+        <Icon size={30} color="#008B8B" />
+        <Text className="mt-1 text-[18px] font-semibold text-[#596A6D]">{title}</Text>
+        <Text className="text-[28px] font-extrabold text-[#4B5A5E]">{value}</Text>
+      </View>
     </View>
   );
 }
-
-
-
-
-
 
 
 function QuickLink({ icon, label, onPress }: { icon: ComponentProps<typeof Feather>['name']; label: string; onPress?: () => void }) {

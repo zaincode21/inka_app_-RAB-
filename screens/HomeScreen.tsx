@@ -41,6 +41,7 @@ export function HomeScreen({ navigation }: Props) {
           </Pressable>
 
           <Pressable
+            onPress={() => navigation.navigate('SignUp')}
             accessibilityRole="button"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             className="h-[54px] items-center justify-center rounded-[18px] bg-[#E6B86F] pressed:opacity-90 pressed:scale-[0.99]"

@@ -68,7 +68,7 @@ export function LoginScreen({ navigation }: Props) {
 
         <View className="flex-row justify-center pt-2">
           <Text className="text-[15px] text-[#222222]">Don’t have an account? </Text>
-          <Pressable accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Pressable accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => navigation.navigate('SignUp')}>
             <Text className="text-[15px] font-bold text-[#0D8A8D]">Sign Up</Text>
           </Pressable>
         </View>
