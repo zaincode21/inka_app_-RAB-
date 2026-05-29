@@ -88,13 +88,7 @@ export function ManageExpensesScreen({ navigation }: Props) {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          navigation.navigate('Action', {
-            title: 'Add Expense',
-            subtitle: 'Create a new expense record',
-            saveLabel: 'Save Expense',
-          })
-        }
+        onPress={() => navigation.navigate('AddExpense')}
         className="absolute bottom-24 right-6 rounded-full bg-[#0A9A9D] px-5 py-4 shadow-lg"
       >
         <Text className="text-[16px] font-bold text-white">+ Add</Text>

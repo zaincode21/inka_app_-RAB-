@@ -21,14 +21,14 @@ export function TransactionsScreen({ navigation }: Props) {
       </View>
 
       <View className="flex-row px-6 py-4">
-        <View className="mr-2 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#0A9A9D] px-4 py-3">
+        <Pressable onPress={() => navigation.navigate('AddIncome')} className="mr-2 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#0A9A9D] px-4 py-3">
           <Feather name="dollar-sign" size={18} color="#FFFFFF" />
           <Text className="ml-2 text-[16px] font-bold text-white">Income</Text>
-        </View>
-        <View className="ml-2 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#E5F2F3] px-4 py-3">
+        </Pressable>
+        <Pressable onPress={() => navigation.navigate('AddExpense')} className="ml-2 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#E5F2F3] px-4 py-3">
           <Feather name="minus-circle" size={18} color="#0A9A9D" />
           <Text className="ml-2 text-[16px] font-bold text-[#0A9A9D]">Expense</Text>
-        </View>
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 140 }}>
@@ -39,13 +39,7 @@ export function TransactionsScreen({ navigation }: Props) {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          navigation.navigate('Action', {
-            title: 'Add Income',
-            subtitle: 'Create a new income record',
-            saveLabel: 'Save Income',
-          })
-        }
+        onPress={() => navigation.navigate('AddIncome')}
         className="absolute bottom-24 right-6 flex-row items-center rounded-full bg-[#0A9A9D] px-5 py-4 shadow-lg"
       >
         <Feather name="plus" size={18} color="#FFFFFF" />

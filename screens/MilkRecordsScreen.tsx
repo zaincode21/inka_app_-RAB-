@@ -53,13 +53,7 @@ export function MilkRecordsScreen({ navigation }: Props) {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          navigation.navigate('Action', {
-            title: 'Add Milk Record',
-            subtitle: 'Create a new milk record',
-            saveLabel: 'Save Record',
-          })
-        }
+        onPress={() => navigation.navigate('AddMilkRecord')}
         className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#0A9A9D] shadow-lg"
       >
         <Feather name="plus" size={28} color="#FFFFFF" />

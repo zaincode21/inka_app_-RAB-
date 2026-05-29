@@ -14,6 +14,12 @@ import {
   SignUpScreen,
   ReportsScreen,
   ManageExpensesScreen,
+  AddCattleScreen,
+  AddMilkRecordScreen,
+  AddIndividualEventScreen,
+  AddMassEventScreen,
+  AddIncomeScreen,
+  AddExpenseScreen,
   ActionScreen,
   DetailScreen,
 } from './screens';
@@ -36,6 +42,12 @@ export default function App() {
         <Stack.Screen name="FarmSetup" component={FarmSetupScreen} />
         <Stack.Screen name="Reports" component={ReportsScreen} />
         <Stack.Screen name="ManageExpenses" component={ManageExpensesScreen} />
+        <Stack.Screen name="AddCattle" component={AddCattleScreen} />
+        <Stack.Screen name="AddMilkRecord" component={AddMilkRecordScreen} />
+        <Stack.Screen name="AddIndividualEvent" component={AddIndividualEventScreen} />
+        <Stack.Screen name="AddMassEvent" component={AddMassEventScreen} />
+        <Stack.Screen name="AddIncome" component={AddIncomeScreen} />
+        <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
         <Stack.Screen name="Action" component={ActionScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />
       </Stack.Navigator>

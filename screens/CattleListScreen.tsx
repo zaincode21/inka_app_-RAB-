@@ -51,13 +51,7 @@ export function CattleListScreen({ navigation }: Props) {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          navigation.navigate('Action', {
-            title: 'Add Cattle',
-            subtitle: 'Create a new cattle record',
-            saveLabel: 'Save Cattle',
-          })
-        }
+        onPress={() => navigation.navigate('AddCattle')}
         className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#0A9A9D] shadow-lg"
       >
         <Feather name="plus" size={28} color="#FFFFFF" />

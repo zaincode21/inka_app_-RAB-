@@ -10,6 +10,12 @@ export type RootStackParamList = {
   SignUp: undefined;
   Reports: undefined;
   ManageExpenses: undefined;
+  AddCattle: undefined;
+  AddMilkRecord: undefined;
+  AddIndividualEvent: undefined;
+  AddMassEvent: undefined;
+  AddIncome: undefined;
+  AddExpense: undefined;
   Action: {
     title: string;
     subtitle?: string;

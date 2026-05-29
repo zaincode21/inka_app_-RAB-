@@ -22,14 +22,14 @@ export function EventsScreen({ navigation }: Props) {
       </View>
 
       <View className="flex-row px-6 py-4">
-        <View className="mr-2 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#0A9A9D] px-4 py-3">
+        <Pressable onPress={() => navigation.navigate('AddIndividualEvent')} className="mr-2 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#0A9A9D] px-4 py-3">
           <Feather name="calendar" size={18} color="#FFFFFF" />
           <Text className="ml-2 text-[16px] font-bold text-white">Individual</Text>
-        </View>
-        <View className="ml-2 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#E5F2F3] px-4 py-3">
+        </Pressable>
+        <Pressable onPress={() => navigation.navigate('AddMassEvent')} className="ml-2 flex-1 flex-row items-center justify-center rounded-[16px] bg-[#E5F2F3] px-4 py-3">
           <Feather name="users" size={18} color="#0A9A9D" />
           <Text className="ml-2 text-[16px] font-bold text-[#0A9A9D]">Mass</Text>
-        </View>
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 120 }}>
@@ -40,13 +40,7 @@ export function EventsScreen({ navigation }: Props) {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() =>
-          navigation.navigate('Action', {
-            title: 'Add Event',
-            subtitle: 'Create a new event',
-            saveLabel: 'Save Event',
-          })
-        }
+        onPress={() => navigation.navigate('AddIndividualEvent')}
         className="absolute bottom-24 right-6 rounded-full bg-[#0A9A9D] px-5 py-4 shadow-lg"
       >
         <Text className="text-[16px] font-bold text-white">+ Add</Text>
