@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:id="@+id/main"
+    tools:context=".NewMilkRecordActivity">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/header_background"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/back_button"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_arrow_back"
+            android:contentDescription="Back"
+            android:tint="@color/white"
+            android:padding="4dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/new_milk_record"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:paddingStart="16dp" />
+    </LinearLayout>
+
+    <!-- Scrollable Form Content -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/header"
+        app:layout_constraintBottom_toTopOf="@id/button_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:background="@color/white">
+
+            <!-- Milking Date -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/milking_date"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/milking_date"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_milking_date"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="date"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Milk Type -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/milk_type"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <AutoCompleteTextView
+                android:id="@+id/milk_type_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusable="false"
+                android:clickable="true"
+                android:focusableInTouchMode="false"
+                android:layout_marginBottom="20dp" />
+
+            <!-- AM Total -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/am_total"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/am_total"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="0.0"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="numberDecimal"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Noon Total -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/noon_total"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/noon_total"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="0.0"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="numberDecimal"
+                android:layout_marginBottom="20dp" />
+
+            <!-- PM Total -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pm_total"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/pm_total"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="0.0"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="numberDecimal"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Total Milk Produced -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/total_milk_produced"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/total_produced"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="0.0"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="numberDecimal"
+                android:enabled="false"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Total Used -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/total_used"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/total_used"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="0.0"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="numberDecimal"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Notes -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/notes"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/notes"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:hint="@string/write_something"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="textMultiLine"
+                android:gravity="top|start"
+                android:scrollbars="vertical"
+                android:layout_marginBottom="24dp" />
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Footer Buttons -->
+    <LinearLayout
+        android:id="@+id/button_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="24dp"
+        android:background="@color/white"
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/save_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/save"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:background="@drawable/button_sign_in"
+            app:backgroundTint="@null"
+            android:elevation="4dp"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/cancel_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/cancel"
+            android:textColor="#008B8B"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:background="@drawable/cancel_button_background"
+            app:backgroundTint="@null"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+

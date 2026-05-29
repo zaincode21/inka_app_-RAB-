@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Inka_app_v01">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".SignUpActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".DashboardActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".CattleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".AddCattleActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".MilkRecordsListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".NewMilkRecordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".EventsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".AddIndividualEventActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".AddMassEventActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".TransactionsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".AddIncomeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".AddExpenseActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".FarmSetupActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".IncomeCategoriesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".ExpenseCategoriesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".CattleBreedsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".CattleGroupsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".ManageExpensesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+        <activity
+            android:name=".ReportsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Inka_app_v01" />
+    </application>
+
+</manifest>

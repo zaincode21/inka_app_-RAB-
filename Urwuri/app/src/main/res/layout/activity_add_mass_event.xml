@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E5E5E5"
+    android:id="@+id/main"
+    tools:context=".AddMassEventActivity">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/header_background"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/back_button"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_arrow_back"
+            android:contentDescription="Back"
+            android:tint="@color/white"
+            android:padding="4dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/add_mass_event"
+            android:textColor="@color/white"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:paddingStart="16dp" />
+    </LinearLayout>
+
+    <!-- Form Content -->
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintTop_toBottomOf="@id/header"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Event Date -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/event_date"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/event_date"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_event_date"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:focusable="false"
+                android:clickable="true"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Event Type -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/select_event_type"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <AutoCompleteTextView
+                android:id="@+id/event_type"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusable="false"
+                android:clickable="true"
+                android:focusableInTouchMode="false"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Conditional Medicine Input (for Treatment, Vaccination, Deworming) -->
+            <EditText
+                android:id="@+id/medicine_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/medicine_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:visibility="gone"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Notes -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/write_something"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/notes"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:hint="@string/write_something"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:gravity="top|start"
+                android:inputType="textMultiLine"
+                android:maxLines="5"
+                android:scrollbars="vertical"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Save Button -->
+            <Button
+                android:id="@+id/save_button"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="@string/save"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:background="@drawable/button_next"
+                app:backgroundTint="@null"
+                android:layout_marginBottom="24dp" />
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+

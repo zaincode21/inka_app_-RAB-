@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E5E5E5"
+    android:id="@+id/main"
+    tools:context=".AddIndividualEventActivity">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/header_background"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/back_button"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_arrow_back"
+            android:contentDescription="Back"
+            android:tint="@color/white"
+            android:padding="4dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/add_individual_event"
+            android:textColor="@color/white"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:paddingStart="16dp" />
+    </LinearLayout>
+
+    <!-- Form Content -->
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintTop_toBottomOf="@id/header"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Event Date -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/event_date"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/event_date"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_event_date"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:focusable="false"
+                android:clickable="true"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Event Type -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/select_event_type"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <AutoCompleteTextView
+                android:id="@+id/event_type"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusable="false"
+                android:clickable="true"
+                android:focusableInTouchMode="false"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Conditional Fields for Treated -->
+            <EditText
+                android:id="@+id/symptoms_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/symptoms_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <EditText
+                android:id="@+id/diagnosis_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/diagnosis_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <EditText
+                android:id="@+id/technician_name_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/technician_name_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Conditional Fields for Weighed -->
+            <EditText
+                android:id="@+id/weight_result_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/weight_result_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="numberDecimal"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Conditional Medicine Input (for Treated, Vaccinated) -->
+            <EditText
+                android:id="@+id/medicine_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/medicine_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Conditional Fields for Breeding -->
+            <EditText
+                android:id="@+id/semen_used_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/semen_used_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:imeOptions="actionNone"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <EditText
+                android:id="@+id/veterinarian_name_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/veterinarian_name_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:imeOptions="actionNone"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <EditText
+                android:id="@+id/estimated_return_heat_date_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/estimated_return_heat_date_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:focusable="false"
+                android:clickable="false"
+                android:enabled="false"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Conditional Fields for Pregnant -->
+            <EditText
+                android:id="@+id/breeding_date_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/breeding_date_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:focusable="false"
+                android:clickable="true"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <EditText
+                android:id="@+id/expected_delivery_date_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/expected_delivery_date_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:focusable="false"
+                android:clickable="false"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <EditText
+                android:id="@+id/bull_responsible_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/bull_responsible_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:imeOptions="actionNone"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Conditional Fields for Giving Birth -->
+            <EditText
+                android:id="@+id/giving_birth_bull_responsible_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/bull_responsible_placeholder"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:imeOptions="actionNone"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:id="@+id/calf_registration_note"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/calf_registration_note"
+                android:textColor="#E6B86F"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/register_calf_button"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/tap_to_register_calf"
+                android:textColor="@color/teal_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:background="@drawable/form_input_background"
+                app:backgroundTint="@null"
+                android:visibility="gone"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Calf Registration Inputs (2 columns) -->
+            <LinearLayout
+                android:id="@+id/calf_registration_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:layout_marginBottom="8dp">
+
+                <EditText
+                    android:id="@+id/calf_tag_no_input"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/form_input_background"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:hint="@string/calf_tag_no_placeholder"
+                    android:textColorHint="#6B7280"
+                    android:textColor="#1F2937"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif"
+                    android:imeOptions="actionNone" />
+
+                <AutoCompleteTextView
+                    android:id="@+id/calf_gender_input"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/form_input_background"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:hint="@string/select_gender"
+                    android:textColorHint="#6B7280"
+                    android:textColor="#1F2937"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif"
+                    android:inputType="none"
+                    android:focusable="false"
+                    android:clickable="true"
+                    android:focusableInTouchMode="false" />
+            </LinearLayout>
+
+            <!-- Notes -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/write_something"
+                android:textColor="#1F2937"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/notes"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:hint="@string/write_something"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:gravity="top|start"
+                android:inputType="textMultiLine"
+                android:maxLines="5"
+                android:scrollbars="vertical"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Save Button -->
+            <Button
+                android:id="@+id/save_button"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:text="@string/save"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif"
+                android:background="@drawable/button_next"
+                app:backgroundTint="@null"
+                android:layout_marginBottom="24dp" />
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+

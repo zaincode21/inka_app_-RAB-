@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:id="@+id/main"
+    tools:context=".AddCattleActivity">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/header_background"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:id="@+id/back_button"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:src="@drawable/ic_arrow_back"
+            android:contentDescription="Back"
+            android:tint="@color/white"
+            android:padding="4dp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/add_cattle"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:gravity="center"
+            android:paddingStart="16dp" />
+
+        <View
+            android:layout_width="30dp"
+            android:layout_height="30dp" />
+    </LinearLayout>
+
+    <!-- Scrollable Form Content -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/header"
+        app:layout_constraintBottom_toTopOf="@id/button_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:background="@color/white">
+
+            <!-- Breed -->
+            <AutoCompleteTextView
+                android:id="@+id/breed_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_breed"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusable="true"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Tag Number -->
+            <EditText
+                android:id="@+id/tag_number"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/enter_tag_number"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="text"
+                android:imeOptions="actionNone"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Name -->
+            <EditText
+                android:id="@+id/cattle_name"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/enter_cattle_name"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="text"
+                android:imeOptions="actionNone"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Gender -->
+            <AutoCompleteTextView
+                android:id="@+id/gender_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_gender"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusableInTouchMode="false"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Cattle Stage -->
+            <AutoCompleteTextView
+                android:id="@+id/cattle_stage_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_cattle_stage"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusableInTouchMode="false"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Weight -->
+            <EditText
+                android:id="@+id/weight"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/enter_weight"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="numberDecimal"
+                android:imeOptions="actionNone"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Date of Birth -->
+            <EditText
+                android:id="@+id/date_of_birth"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/enter_date_of_birth"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="date"
+                android:focusable="false"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Farm Entry Date -->
+            <EditText
+                android:id="@+id/farm_entry_date"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/enter_entry_date"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="date"
+                android:focusable="false"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Group -->
+            <AutoCompleteTextView
+                android:id="@+id/group_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_group"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusableInTouchMode="false"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- How Obtained -->
+            <AutoCompleteTextView
+                android:id="@+id/obtained_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_how_obtained"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusableInTouchMode="false"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Other Source Input (Hidden initially) -->
+            <EditText
+                android:id="@+id/other_source_input"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/enter_source"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="text"
+                android:imeOptions="actionNone"
+                android:visibility="gone"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Mother's Tag No -->
+            <AutoCompleteTextView
+                android:id="@+id/mother_tag_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_mother_tag"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusableInTouchMode="false"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Father's Tag No -->
+            <AutoCompleteTextView
+                android:id="@+id/father_tag_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:hint="@string/select_father_tag"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="none"
+                android:focusableInTouchMode="false"
+                android:clickable="true"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Notes -->
+            <EditText
+                android:id="@+id/notes"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:background="@drawable/form_input_background"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:hint="@string/write_something"
+                android:textColorHint="#6B7280"
+                android:textColor="#1F2937"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif"
+                android:inputType="textMultiLine"
+                android:gravity="top|start"
+                android:scrollbars="vertical"
+                android:imeOptions="actionNone"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Photo Upload -->
+
+            <LinearLayout
+                android:id="@+id/photo_placeholder"
+                android:layout_width="match_parent"
+                android:layout_height="128dp"
+                android:background="@drawable/photo_placeholder_background"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="24dp">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_camera"
+                    android:contentDescription="@string/photo"
+                    android:layout_marginBottom="8dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tap_to_add_photo"
+                    android:textColor="#99008B8B"
+                    android:textSize="12sp"
+                    android:fontFamily="sans-serif" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Footer Buttons -->
+    <LinearLayout
+        android:id="@+id/button_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="24dp"
+        android:background="@color/white"
+        android:gravity="center"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/save_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/save"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:background="@drawable/button_sign_in"
+            app:backgroundTint="@null"
+            android:elevation="4dp"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/cancel_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/cancel"
+            android:textColor="#008B8B"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:background="@drawable/cancel_button_background"
+            app:backgroundTint="@null"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+

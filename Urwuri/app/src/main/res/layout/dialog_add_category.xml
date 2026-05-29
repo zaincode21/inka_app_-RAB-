@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/dialog_background"
+    android:padding="24dp"
+    android:layout_margin="16dp"
+    android:minWidth="300dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/dialog_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Add Category"
+        android:textColor="#1F2937"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Input Field -->
+    <TextView
+        android:id="@+id/input_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Category Name"
+        android:textColor="#1F2937"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/category_input"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@drawable/form_input_background"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:hint="Enter category name"
+        android:textColorHint="#6B7280"
+        android:textColor="#1F2937"
+        android:textSize="16sp"
+        android:fontFamily="sans-serif"
+        android:inputType="text"
+        android:imeOptions="actionNone"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/cancel_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/cancel"
+            android:textColor="#008B8B"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:background="@drawable/button_cancel"
+            app:backgroundTint="@null"
+            android:layout_marginEnd="12dp" />
+
+        <Button
+            android:id="@+id/save_button"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:text="@string/save"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
+            android:background="@drawable/button_next"
+            app:backgroundTint="@null" />
+    </LinearLayout>
+</LinearLayout>
+

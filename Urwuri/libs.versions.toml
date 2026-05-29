@@ -1,0 +1,7 @@
+toml
+[versions]
+agp = "8.11.1"
+# ... other versionstoml
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }

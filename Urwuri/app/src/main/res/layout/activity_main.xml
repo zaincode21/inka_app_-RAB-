@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/main"
+    tools:context=".MainActivity">
+
+    <!-- Background Image -->
+    <ImageView
+        android:id="@+id/background_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/cattle_background"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Overlay (60% black opacity) -->
+    <View
+        android:id="@+id/overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/background_overlay"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Bull Icon -->
+    <ImageView
+        android:id="@+id/bull_icon"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:src="@drawable/bull_icon"
+        android:contentDescription="@string/app_name"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="80dp" />
+
+    <!-- App Name: Inka (white) App (gold) -->
+    <LinearLayout
+        android:id="@+id/app_name_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/bull_icon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp">
+
+        <TextView
+            android:id="@+id/text_inka"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Inka"
+            android:textColor="@color/white"
+            android:textSize="42sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif" />
+
+        <TextView
+            android:id="@+id/text_app"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" App"
+            android:textColor="@color/gold_accent"
+            android:textSize="42sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif" />
+    </LinearLayout>
+
+    <!-- Tagline -->
+    <TextView
+        android:id="@+id/tagline"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/tagline"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:fontFamily="sans-serif"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/app_name_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginTop="16dp" />
+
+    <!-- Sign In Button -->
+    <Button
+        android:id="@+id/button_sign_in"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="@string/sign_in"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif"
+        android:background="@drawable/button_sign_in"
+        app:backgroundTint="@null"
+        android:elevation="4dp"
+        app:layout_constraintBottom_toTopOf="@id/button_create_account"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Create Account Button -->
+    <Button
+        android:id="@+id/button_create_account"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="@string/create_account"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif"
+        android:background="@drawable/button_create_account"
+        app:backgroundTint="@null"
+        android:elevation="4dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="64dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
