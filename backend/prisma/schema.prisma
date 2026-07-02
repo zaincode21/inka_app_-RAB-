@@ -1,0 +1,274 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  VETERINARIAN
+  WORKER
+}
+
+enum AnimalSex {
+  MALE
+  FEMALE
+}
+
+enum CattleStage {
+  CALF
+  WEANER
+  HEIFER
+  COW
+  BULL
+  STEER
+}
+
+enum CattleStatus {
+  ACTIVE
+  SOLD
+  CULLED
+  DEAD
+  INACTIVE
+}
+
+enum ReproductiveStatus {
+  OPEN
+  BRED
+  PREGNANT
+  DRY
+  LACTATING
+  NOT_APPLICABLE
+}
+
+enum EventScope {
+  INDIVIDUAL
+  MASS
+}
+
+enum TransactionKind {
+  INCOME
+  EXPENSE
+}
+
+model Farm {
+  id         String   @id @default(cuid())
+  name       String
+  ownerName  String
+  location   String
+  currency   String   @default("RWF")
+  weightUnit String   @default("kg")
+  milkUnit   String   @default("L")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  users        User[]
+  cattle       Cattle[]
+  milkRecords  MilkRecord[]
+  healthEvents HealthEvent[]
+  transactions Transaction[]
+  categories   Category[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  farmId       String?
+  firstName    String
+  lastName     String
+  email        String   @unique
+  phone        String?
+  passwordHash String?
+  role         UserRole @default(OWNER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  farm Farm? @relation(fields: [farmId], references: [id], onDelete: SetNull)
+}
+
+model Cattle {
+  id                 String             @id @default(cuid())
+  farmId             String?
+  tagNumber          String             @unique
+  name               String
+  officialId         String?
+  rfid               String?
+  breed              String
+  sex                AnimalSex
+  stage              CattleStage
+  status             CattleStatus       @default(ACTIVE)
+  groupName          String?
+  dateOfBirth        DateTime?
+  entryDate          DateTime?
+  weightKg           Decimal            @default(0) @db.Decimal(10, 2)
+  bodyConditionScore Decimal            @default(0) @db.Decimal(3, 1)
+  colorMarkings      String?
+  source             String?
+  sourceDetail       String?
+  purchasePrice      Decimal            @default(0) @db.Decimal(12, 2)
+  paddock            String?
+  lactationNumber    Int                @default(0)
+  parity             Int                @default(0)
+  reproductiveStatus ReproductiveStatus @default(NOT_APPLICABLE)
+  motherTag          String?
+  fatherTag          String?
+  notes              String?
+  photoUri           String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  farm         Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  healthEvents HealthEvent[]
+  milkRecords  MilkRecord[]
+  transactions Transaction[]
+  attachments  Attachment[]
+
+  @@index([farmId])
+  @@index([tagNumber])
+  @@index([stage, status])
+}
+
+model HealthEvent {
+  id                   String     @id @default(cuid())
+  farmId               String?
+  cattleId             String?
+  scope                EventScope
+  groupName            String?
+  eventDate            DateTime
+  eventType            String
+  symptoms             String?
+  diagnosis            String?
+  medicine             String?
+  dosage               String?
+  route                String?
+  frequency            String?
+  withdrawalDays       Decimal    @default(0) @db.Decimal(6, 2)
+  batchNumber          String?
+  technician           String?
+  vetName              String?
+  vetContact           String?
+  followUpDate         DateTime?
+  weightKg             Decimal    @default(0) @db.Decimal(10, 2)
+  semenUsed            String?
+  bullResponsible      String?
+  returnHeatDate       DateTime?
+  breedingDate         DateTime?
+  expectedDeliveryDate DateTime?
+  calfTag              String?
+  calfGender           AnimalSex?
+  notes                String?
+  photoUri             String?
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  farm         Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  cattle       Cattle?       @relation(fields: [cattleId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+  attachments  Attachment[]
+
+  @@index([farmId])
+  @@index([cattleId])
+  @@index([eventDate])
+  @@index([eventType])
+}
+
+model MilkRecord {
+  id               String   @id @default(cuid())
+  farmId           String?
+  cattleId         String?
+  date             DateTime
+  milkType         String
+  amTotal          Decimal  @default(0) @db.Decimal(10, 2)
+  noonTotal        Decimal  @default(0) @db.Decimal(10, 2)
+  pmTotal          Decimal  @default(0) @db.Decimal(10, 2)
+  totalProduced    Decimal  @default(0) @db.Decimal(10, 2)
+  totalUsed        Decimal  @default(0) @db.Decimal(10, 2)
+  rejectedMilk     Decimal  @default(0) @db.Decimal(10, 2)
+  destination      String?
+  buyer            String?
+  pricePerLiter    Decimal  @default(0) @db.Decimal(12, 2)
+  fatPercent       Decimal  @default(0) @db.Decimal(5, 2)
+  proteinPercent   Decimal  @default(0) @db.Decimal(5, 2)
+  somaticCellCount Decimal  @default(0) @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  farm         Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  cattle       Cattle?       @relation(fields: [cattleId], references: [id], onDelete: SetNull)
+  transactions Transaction[]
+  attachments  Attachment[]
+
+  @@index([farmId])
+  @@index([cattleId])
+  @@index([date])
+}
+
+model Transaction {
+  id               String          @id @default(cuid())
+  farmId           String?
+  cattleId         String?
+  milkRecordId     String?
+  healthEventId    String?
+  kind             TransactionKind
+  date             DateTime
+  category         String
+  title            String
+  amount           Decimal         @default(0) @db.Decimal(12, 2)
+  quantity         Decimal         @default(0) @db.Decimal(12, 2)
+  unitPrice        Decimal         @default(0) @db.Decimal(12, 2)
+  paymentMethod    String?
+  buyerVendor      String?
+  receiptNumber    String?
+  taxAmount        Decimal         @default(0) @db.Decimal(12, 2)
+  discountAmount   Decimal         @default(0) @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  farm        Farm?        @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  cattle      Cattle?      @relation(fields: [cattleId], references: [id], onDelete: SetNull)
+  milkRecord  MilkRecord?  @relation(fields: [milkRecordId], references: [id], onDelete: SetNull)
+  healthEvent HealthEvent? @relation(fields: [healthEventId], references: [id], onDelete: SetNull)
+  attachments Attachment[]
+
+  @@index([farmId])
+  @@index([kind, date])
+  @@index([category])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  farmId    String?
+  kind      String
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  farm Farm? @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([farmId, kind, name])
+  @@index([kind])
+}
+
+model Attachment {
+  id            String   @id @default(cuid())
+  ownerType     String
+  uri           String
+  label         String?
+  cattleId      String?
+  milkRecordId  String?
+  healthEventId String?
+  transactionId String?
+  createdAt     DateTime @default(now())
+
+  cattle      Cattle?      @relation(fields: [cattleId], references: [id], onDelete: Cascade)
+  milkRecord  MilkRecord?  @relation(fields: [milkRecordId], references: [id], onDelete: Cascade)
+  healthEvent HealthEvent? @relation(fields: [healthEventId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([ownerType])
+}
