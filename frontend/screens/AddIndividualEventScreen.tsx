@@ -2,10 +2,10 @@ import { Feather } from '@expo/vector-icons';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SelectDropdown } from '../components/SelectDropdown';
-import { addDays, createHealthEvent, getCattle, getCategories, parseNumber, useDatabaseQuery } from '../data/farmDatabase';
+import { addDays, createHealthEvent, getBirthPrefillEvent, getCattle, getCategories, getLatestBreedingEvent, parseNumber, updateHealthEvent, useDatabaseQuery, type HealthEvent } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddIndividualEvent'>;
@@ -27,33 +27,126 @@ const breedingMethods = [
   { label: 'Ikimasa', value: 'bull' },
 ];
 
+const femaleOnlyEventTypes = new Set(['Breeding', 'Pregnant', 'Aborted']);
+
 export function AddIndividualEventScreen({ navigation, route }: Props) {
+  const editingEvent = route.params?.event;
+  const isEditing = Boolean(editingEvent);
   const { width } = useWindowDimensions();
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
-  const cattleTagOptions = useMemo(() => cattle.map((animal) => animal.tagNumber), [cattle]);
   const medicineOptions = useMemo(() => medicines.map((category) => category.name), [medicines]);
-  const [eventDate, setEventDate] = useState('');
+  const [latestBreedingEvent, setLatestBreedingEvent] = useState<HealthEvent | null>(null);
+  const [birthPrefillEvent, setBirthPrefillEvent] = useState<HealthEvent | null>(null);
+  const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? '');
   const [showEventDatePicker, setShowEventDatePicker] = useState(false);
-  const [cattleTag, setCattleTag] = useState(route.params?.cattleTag ?? '');
-  const [eventType, setEventType] = useState('');
-  const [breedingMethod, setBreedingMethod] = useState('');
-  const [calfGender, setCalfGender] = useState('');
-  const [showCalfRegistration, setShowCalfRegistration] = useState(false);
-  const [symptoms, setSymptoms] = useState('');
-  const [diagnosis, setDiagnosis] = useState('');
-  const [technician, setTechnician] = useState('');
-  const [medicine, setMedicine] = useState('');
-  const [vetName, setVetName] = useState('');
-  const [weightResult, setWeightResult] = useState('');
-  const [semenUsed, setSemenUsed] = useState('');
-  const [bullResponsible, setBullResponsible] = useState('');
-  const [breedingDate, setBreedingDate] = useState('');
-  const [calfTag, setCalfTag] = useState('');
-  const [notes, setNotes] = useState('');
+  const [cattleTag, setCattleTag] = useState(editingEvent?.cattleTag ?? route.params?.cattleTag ?? '');
+  const [eventType, setEventType] = useState(editingEvent?.eventType ?? '');
+  const [breedingMethod, setBreedingMethod] = useState(inferBreedingMethod(editingEvent));
+  const [calfGender, setCalfGender] = useState(editingEvent?.calfGender ?? '');
+  const [showCalfRegistration, setShowCalfRegistration] = useState(Boolean(editingEvent?.calfTag));
+  const [symptoms, setSymptoms] = useState(editingEvent?.symptoms ?? '');
+  const [diagnosis, setDiagnosis] = useState(editingEvent?.diagnosis ?? '');
+  const [technician, setTechnician] = useState(editingEvent?.technician ?? '');
+  const [medicine, setMedicine] = useState(editingEvent?.medicine ?? '');
+  const [vetName, setVetName] = useState(editingEvent?.vetName ?? '');
+  const [weightResult, setWeightResult] = useState(editingEvent?.weightKg ? `${editingEvent.weightKg}` : '');
+  const [semenUsed, setSemenUsed] = useState(editingEvent?.semenUsed ?? '');
+  const [bullResponsible, setBullResponsible] = useState(editingEvent?.bullResponsible ?? '');
+  const [breedingDate, setBreedingDate] = useState(editingEvent?.breedingDate ?? '');
+  const [calfTag, setCalfTag] = useState(editingEvent?.calfTag ?? '');
+  const [notes, setNotes] = useState(editingEvent?.notes ?? '');
+  const cattleTagOptions = useMemo(() => {
+    const eligibleCattle = femaleOnlyEventTypes.has(eventType) ? cattle.filter(isFemaleCattle) : cattle;
+    return eligibleCattle.map((animal) => animal.tagNumber);
+  }, [cattle, eventType]);
+  const activeCattleTag = route.params?.cattleTag ?? cattleTag;
+  const selectedCattle = useMemo(() => cattle.find((animal) => animal.tagNumber === activeCattleTag), [cattle, activeCattleTag]);
+  const femaleOnlyEventBlocked =
+    femaleOnlyEventTypes.has(eventType) && Boolean(selectedCattle) && !isFemaleCattle(selectedCattle!);
   const isNarrow = width < 380;
   const returnHeatDate = eventType === 'Breeding' ? addDays(eventDate, 21) : '';
   const expectedDeliveryDate = eventType === 'Breeding' || eventType === 'Pregnant' ? addDays(breedingDate || eventDate, 280) : '';
+
+  useEffect(() => {
+    if (!femaleOnlyEventTypes.has(eventType) || !cattleTag) {
+      return;
+    }
+
+    const selected = cattle.find((animal) => animal.tagNumber === cattleTag);
+    if (selected && !isFemaleCattle(selected)) {
+      setCattleTag('');
+    }
+  }, [eventType, cattle, cattleTag]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (eventType !== 'Pregnant' || !cattleTag || isEditing) {
+      setLatestBreedingEvent(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const breeding = await getLatestBreedingEvent(cattleTag);
+        if (cancelled) {
+          return;
+        }
+        setLatestBreedingEvent(breeding);
+        if (breeding) {
+          prefillPregnantFromBreeding(breeding, {
+            setBreedingDate,
+            setBullResponsible,
+            setSemenUsed,
+            setVetName,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setLatestBreedingEvent(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventType, cattleTag, isEditing]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (eventType !== 'Giving Birth' || !cattleTag || isEditing) {
+      setBirthPrefillEvent(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const prefillEvent = await getBirthPrefillEvent(cattleTag);
+        if (cancelled) {
+          return;
+        }
+        setBirthPrefillEvent(prefillEvent);
+        if (prefillEvent) {
+          setBullResponsible(prefillEvent.bullResponsible || prefillEvent.semenUsed || '');
+        }
+      } catch {
+        if (!cancelled) {
+          setBirthPrefillEvent(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventType, cattleTag, isEditing]);
 
   const handleEventDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     const timestamp = event.nativeEvent.timestamp;
@@ -83,6 +176,12 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       return;
     }
 
+    const selectedCattle = cattle.find((animal) => animal.tagNumber === cattleTag);
+    if (femaleOnlyEventTypes.has(eventType) && selectedCattle && !isFemaleCattle(selectedCattle)) {
+      Alert.alert('Female cattle only', 'Kwimisha, Gusama, and Kuramburura can only be recorded for female cattle.');
+      return;
+    }
+
     if (!validateEventFields(eventType, breedingMethod, { symptoms, diagnosis, technician, medicine, weightResult, semenUsed, vetName, breedingDate, bullResponsible })) {
       return;
     }
@@ -93,8 +192,8 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
     }
 
     try {
-      await createHealthEvent({
-        scope: 'individual',
+      const payload = {
+        scope: 'individual' as const,
         cattleTag,
         groupName: '',
         eventDate: eventDate.trim(),
@@ -108,13 +207,13 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         withdrawalDays: 0,
         batchNumber: '',
         technician: eventType === 'Treated' ? technician.trim() : '',
-        vetName: eventType === 'Breeding' && breedingMethod === 'semen' ? vetName.trim() : '',
+        vetName: eventType === 'Breeding' && breedingMethod === 'semen' ? vetName.trim() : eventType === 'Pregnant' ? vetName.trim() : '',
         vetContact: '',
         followUpDate: '',
         weightKg: eventType === 'Weighed' ? parseNumber(weightResult) : 0,
-        semenUsed: eventType === 'Breeding' && breedingMethod === 'semen' ? semenUsed.trim() : '',
+        semenUsed: eventType === 'Breeding' && breedingMethod === 'semen' ? semenUsed.trim() : eventType === 'Pregnant' ? semenUsed.trim() : '',
         bullResponsible:
-          eventType === 'Breeding' && breedingMethod === 'bull'
+          eventType === 'Breeding'
             ? bullResponsible.trim()
             : eventType === 'Giving Birth'
               ? bullResponsible.trim()
@@ -128,10 +227,16 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         calfGender: showCalfRegistration ? calfGender : '',
         notes: notes.trim(),
         photoUri: '',
-      });
+      };
+
+      if (isEditing && editingEvent) {
+        await updateHealthEvent(editingEvent.id, payload);
+      } else {
+        await createHealthEvent(payload);
+      }
       navigation.replace('Events');
     } catch (error) {
-      Alert.alert('Could not save event', error instanceof Error ? error.message : 'Please check the details and try again.');
+      Alert.alert(isEditing ? 'Could not update event' : 'Could not save event', error instanceof Error ? error.message : 'Please check the details and try again.');
     }
   };
 
@@ -141,7 +246,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="arrow-left" size={26} color="#FFFFFF" />
         </Pressable>
-        <Text className="flex-1 pl-4 text-[20px] font-bold text-white">Add Individual Event</Text>
+        <Text className="flex-1 pl-4 text-[20px] font-bold text-white">{isEditing ? 'Edit Individual Event' : 'Add Individual Event'}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}>
@@ -154,9 +259,18 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
             <View className="h-[48px] justify-center rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3">
               <Text className="text-[16px] text-[#1F2937]">{route.params.cattleTag}</Text>
             </View>
+            {femaleOnlyEventBlocked ? (
+              <Text className="mb-4 mt-2 text-sm text-red-600">Kwimisha, Gusama, and Kuramburura are only for female cattle.</Text>
+            ) : null}
           </>
         ) : (
-          <SelectDropdown label="Cattle Tag" value={cattleTag} placeholder="Select animal" options={cattleTagOptions} onSelect={setCattleTag} />
+          <SelectDropdown
+            label="Cattle Tag"
+            value={cattleTag}
+            placeholder={femaleOnlyEventTypes.has(eventType) ? 'Select female animal' : 'Select animal'}
+            options={cattleTagOptions}
+            onSelect={setCattleTag}
+          />
         )}
 
         <SelectDropdown
@@ -212,6 +326,8 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
                 <Input placeholder="Enter semen or straw ID" value={semenUsed} onChangeText={setSemenUsed} />
                 <Label text="Veterinarian / Inseminator Name" />
                 <Input placeholder="Enter name" value={vetName} onChangeText={setVetName} />
+                <Label text="Bull Name" />
+                <Input placeholder="Enter bull name" value={bullResponsible} onChangeText={setBullResponsible} />
               </>
             ) : null}
 
@@ -235,15 +351,35 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
 
         {eventType === 'Pregnant' ? (
           <>
-            <ConditionalInput placeholder="Breeding Date" value={breedingDate} onChangeText={setBreedingDate} />
-            <ConditionalInput placeholder="Expected Delivery Date" value={expectedDeliveryDate} onChangeText={() => {}} editable={false} />
-            <ConditionalInput placeholder="Bull Responsible" value={bullResponsible} onChangeText={setBullResponsible} />
+            {latestBreedingEvent ? (
+              <Text className="mb-2 text-[12px] text-[#E6B86F]">Filled from latest breeding record on {latestBreedingEvent.eventDate}</Text>
+            ) : cattleTag ? (
+              <Text className="mb-2 text-[12px] text-[#6B7280]">No breeding record found for this animal. Enter details manually.</Text>
+            ) : null}
+            <Label text="Breeding Date" />
+            <Input placeholder="YYYY-MM-DD" value={breedingDate} onChangeText={setBreedingDate} editable={!latestBreedingEvent} />
+            <Label text="Expected Delivery Date" />
+            <Input placeholder="YYYY-MM-DD" value={expectedDeliveryDate} onChangeText={() => {}} editable={false} />
+            <Label text="Semen Used / Straw ID" />
+            <Input placeholder="Enter semen or straw ID" value={semenUsed} onChangeText={setSemenUsed} editable={!latestBreedingEvent} />
+            <Label text="Inseminator Name" />
+            <Input placeholder="Enter inseminator name" value={vetName} onChangeText={setVetName} editable={!latestBreedingEvent} />
+            <Label text="Bull Responsible" />
+            <Input placeholder="Enter bull name or tag" value={bullResponsible} onChangeText={setBullResponsible} editable={!latestBreedingEvent} />
           </>
         ) : null}
 
         {eventType === 'Giving Birth' ? (
           <>
-            <ConditionalInput placeholder="Semen/tag no. of bull responsible" value={bullResponsible} onChangeText={setBullResponsible} />
+            {birthPrefillEvent ? (
+              <Text className="mb-2 text-[12px] text-[#E6B86F]">
+                Bull name filled from latest {birthPrefillEvent.eventType} record on {birthPrefillEvent.eventDate}
+              </Text>
+            ) : cattleTag ? (
+              <Text className="mb-2 text-[12px] text-[#6B7280]">No pregnancy or breeding record found for this animal. Enter bull name manually.</Text>
+            ) : null}
+            <Label text="Bull Name" />
+            <Input placeholder="Enter bull name" value={bullResponsible} onChangeText={setBullResponsible} editable={!birthPrefillEvent} />
             <Text className="mb-3 mt-4 text-[12px] text-[#E6B86F]">Calf registration note</Text>
             <Pressable
               onPress={() => setShowCalfRegistration((visible) => !visible)}
@@ -282,7 +418,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
           <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
         </Pressable>
         <Pressable onPress={saveEvent} className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
-          <Text className="text-[16px] font-bold text-white">Save</Text>
+          <Text className="text-[16px] font-bold text-white">{isEditing ? 'Update' : 'Save'}</Text>
         </Pressable>
       </View>
 
@@ -317,6 +453,38 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       <StatusBar style="light" />
     </View>
   );
+}
+
+function prefillPregnantFromBreeding(
+  breeding: HealthEvent,
+  setters: {
+    setBreedingDate: (value: string) => void;
+    setBullResponsible: (value: string) => void;
+    setSemenUsed: (value: string) => void;
+    setVetName: (value: string) => void;
+  },
+) {
+  setters.setBreedingDate(breeding.eventDate);
+  setters.setSemenUsed(breeding.semenUsed || '');
+  setters.setVetName(breeding.vetName || '');
+  setters.setBullResponsible(breeding.bullResponsible || breeding.semenUsed || '');
+}
+
+function isFemaleCattle(animal: { gender: string }): boolean {
+  return animal.gender.trim().toLowerCase() === 'female';
+}
+
+function inferBreedingMethod(event?: HealthEvent): string {
+  if (!event || event.eventType !== 'Breeding') {
+    return '';
+  }
+  if (event.semenUsed || event.vetName) {
+    return 'semen';
+  }
+  if (event.bullResponsible) {
+    return 'bull';
+  }
+  return '';
 }
 
 function requiresMedicine(eventType: string): boolean {
@@ -359,8 +527,8 @@ function validateEventFields(
       Alert.alert('Missing breeding type', 'Please select semen or bull.');
       return false;
     }
-    if (breedingMethod === 'semen' && (!values.semenUsed.trim() || !values.vetName.trim())) {
-      Alert.alert('Missing breeding details', 'Please enter semen used and veterinarian name.');
+    if (breedingMethod === 'semen' && (!values.semenUsed.trim() || !values.vetName.trim() || !values.bullResponsible.trim())) {
+      Alert.alert('Missing breeding details', 'Please enter semen used, veterinarian name, and bull name.');
       return false;
     }
     if (breedingMethod === 'bull' && !values.bullResponsible.trim()) {
@@ -373,7 +541,7 @@ function validateEventFields(
     return false;
   }
   if (eventType === 'Giving Birth' && !values.bullResponsible.trim()) {
-    Alert.alert('Missing birth details', 'Please enter semen/tag number of bull responsible.');
+    Alert.alert('Missing birth details', 'Please enter the bull name.');
     return false;
   }
   return true;

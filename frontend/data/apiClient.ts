@@ -20,6 +20,10 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
     throw new Error(message);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return payload as T;
 }
 

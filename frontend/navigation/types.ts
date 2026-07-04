@@ -1,4 +1,4 @@
-import type { Cattle } from '../data/farmDatabase';
+import type { Cattle, HealthEvent } from '../data/farmDatabase';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -14,8 +14,9 @@ export type RootStackParamList = {
   ManageExpenses: undefined;
   AddCattle: { cattle?: Cattle } | undefined;
   AddMilkRecord: undefined;
-  AddIndividualEvent: { cattleTag?: string } | undefined;
-  AddMassEvent: undefined;
+  AddIndividualEvent: { cattleTag?: string; event?: HealthEvent } | undefined;
+  AddMassEvent: { event?: HealthEvent } | undefined;
+  CattleProfile: { cattleTag: string };
   AddIncome: undefined;
   AddExpense: undefined;
   Action: {

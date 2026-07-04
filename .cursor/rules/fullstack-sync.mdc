@@ -1,0 +1,49 @@
+---
+description: Keep frontend API usage and backend routes/schemas in sync
+globs: frontend/**/*.{ts,tsx},backend/**/*.{ts,js}
+alwaysApply: true
+---
+
+# Full-Stack Sync (Inka)
+
+When changing the Expo app in ways that need server support, update **frontend and backend in the same task**.
+
+## Required workflow
+
+1. **Before finishing**, list every new/changed API call in `frontend/data/farmDatabase.ts`, `frontend/data/apiClient.ts`, or `frontend/data/authApi.ts`.
+2. **Implement matching backend support** in the same change:
+   - Route in `backend/src/routes/`
+   - Zod schema in `backend/src/schemas/resourceSchemas.ts` when payloads change
+   - Prisma model/migration when persistence changes
+3. **Verify parity** for method + path + body shape:
+   - `GET /resource`, `GET /resource/:id`, `POST /`, `PATCH /:id`, `DELETE /:id`
+4. **Update** `backend/README.md` when routes or behavior change.
+
+## Do not
+
+- Add frontend `apiRequest(...)` calls without a working backend endpoint.
+- Add backend routes/schemas without wiring the frontend when the UI already depends on them.
+- Ship UI actions (edit, delete, create) that call APIs the server does not expose.
+
+## Examples
+
+```typescript
+// Frontend adds delete
+await apiRequest<void>(`/events/${id}`, { method: 'DELETE' });
+
+// Backend must add in createCrudRouter or resource router:
+router.delete('/:id', ...)
+```
+
+```typescript
+// Frontend adds new event fields (semenUsed, bullResponsible)
+// Backend: healthEventSchema + Prisma HealthEvent + mapBackendHealthEvent
+```
+
+## Current API surface
+
+- `/api/v1/categories`, `/cattle`, `/milk-records`, `/events`, `/transactions`
+- `/api/v1/events/latest-breeding?cattleTag=...` for pregnancy prefill from breeding records
+- `/api/v1/events/birth-prefill?cattleTag=...` for birth prefill from pregnancy and breeding records
+- `/api/v1/reports/dashboard`, `/api/v1/reports/summaries`
+- CRUD resources use `backend/src/routes/crudRouter.ts` (includes DELETE)

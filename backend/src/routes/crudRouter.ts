@@ -10,6 +10,7 @@ type PrismaDelegate = {
   findUnique: (args: unknown) => Promise<unknown | null>;
   create: (args: unknown) => Promise<unknown>;
   update: (args: unknown) => Promise<unknown>;
+  delete: (args: unknown) => Promise<unknown>;
 };
 
 type CrudOptions = {
@@ -22,6 +23,8 @@ type CrudOptions = {
   listWhere?: (query: Record<string, unknown>) => Record<string, unknown>;
   createData?: (body: Record<string, unknown>) => Record<string, unknown>;
   updateData?: (body: Record<string, unknown>) => Record<string, unknown>;
+  beforeCreate?: (body: Record<string, unknown>) => Promise<void>;
+  beforeUpdate?: (id: string, body: Record<string, unknown>) => Promise<void>;
 };
 
 export function createCrudRouter(options: CrudOptions) {
@@ -55,6 +58,7 @@ export function createCrudRouter(options: CrudOptions) {
     validateBody(options.createSchema),
     asyncHandler(async (request, response) => {
       const body = request.body as Record<string, unknown>;
+      await options.beforeCreate?.(body);
       const record = await options.model.create({ data: options.createData?.(body) ?? body, include: options.include });
       response.status(201).json(record);
     }),
@@ -65,12 +69,25 @@ export function createCrudRouter(options: CrudOptions) {
     validateBody(options.updateSchema),
     asyncHandler(async (request, response) => {
       const body = request.body as Record<string, unknown>;
+      await options.beforeUpdate?.(String(request.params.id), body);
       const record = await options.model.update({
         where: { id: request.params.id },
         data: options.updateData?.(body) ?? body,
         include: options.include,
       });
       response.json(record);
+    }),
+  );
+
+  router.delete(
+    '/:id',
+    asyncHandler(async (request, response) => {
+      const existing = await options.model.findUnique({ where: { id: request.params.id } });
+      if (!existing) {
+        throw notFound(options.resourceName);
+      }
+      await options.model.delete({ where: { id: request.params.id } });
+      response.status(204).send();
     }),
   );
 

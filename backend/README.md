@@ -64,6 +64,10 @@ All business routes are under `/api/v1`.
 - `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records.
 - `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records.
 - `/api/v1/events`: individual and mass veterinary, breeding, pregnancy, birth, weighing, vaccination, treatment, and deworming events.
+  - `GET /events/latest-breeding?cattleTag=TAG`: latest breeding event for an animal (used by pregnancy form prefill).
+  - `GET /events/birth-prefill?cattleTag=TAG`: latest pregnancy event for an animal, falling back to latest breeding event (used by birth form prefill).
+  - Query filters on `GET /events`: `eventType`, `cattleTag`, `cattleId`, `scope`, `farmId`.
+  - `Giving Birth` events require a bull name in `bullResponsible`.
 - `/api/v1/transactions`: income and expense records with category, amount, quantity, unit price, buyer/vendor, payment, receipt, tax, discount, and resource links.
 - `/api/v1/reports/dashboard`: dashboard metrics.
 - `/api/v1/reports/summaries`: report summary cards.
@@ -74,9 +78,11 @@ Most resource routes support:
 - `GET /:id`: read one record.
 - `POST /`: create a record.
 - `PATCH /:id`: update a record.
+- `DELETE /:id`: delete a record.
 
 ## Notes
 
-- This backend phase does not connect the Expo app to the API yet.
+- The Expo app calls this API through `frontend/data/farmDatabase.ts` and `frontend/data/apiClient.ts`.
+- When adding or changing frontend API usage, update backend routes/schemas in the same change.
 - The Prisma config includes a local fallback database URL only so schema validation works before `.env` is created.
 - Use uppercase enum values in API payloads, such as `MALE`, `FEMALE`, `COW`, `ACTIVE`, `INDIVIDUAL`, `MASS`, `INCOME`, and `EXPENSE`.

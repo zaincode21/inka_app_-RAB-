@@ -1,6 +1,6 @@
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { ImageBackground, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import type { RootStackParamList } from '../navigation/types';
 import Logo from '../components/Logo';
 
@@ -13,12 +13,9 @@ export function HomeScreen({ navigation }: Props) {
   const logoSize = isCompact ? 118 : 150;
 
   return (
-    <View className="flex-1 bg-[#111316]">
-      <View className="absolute -top-[120px] left-[-60px] right-[-60px] h-[260px] rounded-b-[180px] bg-[#1F2529] opacity-95" />
-      <View className="absolute top-[150px] self-center h-[260px] w-[260px] rounded-[260px] bg-[#2E3438] opacity-30" />
-      <View className="absolute -bottom-[60px] left-[-20px] right-[-20px] h-[240px] rounded-t-[180px] bg-[#1A1A1A] opacity-90" />
-
-      <View className="absolute inset-0 bg-black/35" />
+    <ImageBackground source={require('../assets/landing-bull.png')} resizeMode="cover" className="flex-1 bg-[#111316]">
+      <View className="absolute inset-0 bg-black/55" />
+      <View className="absolute -bottom-[60px] left-[-20px] right-[-20px] h-[240px] rounded-t-[180px] bg-black/50" />
 
       <View className={`flex-1 items-center justify-between px-7 pb-9 ${isCompact ? 'pt-14' : 'pt-24'}`}>
         <View className="items-center justify-center rounded-full bg-black/20" style={{ height: logoFrameSize, width: logoFrameSize }}>
@@ -57,6 +54,6 @@ export function HomeScreen({ navigation }: Props) {
       </View>
 
       <StatusBar style="light" />
-    </View>
+    </ImageBackground>
   );
 }

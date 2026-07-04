@@ -58,8 +58,8 @@ export function AddCattleScreen({ navigation, route }: Props) {
   const otherSourceVisible = useMemo(() => obtained === 'Other' || showOtherSource, [obtained, showOtherSource]);
 
   const saveCattle = async () => {
-    if (!tagNumber.trim() || !name.trim() || !breed || breed === createNewBreedOption || !gender || !stage || !obtained || !group) {
-      Alert.alert('Missing cattle details', 'Tag number, name, breed, gender, cattle stage, how obtained, and group are required.');
+    if (!tagNumber.trim() || !name.trim() || !breed || breed === createNewBreedOption || !gender || !stage || !obtained) {
+      Alert.alert('Missing cattle details', 'Tag number, name, breed, gender, cattle stage, and how obtained are required.');
       return;
     }
 
@@ -190,7 +190,7 @@ export function AddCattleScreen({ navigation, route }: Props) {
           <InputField label="Weight" placeholder="Enter weight" keyboardType="decimal-pad" value={weight} onChangeText={setWeight} />
           <DateField label="Date of Birth" value={dateOfBirth} placeholder="Enter date of birth" onPress={() => setActiveDatePicker('dateOfBirth')} />
           <DateField label="Farm Entry Date" value={entryDate} placeholder="Enter entry date" onPress={() => setActiveDatePicker('entryDate')} />
-          <SelectField label="Group" value={group} placeholder="Select group" onPress={() => setActivePicker({ label: 'Group', value: group, options: groupOptions, onSelect: setGroup })} />
+          <SelectField label="Cattle Group" value={group} placeholder="Select group (optional)" onPress={() => setActivePicker({ label: 'Cattle Group', value: group, options: groupOptions, onSelect: setGroup })} />
           <SelectField
             label="How Obtained"
             value={obtained}

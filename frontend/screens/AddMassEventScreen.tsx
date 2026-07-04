@@ -4,20 +4,22 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SelectDropdown } from '../components/SelectDropdown';
-import { createHealthEvent, getCategories, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
+import { createHealthEvent, getCategories, todayIsoDate, updateHealthEvent, useDatabaseQuery } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddMassEvent'>;
 
 const eventTypes = ['Vaccination', 'Herd Spraying', 'Deworming', 'Treatment', 'Hoof Trimming'];
 
-export function AddMassEventScreen({ navigation }: Props) {
+export function AddMassEventScreen({ navigation, route }: Props) {
+  const editingEvent = route.params?.event;
+  const isEditing = Boolean(editingEvent);
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
   const medicineOptions = useMemo(() => medicines.map((category) => category.name), [medicines]);
-  const [eventDate, setEventDate] = useState(todayIsoDate());
-  const [eventType, setEventType] = useState('');
-  const [medicine, setMedicine] = useState('');
-  const [notes, setNotes] = useState('');
+  const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? todayIsoDate());
+  const [eventType, setEventType] = useState(editingEvent?.eventType ?? '');
+  const [medicine, setMedicine] = useState(editingEvent?.medicine ?? '');
+  const [notes, setNotes] = useState(editingEvent?.notes ?? '');
 
   const saveEvent = async () => {
     if (!eventDate.trim() || !eventType) {
@@ -31,8 +33,8 @@ export function AddMassEventScreen({ navigation }: Props) {
     }
 
     try {
-      await createHealthEvent({
-        scope: 'mass',
+      const payload = {
+        scope: 'mass' as const,
         cattleTag: '',
         groupName: '',
         eventDate: eventDate.trim(),
@@ -59,10 +61,16 @@ export function AddMassEventScreen({ navigation }: Props) {
         calfGender: '',
         notes: notes.trim(),
         photoUri: '',
-      });
+      };
+
+      if (isEditing && editingEvent) {
+        await updateHealthEvent(editingEvent.id, payload);
+      } else {
+        await createHealthEvent(payload);
+      }
       navigation.replace('Events');
     } catch (error) {
-      Alert.alert('Could not save mass event', error instanceof Error ? error.message : 'Please check the details and try again.');
+      Alert.alert(isEditing ? 'Could not update mass event' : 'Could not save mass event', error instanceof Error ? error.message : 'Please check the details and try again.');
     }
   };
 
@@ -72,7 +80,7 @@ export function AddMassEventScreen({ navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="arrow-left" size={26} color="#FFFFFF" />
         </Pressable>
-        <Text className="flex-1 pl-4 text-[20px] font-bold text-white">Add Mass Event</Text>
+        <Text className="flex-1 pl-4 text-[20px] font-bold text-white">{isEditing ? 'Edit Mass Event' : 'Add Mass Event'}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}>
@@ -107,7 +115,7 @@ export function AddMassEventScreen({ navigation }: Props) {
           <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
         </Pressable>
         <Pressable onPress={saveEvent} className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
-          <Text className="text-[16px] font-bold text-white">Save</Text>
+          <Text className="text-[16px] font-bold text-white">{isEditing ? 'Update' : 'Save'}</Text>
         </Pressable>
       </View>
 

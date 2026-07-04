@@ -3,20 +3,23 @@ import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { buildEventCardRows, EventRecordCard } from '../components/EventRecordCard';
 import { logout } from '../data/authApi';
-import { formatNumber, getCattle, getHealthEvents, useDatabaseQuery } from '../data/farmDatabase';
+import { type HealthEvent, deleteHealthEvent, getCattle, getHealthEvents, useDatabaseQuery } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Events'>;
 
 export function EventsScreen({ navigation }: Props) {
-  const { data: events, loading, error } = useDatabaseQuery(getHealthEvents, []);
+  const { data: events, loading, error, reload } = useDatabaseQuery(getHealthEvents, []);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const [selectedScope, setSelectedScope] = useState<'individual' | 'mass'>('individual');
   const [showCattleDialog, setShowCattleDialog] = useState(false);
   const [selectedCattleTag, setSelectedCattleTag] = useState('');
   const [cattleSearch, setCattleSearch] = useState('');
+  const [menuEvent, setMenuEvent] = useState<HealthEvent | null>(null);
   const visibleEvents = events.filter((item) => item.scope === selectedScope);
+  const cattleByTag = useMemo(() => new Map(cattle.map((animal) => [animal.tagNumber, animal])), [cattle]);
   const cattleOptions = useMemo(() => {
     const query = cattleSearch.trim().toLowerCase();
     return cattle.filter((animal) => {
@@ -26,6 +29,7 @@ export function EventsScreen({ navigation }: Props) {
       return `${animal.tagNumber} ${animal.name} ${animal.breed}`.toLowerCase().includes(query);
     });
   }, [cattle, cattleSearch]);
+
   const handleLogout = () => {
     logout();
     navigation.replace('Login');
@@ -49,8 +53,53 @@ export function EventsScreen({ navigation }: Props) {
     navigation.navigate('AddIndividualEvent', { cattleTag: selectedCattleTag });
   };
 
+  const openEventDetail = (item: HealthEvent) => {
+    navigation.navigate('Detail', {
+      title: item.eventType,
+      subtitle: item.scope === 'mass' ? 'Mass herd event' : 'Individual cattle event',
+      details: buildEventCardRows(item, cattleByTag).map((row) => ({ label: row.label, value: row.value })),
+    });
+  };
+
+  const handleEditEvent = (event: HealthEvent) => {
+    setMenuEvent(null);
+    if (event.scope === 'mass') {
+      navigation.navigate('AddMassEvent', { event });
+      return;
+    }
+    navigation.navigate('AddIndividualEvent', { cattleTag: event.cattleTag, event });
+  };
+
+  const handleViewCattle = (event: HealthEvent) => {
+    setMenuEvent(null);
+    if (!event.cattleTag) {
+      Alert.alert('No cattle linked', 'This event is not linked to an animal.');
+      return;
+    }
+    navigation.navigate('CattleProfile', { cattleTag: event.cattleTag });
+  };
+
+  const handleDeleteEvent = (event: HealthEvent) => {
+    setMenuEvent(null);
+    Alert.alert('Delete event', 'Are you sure you want to delete this event?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteHealthEvent(event.id);
+            await reload();
+          } catch (deleteError) {
+            Alert.alert('Could not delete event', deleteError instanceof Error ? deleteError.message : 'Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1 bg-[#F5F7F7]">
       <View className="flex-row items-center rounded-b-[50px] bg-[#008B8B] px-6 pb-6 pt-12">
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="arrow-left" size={26} color="#FFFFFF" />
@@ -80,62 +129,40 @@ export function EventsScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 120 }}>
-        {visibleEvents.length === 0 ? (
-          <View className="items-center justify-center pt-20">
-            <Text className="text-center text-[16px] font-bold text-[#008B8B]">{loading ? 'Loading events...' : 'No events yet'}</Text>
-            <Text className="mt-2 text-center text-[13px] text-[#6B7280]">{error ?? `No ${selectedScope} events recorded yet.`}</Text>
-          </View>
-        ) : (
-          visibleEvents.map((item) => (
-            <Pressable
-              key={item.id}
-              onPress={() =>
-                navigation.navigate('Detail', {
-                  title: item.eventType,
-                  subtitle: item.scope === 'mass' ? 'Mass herd event' : 'Individual cattle event',
-                  details: [
-                    { label: 'Date', value: item.eventDate },
-                    { label: 'Scope', value: item.scope },
-                    { label: 'Cattle Tag', value: item.cattleTag || 'Not applicable' },
-                    { label: 'Group', value: item.groupName || 'Not recorded' },
-                    { label: 'Symptoms', value: item.symptoms || 'None' },
-                    { label: 'Diagnosis', value: item.diagnosis || 'Not recorded' },
-                    { label: 'Medicine', value: item.medicine || 'Not recorded' },
-                    { label: 'Dose / Route', value: `${item.dosage || 'Not recorded'} / ${item.route || 'Not recorded'}` },
-                    { label: 'Withdrawal Days', value: formatNumber(item.withdrawalDays) },
-                    { label: 'Batch Number', value: item.batchNumber || 'Not recorded' },
-                    { label: 'Technician', value: item.technician || 'Not recorded' },
-                    { label: 'Vet', value: item.vetName || 'Not recorded' },
-                    { label: 'Follow-up Date', value: item.followUpDate || 'Not scheduled' },
-                    { label: 'Weight', value: item.weightKg ? `${formatNumber(item.weightKg)} kg` : 'Not recorded' },
-                    { label: 'Breeding', value: item.breedingDate || item.semenUsed || item.bullResponsible ? `${item.breedingDate || item.eventDate}, ${item.semenUsed || item.bullResponsible || 'service recorded'}` : 'Not applicable' },
-                    { label: 'Expected Delivery', value: item.expectedDeliveryDate || 'Not applicable' },
-                    { label: 'Calf', value: item.calfTag ? `${item.calfTag} (${item.calfGender || 'gender not recorded'})` : 'Not registered' },
-                    { label: 'Notes', value: item.notes || 'None' },
-                  ],
-                })
-              }
-              className="mb-4 rounded-[16px] bg-[#E0F7F7] px-4 py-4"
-            >
-              <View className="mb-2 flex-row items-center">
-                <Text className="flex-1 text-[17px] font-bold text-[#1F2937]">{item.eventType}</Text>
-                <Text className="rounded-full bg-white px-3 py-1 text-[12px] font-bold text-[#008B8B]">{item.scope}</Text>
-              </View>
-              <Text className="text-[13px] text-[#6B7280]">{item.eventDate}</Text>
-              <Text className="mt-2 text-[14px] text-[#1F2937]">{item.scope === 'mass' ? item.groupName || 'All herd' : item.cattleTag || 'Animal not selected'}</Text>
-              {item.followUpDate ? <Text className="mt-2 text-[12px] font-bold text-[#E6B86F]">Follow-up due: {item.followUpDate}</Text> : null}
-            </Pressable>
-          ))
-        )}
-      </ScrollView>
+      <View className="flex-1">
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 140 }}
+          onScrollBeginDrag={() => setMenuEvent(null)}
+        >
+          {visibleEvents.length === 0 ? (
+            <View className="items-center justify-center pt-20">
+              <Text className="text-center text-[16px] font-bold text-[#008B8B]">{loading ? 'Loading events...' : 'No events yet'}</Text>
+              <Text className="mt-2 text-center text-[13px] text-[#6B7280]">{error ?? `No ${selectedScope} events recorded yet.`}</Text>
+            </View>
+          ) : (
+            visibleEvents.map((item) => (
+              <EventRecordCard
+                key={item.id}
+                item={item}
+                cattleByTag={cattleByTag}
+                menuOpen={menuEvent?.id === item.id}
+                onPress={() => {
+                  setMenuEvent(null);
+                  openEventDetail(item);
+                }}
+                onMenuPress={() => setMenuEvent((current) => (current?.id === item.id ? null : item))}
+                onEdit={() => handleEditEvent(item)}
+                onViewCattle={() => handleViewCattle(item)}
+                onDelete={() => handleDeleteEvent(item)}
+              />
+            ))
+          )}
+        </ScrollView>
+      </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={handleAddEvent}
-        className="absolute bottom-[100px] right-6 rounded-[12px] bg-[#E6B86F] px-6 py-3 shadow-lg"
-      >
-        <Text className="text-[16px] font-bold text-white">+ Add</Text>
+      <Pressable accessibilityRole="button" onPress={handleAddEvent} className="absolute bottom-[100px] right-6 flex-row items-center rounded-full bg-[#E6B86F] px-5 py-3 shadow-lg">
+        <Feather name="plus" size={20} color="#FFFFFF" />
+        <Text className="ml-2 text-[16px] font-bold text-white">Add</Text>
       </Pressable>
 
       <View className="absolute bottom-0 left-0 right-0 flex-row justify-between rounded-t-[20px] bg-[#008B8B] px-2 py-2">

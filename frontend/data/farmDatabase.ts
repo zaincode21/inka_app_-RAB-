@@ -217,6 +217,37 @@ export async function getHealthEvents(): Promise<HealthEvent[]> {
   return rows.map(mapBackendHealthEvent);
 }
 
+export async function getLatestBreedingEvent(cattleTag: string): Promise<HealthEvent | null> {
+  const trimmedTag = cattleTag.trim();
+  if (!trimmedTag) {
+    return null;
+  }
+
+  const row = await apiRequest<BackendHealthEvent | null>(`/events/latest-breeding?cattleTag=${encodeURIComponent(trimmedTag)}`);
+  return row ? mapBackendHealthEvent(row) : null;
+}
+
+export async function getBirthPrefillEvent(cattleTag: string): Promise<HealthEvent | null> {
+  const trimmedTag = cattleTag.trim();
+  if (!trimmedTag) {
+    return null;
+  }
+
+  const row = await apiRequest<BackendHealthEvent | null>(`/events/birth-prefill?cattleTag=${encodeURIComponent(trimmedTag)}`);
+  return row ? mapBackendHealthEvent(row) : null;
+}
+
+export async function updateHealthEvent(id: string, input: Omit<HealthEvent, 'id' | 'createdAt'>): Promise<void> {
+  await apiRequest<BackendHealthEvent>(`/events/${id}`, {
+    method: 'PATCH',
+    ...toJsonBody(await toBackendHealthEvent(input)),
+  });
+}
+
+export async function deleteHealthEvent(id: string): Promise<void> {
+  await apiRequest<void>(`/events/${id}`, { method: 'DELETE' });
+}
+
 export async function createTransaction(input: Omit<FarmTransaction, 'id' | 'createdAt'>): Promise<void> {
   await apiRequest<BackendTransaction>('/transactions', toJsonBody(await toBackendTransaction(input)));
 }

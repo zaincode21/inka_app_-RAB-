@@ -21,6 +21,7 @@ import {
   AddIncomeScreen,
   AddExpenseScreen,
   ActionScreen,
+  CattleProfileScreen,
   DetailScreen,
 } from './screens';
 import type { RootStackParamList } from './navigation/types';
@@ -49,6 +50,7 @@ export default function App() {
         <Stack.Screen name="AddIncome" component={AddIncomeScreen} />
         <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
         <Stack.Screen name="Action" component={ActionScreen} />
+        <Stack.Screen name="CattleProfile" component={CattleProfileScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
