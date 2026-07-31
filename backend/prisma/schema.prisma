@@ -55,15 +55,17 @@ enum TransactionKind {
 }
 
 model Farm {
-  id         String   @id @default(cuid())
-  name       String
-  ownerName  String
-  location   String
-  currency   String   @default("RWF")
-  weightUnit String   @default("kg")
-  milkUnit   String   @default("L")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  ownerName       String
+  location        String
+  currency        String   @default("RWF")
+  weightUnit      String   @default("kg")
+  milkUnit        String   @default("L")
+  returnHeatDays  Int      @default(21)
+  returnHeatTime  String   @default("08:00")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   users        User[]
   cattle       Cattle[]
@@ -151,6 +153,7 @@ model HealthEvent {
   vetContact           String?
   followUpDate         DateTime?
   weightKg             Decimal    @default(0) @db.Decimal(10, 2)
+  bodyConditionScore   Decimal    @default(0) @db.Decimal(3, 1)
   semenUsed            String?
   bullResponsible      String?
   returnHeatDate       DateTime?
@@ -158,6 +161,7 @@ model HealthEvent {
   expectedDeliveryDate DateTime?
   calfTag              String?
   calfGender           AnimalSex?
+  sourceEventId        String?
   notes                String?
   photoUri             String?
   createdAt            DateTime   @default(now())
@@ -165,6 +169,8 @@ model HealthEvent {
 
   farm         Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
   cattle       Cattle?       @relation(fields: [cattleId], references: [id], onDelete: SetNull)
+  sourceEvent  HealthEvent?  @relation("EventCycle", fields: [sourceEventId], references: [id], onDelete: SetNull)
+  derivedEvents HealthEvent[] @relation("EventCycle")
   transactions Transaction[]
   attachments  Attachment[]
 
@@ -172,6 +178,7 @@ model HealthEvent {
   @@index([cattleId])
   @@index([eventDate])
   @@index([eventType])
+  @@index([sourceEventId])
 }
 
 model MilkRecord {

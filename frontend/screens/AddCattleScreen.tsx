@@ -6,13 +6,13 @@ import { useMemo, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { createCattle, getCategories, parseNumber, todayIsoDate, updateCattle, useDatabaseQuery } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
+import { stageOptionsForGender } from '../utils/lifecycle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddCattle'>;
 
 const genderOptions = ['Male', 'Female'];
 const defaultBreedOptions = ['Ayrshire', 'Friesian', 'Guernsey', 'Jersey'];
 const createNewBreedOption = 'Create New Breed';
-const stageOptions = ['Calf', 'Weaner', 'Steer', 'Bull'];
 const obtainedOptions = ['Born on farm', 'Purchased', 'Other'];
 const defaultGroupOptions = ['Milking Cows', 'Dry Cows', 'Calves', 'Bulls'];
 const motherTagOptions = ['UK 722212 123 (Bessie)', 'UK 722212 124 (Daisy)', 'UK 722212 126 (Molly)'];
@@ -56,6 +56,15 @@ export function AddCattleScreen({ navigation, route }: Props) {
   }>(null);
 
   const otherSourceVisible = useMemo(() => obtained === 'Other' || showOtherSource, [obtained, showOtherSource]);
+  const stageOptions = useMemo(() => (gender ? stageOptionsForGender(gender) : ['Calf', 'Weaner', 'Heifer', 'Cow', 'Steer', 'Bull']), [gender]);
+
+  const handleGenderSelect = (value: string) => {
+    setGender(value);
+    const nextOptions = stageOptionsForGender(value);
+    if (stage && !nextOptions.includes(stage)) {
+      setStage('');
+    }
+  };
 
   const saveCattle = async () => {
     if (!tagNumber.trim() || !name.trim() || !breed || breed === createNewBreedOption || !gender || !stage || !obtained) {
@@ -185,8 +194,8 @@ export function AddCattleScreen({ navigation, route }: Props) {
           />
           <InputField label="Tag Number" placeholder="Enter tag number" value={tagNumber} onChangeText={setTagNumber} />
           <InputField label="Name" placeholder="Enter cattle name" value={name} onChangeText={setName} />
-          <SelectField label="Gender" value={gender} placeholder="Select gender" onPress={() => setActivePicker({ label: 'Gender', value: gender, options: genderOptions, onSelect: setGender })} />
-          <SelectField label="Cattle Stage" value={stage} placeholder="Select cattle stage" onPress={() => setActivePicker({ label: 'Cattle Stage', value: stage, options: stageOptions, onSelect: setStage })} />
+          <SelectField label="Gender" value={gender} placeholder="Select gender" onPress={() => setActivePicker({ label: 'Gender', value: gender, options: genderOptions, onSelect: handleGenderSelect })} />
+          <SelectField label="Cattle Stage" value={stage} placeholder={gender ? 'Select cattle stage' : 'Select gender first'} onPress={() => setActivePicker({ label: 'Cattle Stage', value: stage, options: stageOptions, onSelect: setStage })} />
           <InputField label="Weight" placeholder="Enter weight" keyboardType="decimal-pad" value={weight} onChangeText={setWeight} />
           <DateField label="Date of Birth" value={dateOfBirth} placeholder="Enter date of birth" onPress={() => setActiveDatePicker('dateOfBirth')} />
           <DateField label="Farm Entry Date" value={entryDate} placeholder="Enter entry date" onPress={() => setActiveDatePicker('entryDate')} />

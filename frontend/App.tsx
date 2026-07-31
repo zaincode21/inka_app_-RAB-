@@ -11,6 +11,8 @@ import {
   EventsScreen,
   TransactionsScreen,
   FarmSetupScreen,
+  SettingsScreen,
+  SystemConfigScreen,
   SignUpScreen,
   ReportsScreen,
   ManageExpensesScreen,
@@ -22,6 +24,7 @@ import {
   AddExpenseScreen,
   ActionScreen,
   CattleProfileScreen,
+  CowLifeCycleScreen,
   DetailScreen,
 } from './screens';
 import type { RootStackParamList } from './navigation/types';
@@ -41,6 +44,8 @@ export default function App() {
         <Stack.Screen name="Events" component={EventsScreen} />
         <Stack.Screen name="Transactions" component={TransactionsScreen} />
         <Stack.Screen name="FarmSetup" component={FarmSetupScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="SystemConfig" component={SystemConfigScreen} />
         <Stack.Screen name="Reports" component={ReportsScreen} />
         <Stack.Screen name="ManageExpenses" component={ManageExpensesScreen} />
         <Stack.Screen name="AddCattle" component={AddCattleScreen} />
@@ -51,6 +56,7 @@ export default function App() {
         <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
         <Stack.Screen name="Action" component={ActionScreen} />
         <Stack.Screen name="CattleProfile" component={CattleProfileScreen} />
+        <Stack.Screen name="CowLifeCycle" component={CowLifeCycleScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>

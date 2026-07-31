@@ -88,10 +88,12 @@ export function DashboardScreen({ navigation }: Props) {
           <Text className="mt-8 text-[18px] font-extrabold text-[#008B8B]">Quick Links</Text>
           <View className="mt-4 flex-row flex-wrap justify-between gap-y-6">
             <QuickLink icon="truck" label="Cattle" onPress={() => navigation.navigate('CattleList')} />
+            <QuickLink icon="repeat" label="Life Cycle" onPress={() => navigation.navigate('CowLifeCycle')} />
             <QuickLink icon="coffee" label="Milk Records" onPress={() => navigation.navigate('MilkRecords')} />
             <QuickLink icon="calendar" label="Events" onPress={() => navigation.navigate('Events')} />
             <QuickLink icon="dollar-sign" label="Transactions" onPress={() => navigation.navigate('Transactions')} />
-            <QuickLink icon="settings" label="Farm Setup" onPress={() => navigation.navigate('FarmSetup')} />
+            <QuickLink icon="settings" label="Settings" onPress={() => navigation.navigate('Settings')} />
+            <QuickLink icon="grid" label="Farm Setup" onPress={() => navigation.navigate('FarmSetup')} />
           </View>
         </View>
       </ScrollView>

@@ -1,25 +1,63 @@
 import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { buildEventCardRows, EventRecordCard } from '../components/EventRecordCard';
+import { buildEventCardRows, EventRecordCard, isEventFollowUpDue } from '../components/EventRecordCard';
+import { SelectDropdown } from '../components/SelectDropdown';
 import { logout } from '../data/authApi';
-import { type HealthEvent, deleteHealthEvent, getCattle, getHealthEvents, useDatabaseQuery } from '../data/farmDatabase';
+import {
+  type HealthEvent,
+  addDays,
+  createHealthEvent,
+  deleteHealthEvent,
+  getCattle,
+  getHealthEvents,
+  todayIsoDate,
+  updateHealthEvent,
+  useDatabaseQuery,
+} from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
+import { allEventTypeFilterOptions, normalizeMassEventType } from '../utils/eventConstants';
+import { isActiveEvent, isEventArchived } from '../utils/eventArchive';
+import { emptyEventFields } from '../utils/reproductiveCycle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Events'>;
+type EventFilter = 'all' | 'archive' | 'followUpDue';
 
 export function EventsScreen({ navigation }: Props) {
-  const { data: events, loading, error, reload } = useDatabaseQuery(getHealthEvents, []);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const [selectedScope, setSelectedScope] = useState<'individual' | 'mass'>('individual');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [eventTypeFilter, setEventTypeFilter] = useState('');
+  const [listFilter, setListFilter] = useState<EventFilter>('all');
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [showCattleDialog, setShowCattleDialog] = useState(false);
   const [selectedCattleTag, setSelectedCattleTag] = useState('');
   const [cattleSearch, setCattleSearch] = useState('');
   const [menuEvent, setMenuEvent] = useState<HealthEvent | null>(null);
-  const visibleEvents = events.filter((item) => item.scope === selectedScope);
+  const [abortSource, setAbortSource] = useState<HealthEvent | null>(null);
+  const [abortNotes, setAbortNotes] = useState('');
+  const [abortBusy, setAbortBusy] = useState(false);
+
+  const loadEvents = useCallback(
+    () =>
+      getHealthEvents({
+        scope: selectedScope,
+        eventType: eventTypeFilter || undefined,
+      }),
+    [selectedScope, eventTypeFilter],
+  );
+
+  const { data: events, loading, error, reload } = useDatabaseQuery(loadEvents, []);
   const cattleByTag = useMemo(() => new Map(cattle.map((animal) => [animal.tagNumber, animal])), [cattle]);
+  const scopeEvents = useMemo(() => events.filter((item) => item.scope === selectedScope), [events, selectedScope]);
+  const archiveCount = useMemo(() => scopeEvents.filter((item) => isEventArchived(item)).length, [scopeEvents]);
+  const followUpCount = useMemo(
+    () => scopeEvents.filter((item) => isActiveEvent(item) && isEventFollowUpDue(item, scopeEvents)).length,
+    [scopeEvents],
+  );
   const cattleOptions = useMemo(() => {
     const query = cattleSearch.trim().toLowerCase();
     return cattle.filter((animal) => {
@@ -29,6 +67,165 @@ export function EventsScreen({ navigation }: Props) {
       return `${animal.tagNumber} ${animal.name} ${animal.breed}`.toLowerCase().includes(query);
     });
   }, [cattle, cattleSearch]);
+
+  const visibleEvents = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return scopeEvents.filter((item) => {
+      if (listFilter === 'all' && !isActiveEvent(item)) {
+        return false;
+      }
+      if (listFilter === 'archive' && !isEventArchived(item)) {
+        return false;
+      }
+      if (listFilter === 'followUpDue' && (!isActiveEvent(item) || !isEventFollowUpDue(item, scopeEvents))) {
+        return false;
+      }
+      if (!query) {
+        return true;
+      }
+      const haystack = [
+        item.eventType,
+        item.cattleTag,
+        item.groupName,
+        item.medicine,
+        item.diagnosis,
+        item.symptoms,
+        item.notes,
+        item.technician,
+        item.vetName,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [scopeEvents, searchQuery, listFilter]);
+
+  const emptyMessage = useMemo(() => {
+    if (loading) {
+      return 'Loading events...';
+    }
+    if (listFilter === 'archive') {
+      return 'No archived events';
+    }
+    if (listFilter === 'followUpDue') {
+      return 'No follow-up due';
+    }
+    return 'No events yet';
+  }, [loading, listFilter]);
+
+  const clearSourceFollowUp = async (source: HealthEvent) => {
+    if (!source.followUpDate?.trim()) {
+      return;
+    }
+    const { id: _id, createdAt: _createdAt, ...rest } = source;
+    await updateHealthEvent(source.id, { ...rest, followUpDate: '' });
+  };
+
+  const handleConfirmHeatReturned = (breeding: HealthEvent) => {
+    Alert.alert('Heat returned', 'Record Heat Observed for this animal from Kwimisha?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Confirm',
+        onPress: async () => {
+          try {
+            await createHealthEvent(
+              emptyEventFields({
+                cattleTag: breeding.cattleTag,
+                eventDate: todayIsoDate(),
+                eventType: 'Heat Observed',
+                breedingDate: breeding.eventDate,
+                bullResponsible: breeding.bullResponsible,
+                semenUsed: breeding.semenUsed,
+                sourceEventId: breeding.id,
+                notes: `Heat returned after Kwimisha on ${breeding.eventDate}`,
+              }),
+            );
+            await clearSourceFollowUp(breeding);
+            await reload();
+          } catch (cycleError) {
+            Alert.alert('Could not record heat', cycleError instanceof Error ? cycleError.message : 'Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleConfirmGusama = (breeding: HealthEvent) => {
+    Alert.alert('Confirm Gusama', 'No return heat observed. Create Gusama (Pregnant) from this Kwimisha?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Create Gusama',
+        onPress: async () => {
+          try {
+            const serviceDate = breeding.eventDate;
+            await createHealthEvent(
+              emptyEventFields({
+                cattleTag: breeding.cattleTag,
+                eventDate: todayIsoDate(),
+                eventType: 'Pregnant',
+                breedingDate: serviceDate,
+                expectedDeliveryDate: addDays(serviceDate, 280),
+                semenUsed: breeding.semenUsed,
+                bullResponsible: breeding.bullResponsible,
+                vetName: breeding.vetName,
+                sourceEventId: breeding.id,
+                notes: `Confirmed from Kwimisha ${breeding.id} — no return heat by ${breeding.returnHeatDate || 'estimated date'}`,
+              }),
+            );
+            await clearSourceFollowUp(breeding);
+            await reload();
+          } catch (cycleError) {
+            Alert.alert('Could not create Gusama', cycleError instanceof Error ? cycleError.message : 'Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleConfirmKuramburura = (pregnant: HealthEvent) => {
+    setAbortNotes('');
+    setAbortSource(pregnant);
+  };
+
+  const submitKuramburura = async () => {
+    if (!abortSource) {
+      return;
+    }
+    if (!abortNotes.trim()) {
+      Alert.alert('Notes required', 'Please write the reason or details for Kuramburura (abort).');
+      return;
+    }
+    setAbortBusy(true);
+    try {
+      await createHealthEvent(
+        emptyEventFields({
+          cattleTag: abortSource.cattleTag,
+          eventDate: todayIsoDate(),
+          eventType: 'Aborted',
+          breedingDate: abortSource.breedingDate || abortSource.eventDate,
+          bullResponsible: abortSource.bullResponsible,
+          semenUsed: abortSource.semenUsed,
+          sourceEventId: abortSource.id,
+          notes: abortNotes.trim(),
+        }),
+      );
+      setAbortSource(null);
+      setAbortNotes('');
+      await reload();
+    } catch (cycleError) {
+      Alert.alert('Could not create Kuramburura', cycleError instanceof Error ? cycleError.message : 'Please try again.');
+    } finally {
+      setAbortBusy(false);
+    }
+  };
+
+  const handleConfirmKubyara = (pregnant: HealthEvent) => {
+    navigation.navigate('AddIndividualEvent', {
+      cattleTag: pregnant.cattleTag,
+      presetEventType: 'Giving Birth',
+      sourceEventId: pregnant.id,
+    });
+  };
 
   const handleLogout = () => {
     logout();
@@ -55,7 +252,7 @@ export function EventsScreen({ navigation }: Props) {
 
   const openEventDetail = (item: HealthEvent) => {
     navigation.navigate('Detail', {
-      title: item.eventType,
+      title: item.scope === 'mass' ? normalizeMassEventType(item.eventType) : item.eventType,
       subtitle: item.scope === 'mass' ? 'Mass herd event' : 'Individual cattle event',
       details: buildEventCardRows(item, cattleByTag).map((row) => ({ label: row.label, value: row.value })),
     });
@@ -106,44 +303,88 @@ export function EventsScreen({ navigation }: Props) {
         </Pressable>
         <Text className="flex-1 text-center text-[24px] font-extrabold text-white">Events</Text>
         <View className="flex-row items-center gap-4">
-          <Feather name="search" size={20} color="#FFFFFF" />
-          <Feather name="filter" size={20} color="#FFFFFF" />
-          <Feather name="more-vertical" size={20} color="#FFFFFF" />
+          <Pressable onPress={() => setShowSearchBar((current) => !current)} hitSlop={8}>
+            <Feather name="search" size={20} color="#FFFFFF" />
+          </Pressable>
+          <Pressable onPress={() => setShowFilterModal(true)} hitSlop={8}>
+            <Feather name="filter" size={20} color="#FFFFFF" />
+          </Pressable>
         </View>
       </View>
 
+      {showSearchBar ? (
+        <View className="mx-6 mt-4 h-12 flex-row items-center rounded-[14px] border border-[#D9E4E4] bg-white px-4">
+          <Feather name="search" size={18} color="#6B7280" />
+          <TextInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Search events, tags, medicine..." placeholderTextColor="#6B7280" className="ml-3 flex-1 text-[16px] text-[#1F2937]" />
+        </View>
+      ) : null}
+
       <View className="flex-row px-6 py-4">
-        <Pressable
-          onPress={() => setSelectedScope('individual')}
-          className={`mr-2 h-12 flex-1 flex-row items-center justify-center rounded-[12px] px-4 ${selectedScope === 'individual' ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'}`}
-        >
+        <Pressable onPress={() => setSelectedScope('individual')} className={`mr-2 h-12 flex-1 flex-row items-center justify-center rounded-[12px] px-4 ${selectedScope === 'individual' ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'}`}>
           <Feather name="calendar" size={20} color={selectedScope === 'individual' ? '#FFFFFF' : '#008B8B'} />
           <Text className={`ml-2 text-[16px] font-bold ${selectedScope === 'individual' ? 'text-white' : 'text-[#008B8B]'}`}>Individual</Text>
         </Pressable>
-        <Pressable
-          onPress={() => setSelectedScope('mass')}
-          className={`ml-2 h-12 flex-1 flex-row items-center justify-center rounded-[12px] px-4 ${selectedScope === 'mass' ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'}`}
-        >
+        <Pressable onPress={() => setSelectedScope('mass')} className={`ml-2 h-12 flex-1 flex-row items-center justify-center rounded-[12px] px-4 ${selectedScope === 'mass' ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'}`}>
           <Feather name="users" size={20} color={selectedScope === 'mass' ? '#FFFFFF' : '#008B8B'} />
           <Text className={`ml-2 text-[16px] font-bold ${selectedScope === 'mass' ? 'text-white' : 'text-[#008B8B]'}`}>Mass</Text>
         </Pressable>
       </View>
 
+      <View className="mx-6 mb-3 rounded-[16px] bg-white p-1.5 shadow-sm">
+        <View className="flex-row items-stretch">
+          <EventFilterTab
+            label="All"
+            count={scopeEvents.filter((item) => isActiveEvent(item)).length}
+            icon="layers"
+            active={listFilter === 'all'}
+            activeBg="#008B8B"
+            activeText="#FFFFFF"
+            inactiveText="#008B8B"
+            onPress={() => setListFilter('all')}
+          />
+          <EventFilterTab
+            label="Archive"
+            count={archiveCount}
+            icon="archive"
+            active={listFilter === 'archive'}
+            activeBg="#64748B"
+            activeText="#FFFFFF"
+            inactiveText="#64748B"
+            onPress={() => setListFilter('archive')}
+          />
+          <EventFilterTab
+            label="Follow-up"
+            count={followUpCount}
+            icon="bell"
+            active={listFilter === 'followUpDue'}
+            activeBg="#DC2626"
+            activeText="#FFFFFF"
+            inactiveText="#DC2626"
+            onPress={() => setListFilter('followUpDue')}
+          />
+        </View>
+      </View>
+
       <View className="flex-1">
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 140 }}
-          onScrollBeginDrag={() => setMenuEvent(null)}
-        >
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 140 }} onScrollBeginDrag={() => setMenuEvent(null)}>
           {visibleEvents.length === 0 ? (
             <View className="items-center justify-center pt-20">
-              <Text className="text-center text-[16px] font-bold text-[#008B8B]">{loading ? 'Loading events...' : 'No events yet'}</Text>
-              <Text className="mt-2 text-center text-[13px] text-[#6B7280]">{error ?? `No ${selectedScope} events recorded yet.`}</Text>
+              <Text className="text-center text-[16px] font-bold text-[#008B8B]">{emptyMessage}</Text>
+              <Text className="mt-2 text-center text-[13px] text-[#6B7280]">
+                {error ??
+                  (listFilter === 'archive'
+                    ? 'Events older than 3 days move here automatically. Kwimisha (Breeding) records always stay in All.'
+                    : listFilter === 'followUpDue'
+                      ? 'No active events need follow-up today.'
+                      : `No ${selectedScope} events match your filters.`)}
+              </Text>
             </View>
           ) : (
             visibleEvents.map((item) => (
               <EventRecordCard
                 key={item.id}
                 item={item}
+                allEvents={scopeEvents}
                 cattleByTag={cattleByTag}
                 menuOpen={menuEvent?.id === item.id}
                 onPress={() => {
@@ -154,6 +395,10 @@ export function EventsScreen({ navigation }: Props) {
                 onEdit={() => handleEditEvent(item)}
                 onViewCattle={() => handleViewCattle(item)}
                 onDelete={() => handleDeleteEvent(item)}
+                onConfirmHeatReturned={() => handleConfirmHeatReturned(item)}
+                onConfirmGusama={() => handleConfirmGusama(item)}
+                onConfirmKuramburura={() => handleConfirmKuramburura(item)}
+                onConfirmKubyara={() => handleConfirmKubyara(item)}
               />
             ))
           )}
@@ -173,16 +418,60 @@ export function EventsScreen({ navigation }: Props) {
         <BottomNavItem icon="log-out" label="Logout" onPress={handleLogout} />
       </View>
 
+      <Modal visible={Boolean(abortSource)} transparent animationType="fade" onRequestClose={() => setAbortSource(null)}>
+        <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setAbortSource(null)}>
+          <Pressable className="rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
+            <Text className="mb-1 text-center text-[18px] font-bold text-[#1F2937]">Kuramburura (Abort)</Text>
+            <Text className="mb-4 text-center text-[13px] text-[#6B7280]">
+              {abortSource ? `${abortSource.cattleTag} — write reason, then submit` : ''}
+            </Text>
+            <TextInput
+              value={abortNotes}
+              onChangeText={setAbortNotes}
+              placeholder="Reason / notes for abort..."
+              placeholderTextColor="#6B7280"
+              multiline
+              className="min-h-[100px] rounded-[14px] border border-[#D9E4E4] bg-[#F8FAFA] px-4 py-3 text-[15px] text-[#1F2937]"
+              textAlignVertical="top"
+            />
+            <View className="mt-4 flex-row">
+              <Pressable onPress={() => setAbortSource(null)} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
+                <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  void submitKuramburura();
+                }}
+                disabled={abortBusy}
+                className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#DC2626] py-3"
+              >
+                <Text className="text-[16px] font-bold text-white">{abortBusy ? 'Saving...' : 'Submit'}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showFilterModal} transparent animationType="fade" onRequestClose={() => setShowFilterModal(false)}>
+        <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowFilterModal(false)}>
+          <Pressable className="rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
+            <Text className="mb-4 text-center text-[18px] font-bold text-[#1F2937]">Filter Events</Text>
+            <SelectDropdown label="Event Type" value={eventTypeFilter} placeholder="All event types" options={[{ label: 'All event types', value: '' }, ...allEventTypeFilterOptions().map((type) => ({ label: type, value: type }))]} onSelect={setEventTypeFilter} />
+            <Pressable onPress={() => setShowFilterModal(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
+              <Text className="text-[16px] font-bold text-white">Apply Filters</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal visible={showCattleDialog} transparent animationType="fade" onRequestClose={() => setShowCattleDialog(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowCattleDialog(false)}>
           <Pressable className="max-h-[80%] rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
             <Text className="mb-4 text-center text-[18px] font-bold text-[#1F2937]">Select Cattle</Text>
-
             <View className="mb-4 h-12 flex-row items-center rounded-[14px] border border-[#D9E4E4] bg-white px-4">
               <Feather name="search" size={18} color="#6B7280" />
               <TextInput value={cattleSearch} onChangeText={setCattleSearch} placeholder="Search cattle" placeholderTextColor="#6B7280" className="ml-3 flex-1 text-[16px] text-[#1F2937]" />
             </View>
-
             <ScrollView showsVerticalScrollIndicator={false}>
               {cattleOptions.length === 0 ? (
                 <Text className="py-6 text-center text-[14px] text-[#6B7280]">No cattle found</Text>
@@ -190,11 +479,7 @@ export function EventsScreen({ navigation }: Props) {
                 cattleOptions.map((animal) => {
                   const selected = selectedCattleTag === animal.tagNumber;
                   return (
-                    <Pressable
-                      key={animal.id}
-                      onPress={() => setSelectedCattleTag(animal.tagNumber)}
-                      className={`mb-3 flex-row items-center justify-between rounded-[16px] border px-4 py-4 ${selected ? 'border-[#008B8B] bg-[#E0F7F7]' : 'border-[#E5E7EB] bg-white'}`}
-                    >
+                    <Pressable key={animal.id} onPress={() => setSelectedCattleTag(animal.tagNumber)} className={`mb-3 flex-row items-center justify-between rounded-[16px] border px-4 py-4 ${selected ? 'border-[#008B8B] bg-[#E0F7F7]' : 'border-[#E5E7EB] bg-white'}`}>
                       <View className="flex-1">
                         <Text className={`text-[16px] ${selected ? 'font-bold text-[#008B8B]' : 'font-bold text-[#1F2937]'}`}>{animal.name || animal.tagNumber}</Text>
                         <Text className="mt-1 text-[13px] text-[#6B7280]">{animal.tagNumber} • {animal.breed}</Text>
@@ -205,7 +490,6 @@ export function EventsScreen({ navigation }: Props) {
                 })
               )}
             </ScrollView>
-
             <View className="mt-4 flex-row">
               <Pressable onPress={() => setShowCattleDialog(false)} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
                 <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
@@ -220,6 +504,49 @@ export function EventsScreen({ navigation }: Props) {
 
       <StatusBar style="light" />
     </View>
+  );
+}
+
+function EventFilterTab({
+  label,
+  count,
+  icon,
+  active,
+  activeBg,
+  activeText,
+  inactiveText,
+  onPress,
+}: {
+  label: string;
+  count: number;
+  icon: keyof typeof Feather.glyphMap;
+  active: boolean;
+  activeBg: string;
+  activeText: string;
+  inactiveText: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      className="mx-0.5 flex-1 items-center justify-center rounded-[12px] py-3"
+      style={{ backgroundColor: active ? activeBg : 'transparent' }}
+    >
+      <Feather name={icon} size={16} color={active ? activeText : inactiveText} />
+      <Text className="mt-1 text-[12px] font-bold" style={{ color: active ? activeText : inactiveText }}>
+        {label}
+      </Text>
+      <View
+        className="mt-1 min-w-[22px] items-center rounded-full px-2 py-0.5"
+        style={{ backgroundColor: active ? 'rgba(255,255,255,0.22)' : '#F3F4F6' }}
+      >
+        <Text className="text-[11px] font-extrabold" style={{ color: active ? activeText : inactiveText }}>
+          {count}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 

@@ -75,6 +75,8 @@ export type HealthEvent = {
   vetContact: string;
   followUpDate: string;
   weightKg: number;
+  bodyConditionScore: number;
+  treatmentCost?: number;
   semenUsed: string;
   bullResponsible: string;
   returnHeatDate: string;
@@ -82,6 +84,7 @@ export type HealthEvent = {
   expectedDeliveryDate: string;
   calfTag: string;
   calfGender: string;
+  sourceEventId: string;
   notes: string;
   photoUri: string;
   createdAt: string;
@@ -132,6 +135,19 @@ export type ReportSummary = {
   detail: string;
   icon: keyof typeof import('@expo/vector-icons').Feather.glyphMap;
 };
+
+export type SystemConfig = {
+  farmId: string;
+  name: string;
+  currency: string;
+  weightUnit: string;
+  milkUnit: string;
+  returnHeatDays: number;
+  returnHeatTime: string;
+};
+
+export const DEFAULT_RETURN_HEAT_DAYS = 21;
+export const DEFAULT_RETURN_HEAT_TIME = '08:00';
 
 type UseDatabaseQueryResult<T> = {
   data: T;
@@ -208,12 +224,32 @@ export async function getMilkRecords(): Promise<MilkRecord[]> {
   return rows.map(mapBackendMilkRecord);
 }
 
-export async function createHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt'>): Promise<void> {
-  await apiRequest<BackendHealthEvent>('/events', toJsonBody(await toBackendHealthEvent(input)));
+export async function createHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt'>): Promise<HealthEvent> {
+  const row = await apiRequest<BackendHealthEvent>('/events', toJsonBody(await toBackendHealthEvent(input)));
+  return mapBackendHealthEvent(row);
 }
 
-export async function getHealthEvents(): Promise<HealthEvent[]> {
-  const rows = await apiRequest<BackendHealthEvent[]>('/events');
+export async function getHealthEvents(filters?: {
+  scope?: 'individual' | 'mass';
+  eventType?: string;
+  cattleTag?: string;
+  followUpDue?: boolean;
+}): Promise<HealthEvent[]> {
+  const params = new URLSearchParams();
+  if (filters?.scope) {
+    params.set('scope', filters.scope.toUpperCase());
+  }
+  if (filters?.eventType) {
+    params.set('eventType', filters.eventType);
+  }
+  if (filters?.cattleTag) {
+    params.set('cattleTag', filters.cattleTag);
+  }
+  if (filters?.followUpDue) {
+    params.set('followUpDue', 'true');
+  }
+  const query = params.toString();
+  const rows = await apiRequest<BackendHealthEvent[]>(`/events${query ? `?${query}` : ''}`);
   return rows.map(mapBackendHealthEvent);
 }
 
@@ -264,6 +300,55 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 export async function getReportSummaries(): Promise<ReportSummary[]> {
   const rows = await apiRequest<BackendReportSummary[]>('/reports/summaries');
   return rows.map(mapBackendReportSummary);
+}
+
+export async function getSystemConfig(): Promise<SystemConfig> {
+  const row = await apiRequest<SystemConfig>('/farms/system-config');
+  return {
+    farmId: row.farmId,
+    name: row.name,
+    currency: row.currency,
+    weightUnit: row.weightUnit,
+    milkUnit: row.milkUnit,
+    returnHeatDays: Number(row.returnHeatDays) > 0 ? Number(row.returnHeatDays) : DEFAULT_RETURN_HEAT_DAYS,
+    returnHeatTime: normalizeReturnHeatTime(row.returnHeatTime),
+  };
+}
+
+export async function updateSystemConfig(input: { returnHeatDays: number; returnHeatTime: string }): Promise<SystemConfig> {
+  const row = await apiRequest<SystemConfig>('/farms/system-config', {
+    method: 'PATCH',
+    ...toJsonBody({
+      returnHeatDays: input.returnHeatDays,
+      returnHeatTime: normalizeReturnHeatTime(input.returnHeatTime),
+    }),
+  });
+  return {
+    farmId: row.farmId,
+    name: row.name,
+    currency: row.currency,
+    weightUnit: row.weightUnit,
+    milkUnit: row.milkUnit,
+    returnHeatDays: Number(row.returnHeatDays) > 0 ? Number(row.returnHeatDays) : DEFAULT_RETURN_HEAT_DAYS,
+    returnHeatTime: normalizeReturnHeatTime(row.returnHeatTime),
+  };
+}
+
+export function normalizeReturnHeatTime(value?: string | null): string {
+  const trimmed = value?.trim() ?? '';
+  if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(trimmed)) {
+    return trimmed;
+  }
+  return DEFAULT_RETURN_HEAT_TIME;
+}
+
+/** Combine a YYYY-MM-DD date with HH:mm into a local datetime string. */
+export function combineDateAndTime(date: string, time: string): string {
+  const day = date.trim().slice(0, 10);
+  if (!day) {
+    return '';
+  }
+  return `${day}T${normalizeReturnHeatTime(time)}:00`;
 }
 
 export function todayIsoDate(): string {
@@ -385,6 +470,7 @@ type BackendHealthEvent = {
   vetContact?: string | null;
   followUpDate?: string | null;
   weightKg: number | string;
+  bodyConditionScore?: number | string;
   semenUsed?: string | null;
   bullResponsible?: string | null;
   returnHeatDate?: string | null;
@@ -392,6 +478,7 @@ type BackendHealthEvent = {
   expectedDeliveryDate?: string | null;
   calfTag?: string | null;
   calfGender?: 'MALE' | 'FEMALE' | null;
+  sourceEventId?: string | null;
   notes?: string | null;
   photoUri?: string | null;
   createdAt: string;
@@ -495,6 +582,8 @@ async function toBackendHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt'>
     vetContact: emptyToUndefined(input.vetContact),
     followUpDate: dateOrUndefined(input.followUpDate),
     weightKg: input.weightKg,
+    bodyConditionScore: input.bodyConditionScore ?? 0,
+    treatmentCost: input.treatmentCost && input.treatmentCost > 0 ? input.treatmentCost : undefined,
     semenUsed: emptyToUndefined(input.semenUsed),
     bullResponsible: emptyToUndefined(input.bullResponsible),
     returnHeatDate: dateOrUndefined(input.returnHeatDate),
@@ -502,6 +591,7 @@ async function toBackendHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt'>
     expectedDeliveryDate: dateOrUndefined(input.expectedDeliveryDate),
     calfTag: emptyToUndefined(input.calfTag),
     calfGender: input.calfGender ? (input.calfGender.toLowerCase() === 'male' ? 'MALE' : 'FEMALE') : undefined,
+    sourceEventId: emptyToUndefined(input.sourceEventId),
     notes: emptyToUndefined(input.notes),
     photoUri: emptyToUndefined(input.photoUri),
   };
@@ -614,15 +704,17 @@ function mapBackendHealthEvent(row: BackendHealthEvent): HealthEvent {
     technician: row.technician ?? '',
     vetName: row.vetName ?? '',
     vetContact: row.vetContact ?? '',
-    followUpDate: toIsoDate(row.followUpDate),
+    followUpDate: toIsoDateTime(row.followUpDate),
     weightKg: toNumber(row.weightKg),
+    bodyConditionScore: toNumber(row.bodyConditionScore ?? 0),
     semenUsed: row.semenUsed ?? '',
     bullResponsible: row.bullResponsible ?? '',
-    returnHeatDate: toIsoDate(row.returnHeatDate),
+    returnHeatDate: toIsoDateTime(row.returnHeatDate),
     breedingDate: toIsoDate(row.breedingDate),
     expectedDeliveryDate: toIsoDate(row.expectedDeliveryDate),
     calfTag: row.calfTag ?? '',
     calfGender: row.calfGender ? fromEnum(row.calfGender) : '',
+    sourceEventId: row.sourceEventId ?? '',
     notes: row.notes ?? '',
     photoUri: row.photoUri ?? '',
     createdAt: row.createdAt,
@@ -695,6 +787,23 @@ function emptyToUndefined(value: string | undefined): string | undefined {
 function dateOrUndefined(value: string): string | undefined {
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
+}
+
+/** Prefer full local datetime when present; otherwise date-only. */
+function toIsoDateTime(value?: string | null): string {
+  if (!value) {
+    return '';
+  }
+  const raw = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw)) {
+    return raw.slice(0, 19);
+  }
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime()) && raw.includes('T')) {
+    const pad = (n: number) => `${n}`.padStart(2, '0');
+    return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}:${pad(parsed.getSeconds())}`;
+  }
+  return raw.slice(0, 10);
 }
 
 function toIsoDate(value?: string | null): string {

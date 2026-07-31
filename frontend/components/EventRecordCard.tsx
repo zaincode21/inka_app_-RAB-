@@ -1,15 +1,19 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 import { type HealthEvent, formatNumber } from '../data/farmDatabase';
+import { normalizeMassEventType } from '../utils/eventConstants';
+import { isBreedingAwaitingHeatDecision, isOpenPregnancy, isReproductiveCycleFollowUpDue } from '../utils/reproductiveCycle';
 
 type EventCardRow = {
   label: string;
   value: string;
   showSearch?: boolean;
+  highlight?: boolean;
 };
 
 type Props = {
   item: HealthEvent;
+  allEvents?: HealthEvent[];
   cattleByTag: Map<string, { tagNumber: string; name: string }>;
   onPress: () => void;
   menuOpen?: boolean;
@@ -17,19 +21,37 @@ type Props = {
   onEdit?: () => void;
   onViewCattle?: () => void;
   onDelete?: () => void;
+  onConfirmHeatReturned?: () => void;
+  onConfirmGusama?: () => void;
+  onConfirmKuramburura?: () => void;
+  onConfirmKubyara?: () => void;
 };
 
-export function EventRecordCard({ item, cattleByTag, onPress, menuOpen = false, onMenuPress, onEdit, onViewCattle, onDelete }: Props) {
+export function EventRecordCard({
+  item,
+  allEvents = [],
+  cattleByTag,
+  onPress,
+  menuOpen = false,
+  onMenuPress,
+  onEdit,
+  onViewCattle,
+  onDelete,
+  onConfirmHeatReturned,
+  onConfirmGusama,
+  onConfirmKuramburura,
+  onConfirmKubyara,
+}: Props) {
   const rows = buildEventCardRows(item, cattleByTag);
   const showViewCattle = Boolean(item.cattleTag && onViewCattle);
+  const displayType = item.scope === 'mass' ? normalizeMassEventType(item.eventType) : item.eventType;
+  const showBreedingActions = Boolean(onConfirmHeatReturned && onConfirmGusama && isBreedingAwaitingHeatDecision(item, allEvents));
+  const showPregnancyActions = Boolean(onConfirmKuramburura && onConfirmKubyara && isOpenPregnancy(item, allEvents));
 
   return (
     <View className="relative mb-5" style={{ zIndex: menuOpen ? 999 : 1, elevation: menuOpen ? 8 : 0 }}>
       {menuOpen ? (
-        <View
-          className="absolute right-2 top-[44px] z-[1000] min-w-[230px] overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-white shadow-lg"
-          style={{ elevation: 10 }}
-        >
+        <View className="absolute right-2 top-[44px] z-[1000] min-w-[230px] overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-white shadow-lg" style={{ elevation: 10 }}>
           <EventMenuItem icon="edit-2" label="Edit Event" onPress={onEdit} />
           {showViewCattle ? <EventMenuItem icon="search" label="View Cattle" onPress={onViewCattle} /> : null}
           <EventMenuItem icon="trash-2" label="Delete" onPress={onDelete} destructive isLast />
@@ -39,7 +61,7 @@ export function EventRecordCard({ item, cattleByTag, onPress, menuOpen = false, 
       <View className="overflow-hidden rounded-[16px] bg-white shadow-sm">
         <View className="flex-row items-center bg-[#E6B86F] px-4 py-3">
           <Feather name="calendar" size={18} color="#FFFFFF" />
-          <Text className="ml-2 flex-1 text-[16px] font-bold text-white">{item.eventType}</Text>
+          <Text className="ml-2 flex-1 text-[16px] font-bold text-white">{displayType}</Text>
           {onMenuPress ? (
             <Pressable onPress={onMenuPress} hitSlop={8}>
               <Feather name="more-vertical" size={18} color="#FFFFFF" />
@@ -52,38 +74,95 @@ export function EventRecordCard({ item, cattleByTag, onPress, menuOpen = false, 
             <View key={`${item.id}-${row.label}`} className="mb-3 flex-row items-start">
               <Text className="w-[110px] text-[13px] font-semibold text-[#6B7280]">{row.label}</Text>
               <View className="flex-1 flex-row items-center">
-                <Text className="flex-1 text-[14px] font-bold text-[#008B8B]">{row.value}</Text>
+                <Text className={`flex-1 text-[14px] font-bold ${row.highlight ? 'text-[#DC2626]' : 'text-[#008B8B]'}`}>{row.value}</Text>
                 {row.showSearch ? <Feather name="search" size={16} color="#E6B86F" /> : null}
               </View>
             </View>
           ))}
         </Pressable>
+
+        {showBreedingActions ? (
+          <View className="border-t border-[#E5E7EB] bg-[#F8FAFA] px-4 py-3">
+            <Text className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[#64748B]">Return heat follow-up</Text>
+            <CycleActionRow label="Heat returned" hint="Record heat — may re-breed" onPress={onConfirmHeatReturned!} />
+            <CycleActionRow label="No heat — confirm Gusama" hint="Create Pregnant from this Kwimisha" onPress={onConfirmGusama!} accent />
+          </View>
+        ) : null}
+
+        {showPregnancyActions ? (
+          <View className="border-t border-[#E5E7EB] bg-[#FFF7F7] px-4 py-3">
+            <Text className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[#64748B]">Pregnancy next step</Text>
+            <CycleActionRow label="Kuramburura (Abort)" hint="Write reason, then save abort event" onPress={onConfirmKuramburura!} danger />
+            <CycleActionRow label="Kubyara (Birth)" hint="Open birth form (prefilled)" onPress={onConfirmKubyara!} accent />
+          </View>
+        ) : null}
       </View>
     </View>
   );
 }
 
-function EventMenuItem({
-  icon,
+function CycleActionRow({
   label,
+  hint,
   onPress,
-  destructive = false,
-  isLast = false,
+  accent = false,
+  danger = false,
 }: {
-  icon: keyof typeof Feather.glyphMap;
   label: string;
-  onPress?: () => void;
-  destructive?: boolean;
-  isLast?: boolean;
+  hint: string;
+  onPress: () => void;
+  accent?: boolean;
+  danger?: boolean;
 }) {
-  const color = destructive ? '#DC2626' : '#008B8B';
+  const color = danger ? '#DC2626' : accent ? '#008B8B' : '#1F2937';
+  return (
+    <Pressable onPress={onPress} className="mb-2 flex-row items-start rounded-[12px] border border-[#E5E7EB] bg-white px-3 py-3 active:bg-[#F3F4F6]">
+      <View className="mr-3 mt-0.5 h-5 w-5 items-center justify-center rounded border-2" style={{ borderColor: color }}>
+        <View className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: 'transparent' }} />
+      </View>
+      <View className="flex-1">
+        <Text className="text-[14px] font-bold" style={{ color }}>
+          {label}
+        </Text>
+        <Text className="mt-0.5 text-[12px] text-[#6B7280]">{hint}</Text>
+      </View>
+      <Feather name="chevron-right" size={18} color="#9CA3AF" />
+    </Pressable>
+  );
+}
 
+function EventMenuItem({ icon, label, onPress, destructive = false, isLast = false }: { icon: keyof typeof Feather.glyphMap; label: string; onPress?: () => void; destructive?: boolean; isLast?: boolean }) {
+  const color = destructive ? '#DC2626' : '#008B8B';
   return (
     <Pressable onPress={onPress} className={`flex-row items-center px-4 py-3 active:bg-[#F9FAFB] ${isLast ? '' : 'border-b border-[#F3F4F6]'}`}>
       <Feather name={icon} size={18} color={color} />
       <Text className={`ml-3 text-[15px] font-bold ${destructive ? 'text-[#DC2626]' : 'text-[#1F2937]'}`}>{label}</Text>
     </Pressable>
   );
+}
+
+function appendMedicationRows(rows: EventCardRow[], item: HealthEvent) {
+  if (item.medicine) {
+    rows.push({ label: 'Medicine', value: displayValue(item.medicine) });
+  }
+  if (item.dosage) {
+    rows.push({ label: 'Dosage', value: displayValue(item.dosage) });
+  }
+  if (item.route) {
+    rows.push({ label: 'Route', value: displayValue(item.route) });
+  }
+  if (item.withdrawalDays > 0) {
+    rows.push({ label: 'Withdrawal', value: `${formatNumber(item.withdrawalDays)} days` });
+  }
+  if (item.batchNumber) {
+    rows.push({ label: 'Batch No', value: displayValue(item.batchNumber) });
+  }
+  if (item.followUpDate) {
+    rows.push({ label: 'Follow-up', value: formatDisplayDate(item.followUpDate), highlight: isFollowUpOverdue(item.followUpDate) });
+  }
+  if (item.vetContact) {
+    rows.push({ label: 'Vet Contact', value: displayValue(item.vetContact) });
+  }
 }
 
 export function buildEventCardRows(item: HealthEvent, cattleByTag: Map<string, { tagNumber: string; name: string }>): EventCardRow[] {
@@ -104,6 +183,7 @@ export function buildEventCardRows(item: HealthEvent, cattleByTag: Map<string, {
       );
       break;
     case 'Pregnant':
+    case 'Pregnancy Diagnosis':
       rows.push(
         { label: 'Service Date', value: formatDisplayDate(item.breedingDate || item.eventDate) },
         { label: 'Delivery Date', value: formatDisplayDate(item.expectedDeliveryDate) },
@@ -111,11 +191,14 @@ export function buildEventCardRows(item: HealthEvent, cattleByTag: Map<string, {
         { label: 'Inseminator', value: displayValue(item.vetName) },
         { label: 'Bull Tag', value: displayValue(item.bullResponsible) },
       );
+      if (item.eventType === 'Pregnancy Diagnosis' && item.diagnosis) {
+        rows.push({ label: 'Method', value: displayValue(item.diagnosis) });
+      }
       break;
     case 'Giving Birth':
       rows.push(
         { label: 'Bull Name', value: displayValue(item.bullResponsible) },
-        { label: 'Calf Tag', value: displayValue(item.calfTag) },
+        { label: 'Calf Name', value: displayValue(item.calfTag) },
         { label: 'Calf Gender', value: displayValue(item.calfGender) },
       );
       break;
@@ -123,35 +206,77 @@ export function buildEventCardRows(item: HealthEvent, cattleByTag: Map<string, {
       rows.push(
         { label: 'Symptoms', value: displayValue(item.symptoms) },
         { label: 'Diagnosis', value: displayValue(item.diagnosis) },
-        { label: 'Medicine', value: displayValue(item.medicine) },
         { label: 'Technician', value: displayValue(item.technician) },
       );
+      appendMedicationRows(rows, item);
       break;
     case 'Vaccinated':
     case 'Deworming':
-      rows.push({ label: 'Medicine', value: displayValue(item.medicine) });
+    case 'Vaccination':
+    case 'Dewormed':
+      appendMedicationRows(rows, item);
+      break;
+    case 'Mastitis':
+    case 'Lameness':
+      rows.push(
+        { label: 'Signs', value: displayValue(item.symptoms) },
+        { label: 'Assessment', value: displayValue(item.diagnosis) },
+      );
+      appendMedicationRows(rows, item);
       break;
     case 'Weighed':
-      rows.push({ label: 'Weight', value: item.weightKg ? `${formatNumber(item.weightKg)} kg` : 'Not recorded' });
+      rows.push(
+        { label: 'Weight', value: item.weightKg ? `${formatNumber(item.weightKg)} kg` : 'Not recorded' },
+        { label: 'BCS', value: item.bodyConditionScore ? `${formatNumber(item.bodyConditionScore)}` : 'Not recorded' },
+      );
       break;
     case 'Aborted':
       rows.push({ label: 'Service Date', value: formatDisplayDate(item.breedingDate) });
       break;
+    case 'Heat Observed':
+      rows.push({ label: 'Heat Date', value: formatDisplayDate(item.breedingDate || item.eventDate) });
+      break;
+    case 'Dry Off':
+      rows.push({ label: 'Dry Off Date', value: formatDisplayDate(item.eventDate) });
+      if (item.followUpDate) {
+        rows.push({ label: 'Follow-up', value: formatDisplayDate(item.followUpDate), highlight: isFollowUpOverdue(item.followUpDate) });
+      }
+      break;
+    case 'Death':
+    case 'Euthanasia':
+      rows.push(
+        { label: 'Cause', value: displayValue(item.diagnosis) },
+        { label: 'Vet', value: displayValue(item.vetName) },
+      );
+      break;
     default:
       if (item.scope === 'mass') {
         rows.push({ label: 'Group', value: displayValue(item.groupName, 'All herd') });
+        if (item.technician) {
+          rows.push({ label: 'Technician', value: displayValue(item.technician) });
+        }
+        if (item.vetName) {
+          rows.push({ label: 'Veterinarian', value: displayValue(item.vetName) });
+        }
       }
-      if (item.medicine) {
-        rows.push({ label: 'Medicine', value: displayValue(item.medicine) });
-      }
-      if (item.technician) {
-        rows.push({ label: 'Technician', value: displayValue(item.technician) });
-      }
+      appendMedicationRows(rows, item);
       break;
   }
 
   rows.push({ label: 'Notes', value: displayValue(item.notes) });
   return rows;
+}
+
+function isFollowUpOverdue(followUpDate: string) {
+  if (!followUpDate?.trim()) {
+    return false;
+  }
+  const raw = followUpDate.trim();
+  const due = new Date(raw.includes('T') ? raw : `${raw}T00:00:00`);
+  if (Number.isNaN(due.getTime())) {
+    return false;
+  }
+  return due.getTime() <= Date.now();
 }
 
 function formatTagLabel(tag: string, cattleByTag: Map<string, { tagNumber: string; name: string }>) {
@@ -170,15 +295,27 @@ function formatDisplayDate(value: string) {
   if (!value?.trim()) {
     return 'Not recorded';
   }
-
-  const parsed = new Date(`${value.trim()}T00:00:00`);
+  const raw = value.trim();
+  const hasTime = raw.includes('T');
+  const parsed = new Date(hasTime ? raw : `${raw}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
+  if (hasTime) {
+    return parsed.toLocaleString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+}
 
-  return parsed.toLocaleDateString('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-  });
+export function isEventFollowUpDue(item: HealthEvent, allEvents: HealthEvent[] = []): boolean {
+  if (isFollowUpOverdue(item.followUpDate)) {
+    return true;
+  }
+  return isReproductiveCycleFollowUpDue(item, allEvents);
 }

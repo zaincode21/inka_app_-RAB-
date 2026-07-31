@@ -4,22 +4,38 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SelectDropdown } from '../components/SelectDropdown';
-import { createHealthEvent, getCategories, todayIsoDate, updateHealthEvent, useDatabaseQuery } from '../data/farmDatabase';
+import { emptyMedicationValues, MedicationFields } from '../components/MedicationFields';
+import { createHealthEvent, getCategories, parseNumber, todayIsoDate, updateHealthEvent, useDatabaseQuery } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
+import { MASS_EVENT_TYPES, normalizeMassEventType, requiresMedicine } from '../utils/eventConstants';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddMassEvent'>;
-
-const eventTypes = ['Vaccination', 'Herd Spraying', 'Deworming', 'Treatment', 'Hoof Trimming'];
 
 export function AddMassEventScreen({ navigation, route }: Props) {
   const editingEvent = route.params?.event;
   const isEditing = Boolean(editingEvent);
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
+  const { data: groups } = useDatabaseQuery(() => getCategories('group'), []);
   const medicineOptions = useMemo(() => medicines.map((category) => category.name), [medicines]);
+  const groupOptions = useMemo(() => groups.map((category) => category.name), [groups]);
   const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? todayIsoDate());
-  const [eventType, setEventType] = useState(editingEvent?.eventType ?? '');
-  const [medicine, setMedicine] = useState(editingEvent?.medicine ?? '');
+  const [eventType, setEventType] = useState(editingEvent ? normalizeMassEventType(editingEvent.eventType) : '');
+  const [groupName, setGroupName] = useState(editingEvent?.groupName ?? '');
+  const [technician, setTechnician] = useState(editingEvent?.technician ?? '');
+  const [vetName, setVetName] = useState(editingEvent?.vetName ?? '');
   const [notes, setNotes] = useState(editingEvent?.notes ?? '');
+  const [medication, setMedication] = useState(
+    emptyMedicationValues({
+      medicine: editingEvent?.medicine,
+      dosage: editingEvent?.dosage,
+      route: editingEvent?.route,
+      frequency: editingEvent?.frequency,
+      withdrawalDays: editingEvent?.withdrawalDays ? `${editingEvent.withdrawalDays}` : undefined,
+      batchNumber: editingEvent?.batchNumber,
+      vetContact: editingEvent?.vetContact,
+      followUpDate: editingEvent?.followUpDate,
+    }),
+  );
 
   const saveEvent = async () => {
     if (!eventDate.trim() || !eventType) {
@@ -27,8 +43,18 @@ export function AddMassEventScreen({ navigation, route }: Props) {
       return;
     }
 
-    if (requiresMedicine(eventType) && !medicine) {
-      Alert.alert('Missing medicine', 'Please enter medicine information.');
+    if (!groupName.trim()) {
+      Alert.alert('Missing group', 'Please select the cattle group or paddock treated.');
+      return;
+    }
+
+    if (requiresMedicine(eventType) && !medication.medicine) {
+      Alert.alert('Missing medicine', 'Please select medicine information.');
+      return;
+    }
+
+    if (eventType === 'Herd Spraying' && !medication.medicine.trim() && !notes.trim()) {
+      Alert.alert('Missing spray details', 'Enter the product used in medicine or notes.');
       return;
     }
 
@@ -36,22 +62,24 @@ export function AddMassEventScreen({ navigation, route }: Props) {
       const payload = {
         scope: 'mass' as const,
         cattleTag: '',
-        groupName: '',
+        groupName: groupName.trim(),
         eventDate: eventDate.trim(),
         eventType,
         symptoms: '',
         diagnosis: '',
-        medicine: requiresMedicine(eventType) ? medicine : '',
-        dosage: '',
-        route: '',
-        frequency: '',
-        withdrawalDays: 0,
-        batchNumber: '',
-        technician: '',
-        vetName: '',
-        vetContact: '',
-        followUpDate: '',
+        medicine: requiresMedicine(eventType) || eventType === 'Herd Spraying' ? medication.medicine : '',
+        dosage: medication.dosage.trim(),
+        route: medication.route.trim(),
+        frequency: medication.frequency.trim(),
+        withdrawalDays: parseNumber(medication.withdrawalDays),
+        batchNumber: medication.batchNumber.trim(),
+        technician: technician.trim(),
+        vetName: vetName.trim(),
+        vetContact: medication.vetContact.trim(),
+        followUpDate: medication.followUpDate.trim(),
         weightKg: 0,
+        bodyConditionScore: 0,
+        treatmentCost: parseNumber(medication.treatmentCost),
         semenUsed: '',
         bullResponsible: '',
         returnHeatDate: '',
@@ -59,6 +87,7 @@ export function AddMassEventScreen({ navigation, route }: Props) {
         expectedDeliveryDate: '',
         calfTag: '',
         calfGender: '',
+        sourceEventId: '',
         notes: notes.trim(),
         photoUri: '',
       };
@@ -87,27 +116,22 @@ export function AddMassEventScreen({ navigation, route }: Props) {
         <Label text="Event Date" />
         <Input placeholder="YYYY-MM-DD" value={eventDate} onChangeText={setEventDate} />
 
-        <SelectDropdown
-          label="Event Type"
-          value={eventType}
-          placeholder="Select"
-          options={eventTypes}
-          onSelect={(value) => {
-            setEventType(value);
-            if (!requiresMedicine(value)) {
-              setMedicine('');
-            }
-          }}
-        />
+        <SelectDropdown label="Event Type" value={eventType} placeholder="Select" options={[...MASS_EVENT_TYPES]} onSelect={setEventType} />
 
-        {requiresMedicine(eventType) ? (
-          <>
-            <SelectDropdown label="Medicine" value={medicine} placeholder="Select medicine" options={medicineOptions} onSelect={setMedicine} />
-          </>
+        <SelectDropdown label="Cattle Group / Paddock" value={groupName} placeholder="Select group treated" options={groupOptions} onSelect={setGroupName} />
+
+        <Label text="Technician Name" />
+        <Input placeholder="Who performed the treatment" value={technician} onChangeText={setTechnician} />
+
+        <Label text="Veterinarian Name" />
+        <Input placeholder="Optional supervising vet" value={vetName} onChangeText={setVetName} />
+
+        {requiresMedicine(eventType) || eventType === 'Herd Spraying' ? (
+          <MedicationFields medicineOptions={medicineOptions} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
         ) : null}
 
         <Label text="Notes" />
-        <Input placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
+        <Input placeholder="Herd notes, product details, or observations" multiline value={notes} onChangeText={setNotes} />
       </ScrollView>
 
       <View className="flex-row bg-white px-6 py-4">
@@ -124,10 +148,6 @@ export function AddMassEventScreen({ navigation, route }: Props) {
   );
 }
 
-function requiresMedicine(eventType: string): boolean {
-  return eventType === 'Treatment' || eventType === 'Vaccination' || eventType === 'Deworming';
-}
-
 function Label({ text }: { text: string }) {
   return <Text className="mb-2 mt-4 text-[14px] font-bold text-[#1F2937]">{text}</Text>;
 }
@@ -139,4 +159,3 @@ function Input({ placeholder, value, onChangeText, multiline = false }: { placeh
     </View>
   );
 }
-

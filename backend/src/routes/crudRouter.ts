@@ -25,6 +25,9 @@ type CrudOptions = {
   updateData?: (body: Record<string, unknown>) => Record<string, unknown>;
   beforeCreate?: (body: Record<string, unknown>) => Promise<void>;
   beforeUpdate?: (id: string, body: Record<string, unknown>) => Promise<void>;
+  afterCreate?: (body: Record<string, unknown>, record: Record<string, unknown>) => Promise<void>;
+  afterUpdate?: (id: string, body: Record<string, unknown>, record: Record<string, unknown>) => Promise<void>;
+  beforeList?: () => Promise<void>;
 };
 
 export function createCrudRouter(options: CrudOptions) {
@@ -33,6 +36,7 @@ export function createCrudRouter(options: CrudOptions) {
   router.get(
     '/',
     asyncHandler(async (request, response) => {
+      await options.beforeList?.();
       const records = await options.model.findMany({
         where: options.listWhere?.(request.query) ?? {},
         orderBy: options.defaultOrderBy,
@@ -60,6 +64,7 @@ export function createCrudRouter(options: CrudOptions) {
       const body = request.body as Record<string, unknown>;
       await options.beforeCreate?.(body);
       const record = await options.model.create({ data: options.createData?.(body) ?? body, include: options.include });
+      await options.afterCreate?.(body, record as Record<string, unknown>);
       response.status(201).json(record);
     }),
   );
@@ -75,6 +80,7 @@ export function createCrudRouter(options: CrudOptions) {
         data: options.updateData?.(body) ?? body,
         include: options.include,
       });
+      await options.afterUpdate?.(String(request.params.id), body, record as Record<string, unknown>);
       response.json(record);
     }),
   );

@@ -6,6 +6,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { type Cattle, type HealthEvent, addDays, formatNumber, getCattle, getHealthEvents, useDatabaseQuery } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
 import { EventRecordCard } from '../components/EventRecordCard';
+import { lifeCycleLabel, resolveLifeCyclePhase, suggestedStageLabel } from '../utils/lifecycle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CattleProfile'>;
 
@@ -65,6 +66,15 @@ export function CattleProfileScreen({ navigation, route }: Props) {
               <ProfileRow label="Days Pregnant" value={pregnancy.daysPregnant} accent />
               <ProfileRow label="Days Remaining" value={pregnancy.daysRemaining} highlight />
               <ProfileRow label="Remark" value={pregnancy.remark} />
+            </ProfileCard>
+
+            <ProfileCard title="Life Cycle" icon="repeat" onActionPress={() => navigation.navigate('CowLifeCycle', { cattleTag: animal.tagNumber })}>
+              <ProfileRow label="Current phase" value={lifeCycleLabel(resolveLifeCyclePhase(animal))} />
+              <ProfileRow label="Recorded stage" value={animal.stage || 'Not recorded'} />
+              <ProfileRow label="Reproductive status" value={animal.reproductiveStatus || 'Not applicable'} />
+              {suggestedStageLabel(animal) && suggestedStageLabel(animal) !== animal.stage ? (
+                <ProfileRow label="Suggested stage" value={`${suggestedStageLabel(animal)} (by age)`} accent />
+              ) : null}
             </ProfileCard>
 
             <ProfileCard

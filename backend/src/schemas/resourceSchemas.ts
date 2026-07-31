@@ -20,6 +20,20 @@ export const farmSchema = z.object({
   currency: z.string().default('RWF'),
   weightUnit: z.string().default('kg'),
   milkUnit: z.string().default('L'),
+  returnHeatDays: z.coerce.number().int().min(0).max(45).default(21),
+  returnHeatTime: z
+    .string()
+    .trim()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Time must be HH:mm (24-hour)')
+    .default('08:00'),
+});
+
+export const systemConfigSchema = z.object({
+  returnHeatDays: z.coerce.number().int().min(0).max(45),
+  returnHeatTime: z
+    .string()
+    .trim()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Time must be HH:mm (24-hour)'),
 });
 
 export const categorySchema = z.object({
@@ -110,6 +124,8 @@ export const healthEventSchema = z.object({
   vetContact: optionalString,
   followUpDate: optionalDate,
   weightKg: money,
+  bodyConditionScore: money,
+  treatmentCost: money.optional(),
   semenUsed: optionalString,
   bullResponsible: optionalString,
   returnHeatDate: optionalDate,
@@ -117,6 +133,7 @@ export const healthEventSchema = z.object({
   expectedDeliveryDate: optionalDate,
   calfTag: optionalString,
   calfGender: z.enum(['MALE', 'FEMALE']).optional(),
+  sourceEventId: optionalString,
   notes: optionalString,
   photoUri: optionalString,
 });

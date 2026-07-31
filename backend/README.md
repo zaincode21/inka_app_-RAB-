@@ -60,14 +60,20 @@ All business routes are under `/api/v1`.
 
 - `GET /health` and `GET /api/v1/health`: service status.
 - `/api/v1/farms`: farm profile records.
+  - `GET /farms/system-config`: system configuration for the default farm (includes `returnHeatDays` default 21, `returnHeatTime` default `08:00`).
+  - `PATCH /farms/system-config`: update system configuration (`returnHeatDays` 0–45, `returnHeatTime` as `HH:mm` 24-hour). Used by Settings → System Configuration for estimated return heat date and time after Kwimisha.
 - `/api/v1/categories`: configurable breeds, groups, medicines, event types, income categories, expense categories, and milk destinations.
-- `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records.
+- `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records. Listing cattle auto-promotes lifecycle stages by age (never demotes).
 - `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records.
 - `/api/v1/events`: individual and mass veterinary, breeding, pregnancy, birth, weighing, vaccination, treatment, and deworming events.
   - `GET /events/latest-breeding?cattleTag=TAG`: latest breeding event for an animal (used by pregnancy form prefill).
   - `GET /events/birth-prefill?cattleTag=TAG`: latest pregnancy event for an animal, falling back to latest breeding event (used by birth form prefill).
-  - Query filters on `GET /events`: `eventType`, `cattleTag`, `cattleId`, `scope`, `farmId`.
-  - `Giving Birth` events require a bull name in `bullResponsible`.
+  - Query filters on `GET /events`: `eventType`, `cattleTag`, `cattleId`, `scope`, `farmId`, `followUpDue=true`.
+  - Saving events can auto-update linked cattle weight, body condition score, reproductive status, parity, and lactation number.
+  - Treatment events with `treatmentCost` create a linked veterinary expense transaction.
+  - `Giving Birth` events require a bull name in `bullResponsible`, plus calf name (`calfTag`) and calf gender. Saving a new Giving Birth event also auto-creates a calf cattle record with mother and bull lineage filled in.
+  - Breeding, Pregnant, and Pregnancy Diagnosis events reject bulls that match the female's father or maternal grandfather (mother's father).
+  - Reproductive cycle: Kwimisha (Breeding) sets `followUpDate` to the return-heat date. After the return-heat window, the Events UI offers **Heat returned** or **Confirm Gusama**. Open Gusama cards offer **Kuramburura (Abort)** (notes required) or **Kubyara (Birth)** (opens birth form). Linked events store `sourceEventId`. Creating a second open Pregnant for the same animal is blocked until Abort or Birth closes the cycle.
 - `/api/v1/transactions`: income and expense records with category, amount, quantity, unit price, buyer/vendor, payment, receipt, tax, discount, and resource links.
 - `/api/v1/reports/dashboard`: dashboard metrics.
 - `/api/v1/reports/summaries`: report summary cards.

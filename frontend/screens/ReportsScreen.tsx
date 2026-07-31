@@ -27,7 +27,11 @@ export function ReportsScreen({ navigation }: Props) {
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 100 }}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() =>
+            onPress={() => {
+              if (item.id === 'stages') {
+                navigation.navigate('CowLifeCycle');
+                return;
+              }
               navigation.navigate('Detail', {
                 title: item.label,
                 subtitle: 'Report summary',
@@ -35,8 +39,8 @@ export function ReportsScreen({ navigation }: Props) {
                   { label: 'Value', value: item.value },
                   { label: 'Detail', value: item.detail },
                 ],
-              })
-            }
+              });
+            }}
             className="mb-3 flex-row items-center rounded-[16px] bg-white px-4 py-4"
           >
             <Feather name={item.icon} size={22} color="#1F2937" />
