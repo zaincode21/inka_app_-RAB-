@@ -3,12 +3,15 @@ import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { formatNumber, getMilkRecords, useDatabaseQuery } from '../data/farmDatabase';
+import { getCurrentSession } from '../data/authApi';
+import { canWriteMilk } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MilkRecords'>;
 
 export function MilkRecordsScreen({ navigation }: Props) {
   const { data: records, loading, error } = useDatabaseQuery(getMilkRecords, []);
+  const canAdd = canWriteMilk(getCurrentSession()?.user);
 
   return (
     <View className="flex-1 bg-white">
@@ -45,6 +48,7 @@ export function MilkRecordsScreen({ navigation }: Props) {
                   { label: 'Total Produced', value: `${formatNumber(item.totalProduced)} L` },
                   { label: 'Total Used', value: `${formatNumber(item.totalUsed)} L` },
                   { label: 'Notes', value: item.notes || 'None' },
+                  ...(item.recordedBy ? [{ label: 'Recorded by', value: item.recordedBy }] : []),
                 ],
               })
             }
@@ -77,13 +81,15 @@ export function MilkRecordsScreen({ navigation }: Props) {
         )}
       />
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => navigation.navigate('AddMilkRecord')}
-        className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#008B8B] shadow-lg"
-      >
-        <Feather name="plus" size={28} color="#FFFFFF" />
-      </Pressable>
+      {canAdd ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('AddMilkRecord')}
+          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#008B8B] shadow-lg"
+        >
+          <Feather name="plus" size={28} color="#FFFFFF" />
+        </Pressable>
+      ) : null}
 
       <StatusBar style="light" />
     </View>

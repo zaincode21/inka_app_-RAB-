@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/apiError.js';
 import { assertNoInbreedingForHealthEvent } from '../utils/inbreeding.js';
+import { notDeleted, softDeleteData } from '../utils/softDelete.js';
 
 const femaleOnlyEventTypes = new Set([
   'breeding',
@@ -66,10 +67,10 @@ export async function assertFemaleCattleForReproductiveEvent(body: Record<string
 
   const cattle = await prisma.cattle.findUnique({
     where: { id: cattleId },
-    select: { sex: true },
+    select: { sex: true, deletedAt: true },
   });
 
-  if (!cattle || cattle.sex !== 'FEMALE') {
+  if (!cattle || cattle.deletedAt || cattle.sex !== 'FEMALE') {
     throw new ApiError(400, 'This reproductive or female-only event can only be recorded for female cattle.');
   }
 }
@@ -90,6 +91,7 @@ export async function assertNoDuplicateOpenPregnancy(body: Record<string, unknow
       cattleId,
       scope: 'INDIVIDUAL',
       eventType: { equals: 'Pregnant', mode: 'insensitive' },
+      ...notDeleted,
     },
     orderBy: { eventDate: 'desc' },
     select: { id: true, eventDate: true },
@@ -100,6 +102,7 @@ export async function assertNoDuplicateOpenPregnancy(body: Record<string, unknow
       where: {
         cattleId,
         scope: 'INDIVIDUAL',
+        ...notDeleted,
         OR: [
           { sourceEventId: pregnancy.id, eventType: { equals: 'Aborted', mode: 'insensitive' } },
           { sourceEventId: pregnancy.id, eventType: { equals: 'Giving Birth', mode: 'insensitive' } },
@@ -126,6 +129,7 @@ async function resolveBirthPrefillForCattle(cattleId: string) {
     where: {
       ...commonWhere,
       eventType: { equals: 'Pregnant', mode: 'insensitive' },
+      ...notDeleted,
     },
     orderBy: { eventDate: 'desc' },
   });
@@ -138,6 +142,7 @@ async function resolveBirthPrefillForCattle(cattleId: string) {
     where: {
       ...commonWhere,
       eventType: { equals: 'Breeding', mode: 'insensitive' },
+      ...notDeleted,
     },
     orderBy: { eventDate: 'desc' },
   });
@@ -269,7 +274,11 @@ export async function syncCattleFromHealthEvent(body: Record<string, unknown>, r
   });
 }
 
-export async function linkTreatmentCost(body: Record<string, unknown>, record: Record<string, unknown>): Promise<void> {
+export async function linkTreatmentCost(
+  body: Record<string, unknown>,
+  record: Record<string, unknown>,
+  actorUserId?: string | null,
+): Promise<void> {
   const treatmentCost = Number(body.treatmentCost ?? 0);
   const eventId = typeof record.id === 'string' ? record.id : null;
 
@@ -310,6 +319,12 @@ export async function linkTreatmentCost(body: Record<string, unknown>, record: R
       title: medicine ? `${eventType} - ${medicine}` : eventType,
       amount: treatmentCost,
       notes: 'Linked from health event',
+      ...(actorUserId
+        ? {
+            createdByUserId: actorUserId,
+            updatedByUserId: actorUserId,
+          }
+        : {}),
     },
   });
 }
@@ -328,7 +343,11 @@ async function generateUniqueCalfTag(motherTag: string, calfName: string): Promi
   return candidate;
 }
 
-export async function registerCalfFromBirthEvent(body: Record<string, unknown>, record: Record<string, unknown>): Promise<void> {
+export async function registerCalfFromBirthEvent(
+  body: Record<string, unknown>,
+  record: Record<string, unknown>,
+  actorUserId?: string | null,
+): Promise<void> {
   const eventType = typeof body.eventType === 'string' ? body.eventType.trim().toLowerCase() : '';
   if (eventType !== 'giving birth') {
     return;
@@ -342,8 +361,8 @@ export async function registerCalfFromBirthEvent(body: Record<string, unknown>, 
     return;
   }
 
-  const mother = await prisma.cattle.findUnique({
-    where: { id: cattleId },
+  const mother = await prisma.cattle.findFirst({
+    where: { id: cattleId, ...notDeleted },
     select: {
       id: true,
       farmId: true,
@@ -379,6 +398,12 @@ export async function registerCalfFromBirthEvent(body: Record<string, unknown>, 
         fatherTag: bullResponsible || undefined,
         source: 'Born on farm',
         notes: `Registered from Giving Birth event ${String(record.id ?? '')}`.trim(),
+        ...(actorUserId
+          ? {
+              createdByUserId: actorUserId,
+              updatedByUserId: actorUserId,
+            }
+          : {}),
       },
     });
   } catch (error) {
@@ -395,10 +420,14 @@ export async function registerCalfFromBirthEvent(body: Record<string, unknown>, 
   }
 }
 
-export async function afterHealthEventCreate(body: Record<string, unknown>, record: Record<string, unknown>): Promise<void> {
-  await registerCalfFromBirthEvent(body, record);
+export async function afterHealthEventCreate(
+  body: Record<string, unknown>,
+  record: Record<string, unknown>,
+  actorUserId?: string | null,
+): Promise<void> {
+  await registerCalfFromBirthEvent(body, record, actorUserId);
   await syncCattleFromHealthEvent(body, record);
-  await linkTreatmentCost(body, record);
+  await linkTreatmentCost(body, record, actorUserId);
 }
 
 export async function afterHealthEventUpdate(
@@ -409,12 +438,23 @@ export async function afterHealthEventUpdate(
   await syncCattleFromHealthEvent(body, record);
 }
 
+export async function archiveLinkedEventTransactions(eventId: string, actorUserId: string): Promise<void> {
+  await prisma.transaction.updateMany({
+    where: {
+      healthEventId: eventId,
+      ...notDeleted,
+    },
+    data: softDeleteData(actorUserId),
+  });
+}
+
 export async function getLatestBreedingByCattleTag(cattleTag: string) {
   return prisma.healthEvent.findFirst({
     where: {
       scope: 'INDIVIDUAL',
       eventType: { equals: 'Breeding', mode: 'insensitive' },
-      cattle: { tagNumber: cattleTag },
+      cattle: { tagNumber: cattleTag, ...notDeleted },
+      ...notDeleted,
     },
     orderBy: { eventDate: 'desc' },
     include: cattleSelect,
@@ -424,7 +464,8 @@ export async function getLatestBreedingByCattleTag(cattleTag: string) {
 export async function getBirthPrefillByCattleTag(cattleTag: string) {
   const commonWhere = {
     scope: 'INDIVIDUAL' as const,
-    cattle: { tagNumber: cattleTag },
+    cattle: { tagNumber: cattleTag, ...notDeleted },
+    ...notDeleted,
   };
 
   const pregnancy = await prisma.healthEvent.findFirst({
@@ -460,8 +501,9 @@ export async function getMilkWithdrawalStatus(cattleTag: string, onDateRaw?: str
   const events = await prisma.healthEvent.findMany({
     where: {
       scope: 'INDIVIDUAL',
-      cattle: { tagNumber: cattleTag },
+      cattle: { tagNumber: cattleTag, ...notDeleted },
       withdrawalDays: { gt: 0 },
+      ...notDeleted,
     },
     orderBy: { eventDate: 'desc' },
     take: 40,

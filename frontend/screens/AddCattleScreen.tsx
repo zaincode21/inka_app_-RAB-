@@ -4,7 +4,11 @@ import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardSafeScroll, KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
+import { useRequireAccess } from '../data/accessGuard';
+import { getCurrentSession } from '../data/authApi';
 import { createCattle, getCategories, parseNumber, todayIsoDate, updateCattle, useDatabaseQuery } from '../data/farmDatabase';
+import { canWriteCattle } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { stageOptionsForGender } from '../utils/lifecycle';
 
@@ -21,6 +25,7 @@ const fatherTagOptions = ["UK 722212 125 (Bella's Sire)", 'UK 722212 199 (Max)']
 export function AddCattleScreen({ navigation, route }: Props) {
   const editingCattle = route.params?.cattle;
   const isEditing = Boolean(editingCattle);
+  useRequireAccess(canWriteCattle(getCurrentSession()?.user), navigation);
   const { data: categories } = useDatabaseQuery(() => getCategories(), []);
   const breedOptions = useMemo(() => {
     const categoryBreeds = categories.filter((category) => category.kind === 'breed').map((category) => category.name);
@@ -170,7 +175,25 @@ export function AddCattleScreen({ navigation, route }: Props) {
         <View className="w-[30px]" />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <KeyboardSafeScroll
+        contentContainerStyle={{ paddingBottom: 24 }}
+        footer={
+          <View className="flex-row border-t border-[#EEF2F3] bg-white px-6 py-4">
+            <Pressable
+              onPress={() => navigation.goBack()}
+              className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3"
+            >
+              <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={saveCattle}
+              className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
+            >
+              <Text className="text-[16px] font-bold text-white">{isEditing ? 'Update' : 'Save'}</Text>
+            </Pressable>
+          </View>
+        }
+      >
         <View className="px-6 py-6">
           <SelectField
             label="Breed"
@@ -227,22 +250,7 @@ export function AddCattleScreen({ navigation, route }: Props) {
             <Text className="mt-2 text-[12px] text-[#008B8B]">Tap to add photo</Text>
           </Pressable>
         </View>
-      </ScrollView>
-
-      <View className="flex-row border-t border-[#EEF2F3] bg-white px-6 py-4">
-        <Pressable
-          onPress={() => navigation.goBack()}
-          className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3"
-        >
-          <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
-        </Pressable>
-        <Pressable
-          onPress={saveCattle}
-          className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
-        >
-          <Text className="text-[16px] font-bold text-white">{isEditing ? 'Update' : 'Save'}</Text>
-        </Pressable>
-      </View>
+      </KeyboardSafeScroll>
 
       <Modal visible={activePicker !== null} transparent animationType="fade" onRequestClose={() => setActivePicker(null)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setActivePicker(null)}>
@@ -277,7 +285,11 @@ export function AddCattleScreen({ navigation, route }: Props) {
 
       <Modal visible={showCreateBreedDialog} transparent animationType="fade" onRequestClose={() => setShowCreateBreedDialog(false)}>
         <Pressable className="flex-1 items-center justify-center bg-black/40 px-8" onPress={() => setShowCreateBreedDialog(false)}>
-          <Pressable className="w-full rounded-[20px] bg-white p-5" onPress={() => {}}>
+          <KeyboardSafeSheet
+            centered
+            className="w-full rounded-[20px] bg-white"
+            contentContainerStyle={{ padding: 20 }}
+          >
             <Text className="text-[18px] font-bold text-[#1F2937]">Add Cattle Breed</Text>
             <Text className="mb-2 mt-4 text-[14px] font-bold text-[#1F2937]">Cattle Breed Name</Text>
             <View className="h-12 justify-center rounded-[14px] border border-[#D9E4E4] bg-white px-4">
@@ -298,7 +310,7 @@ export function AddCattleScreen({ navigation, route }: Props) {
                 <Text className="text-[16px] font-bold text-white">Save</Text>
               </Pressable>
             </View>
-          </Pressable>
+          </KeyboardSafeSheet>
         </Pressable>
       </Modal>
 

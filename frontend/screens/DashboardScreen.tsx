@@ -5,6 +5,10 @@ import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-na
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CalvesIcon, CowsIcon, BullsIcon } from '../components/MetricIcons';
 import { getCurrentSession, logout } from '../data/authApi';
+import {
+  canViewFinance,
+  roleLabel,
+} from '../data/permissions';
 import { formatMoney, formatNumber, getDashboardMetrics, useDatabaseQuery } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -19,6 +23,8 @@ export function DashboardScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const isNarrow = width < 380;
   const session = getCurrentSession();
+  const user = session?.user;
+  const showFinance = canViewFinance(user);
   const { data: metrics } = useDatabaseQuery(getDashboardMetrics, {
     calves: 0,
     cows: 0,
@@ -29,8 +35,16 @@ export function DashboardScreen({ navigation }: Props) {
     expensesThisMonth: 0,
   });
   const handleLogout = () => {
-    logout();
+    void logout();
     navigation.replace('Login');
+  };
+
+  const openManage = () => {
+    if (!canViewFinance(user)) {
+      navigation.navigate('MilkRecords');
+      return;
+    }
+    navigation.navigate('ManageExpenses');
   };
 
   return (
@@ -44,6 +58,9 @@ export function DashboardScreen({ navigation }: Props) {
             <View>
               <Text className="text-[24px] font-extrabold leading-[28px] text-white">Good Morning,</Text>
               <Text className="text-[24px] font-extrabold leading-[28px] text-white">{session?.user.firstName ?? 'Farmer'}</Text>
+              {session?.user.role ? (
+                <Text className="mt-1 text-[12px] font-semibold text-white/80">{roleLabel(session.user.role)}</Text>
+              ) : null}
             </View>
           </View>
           <Pressable onPress={handleLogout} accessibilityRole="button" className="items-center" hitSlop={8}>
@@ -74,16 +91,18 @@ export function DashboardScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <View className={`mt-4 gap-4 ${isNarrow ? '' : 'flex-row'}`}>
-            <View className="flex-1 rounded-[20px] bg-[#F0FDF4] px-4 py-4">
-              <Text className="text-center text-[16px] font-extrabold text-[#16A34A]">{formatMoney(metrics.incomeThisMonth)}</Text>
-              <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Income This Month</Text>
+          {showFinance ? (
+            <View className={`mt-4 gap-4 ${isNarrow ? '' : 'flex-row'}`}>
+              <View className="flex-1 rounded-[20px] bg-[#F0FDF4] px-4 py-4">
+                <Text className="text-center text-[16px] font-extrabold text-[#16A34A]">{formatMoney(metrics.incomeThisMonth)}</Text>
+                <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Income This Month</Text>
+              </View>
+              <View className="flex-1 rounded-[20px] bg-[#FEF2F2] px-4 py-4">
+                <Text className="text-center text-[16px] font-extrabold text-[#DC2626]">{formatMoney(metrics.expensesThisMonth)}</Text>
+                <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Expenses This Month</Text>
+              </View>
             </View>
-            <View className="flex-1 rounded-[20px] bg-[#FEF2F2] px-4 py-4">
-              <Text className="text-center text-[16px] font-extrabold text-[#DC2626]">{formatMoney(metrics.expensesThisMonth)}</Text>
-              <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Expenses This Month</Text>
-            </View>
-          </View>
+          ) : null}
 
           <Text className="mt-8 text-[18px] font-extrabold text-[#008B8B]">Quick Links</Text>
           <View className="mt-4 flex-row flex-wrap justify-between gap-y-6">
@@ -91,7 +110,9 @@ export function DashboardScreen({ navigation }: Props) {
             <QuickLink icon="repeat" label="Life Cycle" onPress={() => navigation.navigate('CowLifeCycle')} />
             <QuickLink icon="coffee" label="Milk Records" onPress={() => navigation.navigate('MilkRecords')} />
             <QuickLink icon="calendar" label="Events" onPress={() => navigation.navigate('Events')} />
-            <QuickLink icon="dollar-sign" label="Transactions" onPress={() => navigation.navigate('Transactions')} />
+            {showFinance ? (
+              <QuickLink icon="dollar-sign" label="Transactions" onPress={() => navigation.navigate('Transactions')} />
+            ) : null}
             <QuickLink icon="settings" label="Settings" onPress={() => navigation.navigate('Settings')} />
           </View>
         </View>
@@ -99,7 +120,7 @@ export function DashboardScreen({ navigation }: Props) {
 
       <View className="absolute bottom-0 left-0 right-0 flex-row justify-between rounded-t-[20px] bg-[#008B8B] px-2 py-2">
         <BottomNavItem icon="home" label="Home" onPress={() => navigation.navigate('Dashboard')} />
-        <BottomNavItem icon="briefcase" label="Manage" onPress={() => navigation.navigate('ManageExpenses')} />
+        <BottomNavItem icon="briefcase" label="Manage" onPress={openManage} />
         <BottomNavItem icon="compass" label="Explore" onPress={() => navigation.navigate('Events')} />
         <BottomNavItem icon="archive" label="Reports" onPress={() => navigation.navigate('Reports')} />
         <BottomNavItem icon="log-out" label="Logout" onPress={handleLogout} />

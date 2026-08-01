@@ -58,15 +58,43 @@ The API runs on `http://localhost:4000` by default.
 
 All business routes are under `/api/v1`.
 
+**Authentication:** all routes except `/auth/*` and `/health` require `Authorization: Bearer <jwt>`.
+
+**Roles:** `SUPER_ADMIN`, `FARM_OWNER`, `FARM_MANAGER`, `VETERINARIAN`, `WORKER`. Data is scoped to the user's `farmId` (Super Admin can access any farm).
+
+**Capability matrix (API + app UI):**
+
+| Capability | Owner / Super Admin | Manager | Vet | Worker |
+|------------|---------------------|---------|-----|--------|
+| Cattle write / delete | ✓ | ✓ | — | — |
+| Milk write | ✓ | ✓ | — | ✓ |
+| Milk delete | ✓ | ✓ | — | — |
+| Events write / delete | ✓ | ✓ | ✓ | — |
+| Finance view | ✓ | ✓ | — | — |
+| Finance write / delete | ✓ | — | — | — |
+| Farm setup / users / system config | ✓ | — | — | — |
+
+- `POST /auth/register`: creates a new farm + `FARM_OWNER` user (seeds default categories).
+  Required: `fullName`, `email`, `phone`, `password`, `farmName`, `district`, `sector`.
+- `POST /auth/login`: returns JWT + user (`role`, `farmId`).
+- `POST /auth/forgot-password`: body `{ email }` — always 200; emails/logs a one-time reset code if the account exists. In non-production (or `EXPOSE_DEV_RESET_TOKEN=true`) the JSON may include `devResetToken` for local testing. Configure `RESEND_API_KEY` + `MAIL_FROM` for real email; otherwise the code is printed in the API console.
+- `POST /auth/reset-password`: body `{ token, newPassword }` (min 6 chars).
+- `POST /auth/change-password`: authenticated; body `{ currentPassword, newPassword }` (min 6 chars).
+- `/api/v1/audit-logs`: Owner/Super Admin activity trail (`GET`, query `entityType`, `from`, `to`, `page`, `limit`). Written automatically on cattle/milk/events/transactions mutations and login/password events.
+- `/api/v1/users`:
+  - `GET /users/me`: current user profile.
+  - `GET /users`: list users (Owner: own farm; Super Admin: all, optional `?farmId=`).
+  - `POST /users`: create staff (Owner: Manager/Vet/Worker on own farm; Super Admin: any role).
+  - `PATCH /users/:id`: update role, `isActive`, password, name/phone.
 - `GET /health` and `GET /api/v1/health`: service status.
 - `/api/v1/farms`: farm profile records.
-  - `GET /farms/system-config`: system configuration for the default farm (`returnHeatDays`, `returnHeatTime`, `milkPricePerLiter`, `defaultMilkBuyer`, `defaultMilkDestination`).
-  - `PATCH /farms/system-config`: partial update of system settings (send only the fields you want to change).
-- `/api/v1/categories`: configurable breeds, groups, medicines, event types, income categories, expense categories, and milk destinations.
-- `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records. Listing cattle auto-promotes lifecycle stages by age (never demotes).
-- `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records.
-  - Whole Farm saves may create/update a linked **Milk Sale** income when `createMilkSale=true`, using `soldLiters = produced − used − rejected` × `pricePerLiter` (locked at save). Duplicate Milk Sale per milk record is prevented. Deleting a milk record removes its linked Milk Sale.
-- `/api/v1/events`: individual and mass veterinary, breeding, pregnancy, birth, weighing, vaccination, treatment, and deworming events.
+  - `GET /farms/system-config`: system configuration for the caller's farm.
+  - `PATCH /farms/system-config`: Owner/Super Admin only — partial update of system settings.
+- `/api/v1/categories`: configurable breeds, groups, medicines, event types, income categories, expense categories, and milk destinations. Mutations: Owner/Super Admin only.
+- `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records. Listing cattle auto-promotes lifecycle stages by age (never demotes). Create/update stamp `createdByUserId` / `updatedByUserId`; list/get include `createdBy`. `DELETE` soft-archives (`deletedAt`); prefer status change (sold/culled/dead) for herd exits.
+- `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records. Actor tracking and soft-delete same as cattle.
+  - Whole Farm saves may create/update a linked **Milk Sale** income when `createMilkSale=true`, using `soldLiters = produced − used − rejected` × `pricePerLiter` (locked at save). Duplicate Milk Sale per milk record is prevented. Deleting a milk record soft-archives its linked Milk Sale.
+- `/api/v1/events`: individual and mass veterinary, breeding, pregnancy, birth, weighing, vaccination, treatment, and deworming events. Actor tracking and soft-delete same as cattle. Deleting an event also soft-archives linked treatment expenses.
   - `GET /events/latest-breeding?cattleTag=TAG`: latest breeding event for an animal (used by pregnancy form prefill).
   - `GET /events/birth-prefill?cattleTag=TAG`: latest pregnancy event for an animal, falling back to latest breeding event (used by birth form prefill).
   - Query filters on `GET /events`: `eventType`, `cattleTag`, `cattleId`, `scope`, `farmId`, `followUpDue=true`.
@@ -77,9 +105,17 @@ All business routes are under `/api/v1`.
   - `Giving Birth` events require a bull name in `bullResponsible`, plus calf name (`calfTag`) and calf gender. Saving a new Giving Birth event also auto-creates a calf cattle record with mother and bull lineage filled in.
   - Breeding, Pregnant, and Pregnancy Diagnosis events reject bulls that match the female's father or maternal grandfather (mother's father).
   - Reproductive cycle: Kwimisha (Breeding) sets `followUpDate` to the return-heat date. After the return-heat window, the Events UI offers **Heat returned** or **Confirm Gusama**. Open Gusama cards offer **Kuramburura (Abort)** (notes required) or **Kubyara (Birth)** (opens birth form). Linked events store `sourceEventId`. Creating a second open Pregnant for the same animal is blocked until Abort or Birth closes the cycle.
-- `/api/v1/transactions`: income and expense records with category, amount, quantity, unit price, buyer/vendor, payment, receipt, tax, discount, and resource links.
+- `/api/v1/transactions`: income and expense records with category, amount, quantity, unit price, buyer/vendor, payment, receipt, tax, discount, and resource links. Actor tracking and soft-delete same as cattle. Delete: Owner/Super Admin only.
 - `/api/v1/reports/dashboard`: dashboard metrics.
 - `/api/v1/reports/summaries`: report summary cards.
+
+Seeded demo accounts (from `npm run seed`):
+
+- Super Admin: `admin@inka.local` / `admin123`
+- Farm Owner: `owner@inka.local` / `owner123` (linked to `default-farm`)
+- Farm Manager: `manager@inka.local` / `manager123`
+- Veterinarian: `vet@inka.local` / `vet123`
+- Worker: `worker@inka.local` / `worker123`
 
 Most resource routes support:
 
@@ -87,7 +123,7 @@ Most resource routes support:
 - `GET /:id`: read one record.
 - `POST /`: create a record.
 - `PATCH /:id`: update a record.
-- `DELETE /:id`: delete a record.
+- `DELETE /:id`: soft-archive (`deletedAt`) for cattle, milk-records, events, and transactions; hard delete only where soft-delete is off.
 
 ## Project layout
 

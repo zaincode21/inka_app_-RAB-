@@ -2,7 +2,8 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import {
   DEFAULT_MILK_PRICE_PER_LITER,
   DEFAULT_RETURN_HEAT_DAYS,
@@ -11,6 +12,8 @@ import {
   normalizeReturnHeatTime,
   updateSystemConfig,
 } from '../data/farmDatabase';
+import { getCurrentSession } from '../data/authApi';
+import { canEditSystemConfig } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SystemConfig'>;
@@ -21,6 +24,7 @@ function sharedBuyerDestination(buyer: string, destination: string) {
 }
 
 export function SystemConfigScreen({ navigation }: Props) {
+  const canEdit = canEditSystemConfig(getCurrentSession()?.user);
   const [returnHeatDays, setReturnHeatDays] = useState(`${DEFAULT_RETURN_HEAT_DAYS}`);
   const [returnHeatTime, setReturnHeatTime] = useState(DEFAULT_RETURN_HEAT_TIME);
   const [milkPricePerLiter, setMilkPricePerLiter] = useState(`${DEFAULT_MILK_PRICE_PER_LITER}`);
@@ -65,6 +69,10 @@ export function SystemConfigScreen({ navigation }: Props) {
   };
 
   const saveReturnHeat = async () => {
+    if (!canEdit) {
+      Alert.alert('Read only', 'Only farm owners can change system configuration.');
+      return;
+    }
     const days = Number.parseInt(returnHeatDays.trim(), 10);
     if (!Number.isFinite(days) || days < 0 || days > 45) {
       Alert.alert('Invalid value', 'Estimated return heat days must be a whole number between 0 and 45.');
@@ -91,6 +99,10 @@ export function SystemConfigScreen({ navigation }: Props) {
   };
 
   const saveMilkPrice = async () => {
+    if (!canEdit) {
+      Alert.alert('Read only', 'Only farm owners can change system configuration.');
+      return;
+    }
     const price = Number.parseFloat(milkPricePerLiter.trim());
     if (!Number.isFinite(price) || price < 0) {
       Alert.alert('Invalid price', 'Milk selling price per liter must be 0 or greater.');
@@ -110,6 +122,10 @@ export function SystemConfigScreen({ navigation }: Props) {
   };
 
   const saveBuyerDestination = async () => {
+    if (!canEdit) {
+      Alert.alert('Read only', 'Only farm owners can change system configuration.');
+      return;
+    }
     const value = defaultMilkBuyerDestination.trim();
     setSavingKey('buyerDestination');
     try {
@@ -126,7 +142,7 @@ export function SystemConfigScreen({ navigation }: Props) {
     }
   };
 
-  const busy = loading || savingKey !== null;
+  const busy = loading || savingKey !== null || !canEdit;
 
   return (
     <View className="flex-1 bg-[#F5F7F7]">
@@ -138,8 +154,12 @@ export function SystemConfigScreen({ navigation }: Props) {
         <View className="w-[30px]" />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }}>
-        <Text className="mb-4 text-[13px] text-[#6B7280]">Each setting saves on its own. Changing one does not require saving the others.</Text>
+      <KeyboardSafeScroll contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }}>
+        <Text className="mb-4 text-[13px] text-[#6B7280]">
+          {canEdit
+            ? 'Each setting saves on its own. Changing one does not require saving the others.'
+            : 'View only — ask a farm owner to change milk price or breeding defaults.'}
+        </Text>
 
         <ConfigCard title="Estimated Return Heat Date" subtitle="Days and time after Kwimisha when the cow is expected to return to heat if not pregnant.">
           <FieldLabel text="Days after breeding" />
@@ -192,7 +212,7 @@ export function SystemConfigScreen({ navigation }: Props) {
             onPress={() => void saveBuyerDestination()}
           />
         </ConfigCard>
-      </ScrollView>
+      </KeyboardSafeScroll>
 
       <StatusBar style="light" />
     </View>

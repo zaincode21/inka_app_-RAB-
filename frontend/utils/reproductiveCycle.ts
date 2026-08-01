@@ -71,7 +71,7 @@ export function isReproductiveCycleFollowUpDue(event: HealthEvent, allEvents: He
   return isBreedingAwaitingHeatDecision(event, allEvents, reference);
 }
 
-export function emptyEventFields(overrides: Partial<Omit<HealthEvent, 'id' | 'createdAt'>> = {}): Omit<HealthEvent, 'id' | 'createdAt'> {
+export function emptyEventFields(overrides: Partial<Omit<HealthEvent, 'id' | 'createdAt' | 'recordedBy'>> = {}): Omit<HealthEvent, 'id' | 'createdAt' | 'recordedBy'> {
   return {
     scope: 'individual',
     cattleTag: '',

@@ -1,13 +1,18 @@
 import { Router } from 'express';
 import { prisma } from '../config/prisma.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { requireAuthUser } from '../middleware/auth.js';
+import { resolveFarmIdForRequest } from '../services/farmService.js';
+import { notDeleted } from '../utils/softDelete.js';
 
 export const reportRouter = Router();
 
 reportRouter.get(
   '/dashboard',
   asyncHandler(async (request, response) => {
-    const farmId = typeof request.query.farmId === 'string' ? request.query.farmId : undefined;
+    const auth = requireAuthUser(request);
+    const requested = typeof request.query.farmId === 'string' ? request.query.farmId : undefined;
+    const farmId = await resolveFarmIdForRequest(auth, requested);
     const today = startOfDay(new Date());
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -15,13 +20,13 @@ reportRouter.get(
     const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
     const [calves, cows, bulls, milkToday, healthAlerts, incomeThisMonth, expensesThisMonth] = await Promise.all([
-      prisma.cattle.count({ where: { farmId, stage: 'CALF', status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] } } }),
-      prisma.cattle.count({ where: { farmId, stage: { in: ['COW', 'HEIFER'] }, status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] } } }),
-      prisma.cattle.count({ where: { farmId, stage: 'BULL', status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] } } }),
-      prisma.milkRecord.aggregate({ where: { farmId, date: { gte: today, lt: tomorrow } }, _sum: { totalProduced: true } }),
-      prisma.healthEvent.count({ where: { farmId, followUpDate: { lte: today } } }),
-      prisma.transaction.aggregate({ where: { farmId, kind: 'INCOME', date: { gte: monthStart, lt: nextMonth } }, _sum: { amount: true } }),
-      prisma.transaction.aggregate({ where: { farmId, kind: 'EXPENSE', date: { gte: monthStart, lt: nextMonth } }, _sum: { amount: true } }),
+      prisma.cattle.count({ where: { farmId, stage: 'CALF', status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] }, ...notDeleted } }),
+      prisma.cattle.count({ where: { farmId, stage: { in: ['COW', 'HEIFER'] }, status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] }, ...notDeleted } }),
+      prisma.cattle.count({ where: { farmId, stage: 'BULL', status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] }, ...notDeleted } }),
+      prisma.milkRecord.aggregate({ where: { farmId, date: { gte: today, lt: tomorrow }, ...notDeleted }, _sum: { totalProduced: true } }),
+      prisma.healthEvent.count({ where: { farmId, followUpDate: { lte: today }, ...notDeleted } }),
+      prisma.transaction.aggregate({ where: { farmId, kind: 'INCOME', date: { gte: monthStart, lt: nextMonth }, ...notDeleted }, _sum: { amount: true } }),
+      prisma.transaction.aggregate({ where: { farmId, kind: 'EXPENSE', date: { gte: monthStart, lt: nextMonth }, ...notDeleted }, _sum: { amount: true } }),
     ]);
 
     response.json({
@@ -39,17 +44,19 @@ reportRouter.get(
 reportRouter.get(
   '/summaries',
   asyncHandler(async (request, response) => {
-    const farmId = typeof request.query.farmId === 'string' ? request.query.farmId : undefined;
+    const auth = requireAuthUser(request);
+    const requested = typeof request.query.farmId === 'string' ? request.query.farmId : undefined;
+    const farmId = await resolveFarmIdForRequest(auth, requested);
 
     const [cattleTotal, milkTotal, eventTotal, breedingTotal, pregnantTotal, incomeTotal, expenseTotal, latestWeight] = await Promise.all([
-      prisma.cattle.count({ where: { farmId, status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] } } }),
-      prisma.milkRecord.aggregate({ where: { farmId }, _sum: { totalProduced: true } }),
-      prisma.healthEvent.count({ where: { farmId } }),
-      prisma.healthEvent.count({ where: { farmId, eventType: { equals: 'Breeding', mode: 'insensitive' } } }),
-      prisma.healthEvent.count({ where: { farmId, eventType: { equals: 'Pregnant', mode: 'insensitive' } } }),
-      prisma.transaction.aggregate({ where: { farmId, kind: 'INCOME' }, _sum: { amount: true } }),
-      prisma.transaction.aggregate({ where: { farmId, kind: 'EXPENSE' }, _sum: { amount: true } }),
-      prisma.cattle.findFirst({ where: { farmId, weightKg: { gt: 0 } }, orderBy: { updatedAt: 'desc' }, select: { weightKg: true } }),
+      prisma.cattle.count({ where: { farmId, status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] }, ...notDeleted } }),
+      prisma.milkRecord.aggregate({ where: { farmId, ...notDeleted }, _sum: { totalProduced: true } }),
+      prisma.healthEvent.count({ where: { farmId, ...notDeleted } }),
+      prisma.healthEvent.count({ where: { farmId, eventType: { equals: 'Breeding', mode: 'insensitive' }, ...notDeleted } }),
+      prisma.healthEvent.count({ where: { farmId, eventType: { equals: 'Pregnant', mode: 'insensitive' }, ...notDeleted } }),
+      prisma.transaction.aggregate({ where: { farmId, kind: 'INCOME', ...notDeleted }, _sum: { amount: true } }),
+      prisma.transaction.aggregate({ where: { farmId, kind: 'EXPENSE', ...notDeleted }, _sum: { amount: true } }),
+      prisma.cattle.findFirst({ where: { farmId, weightKg: { gt: 0 }, ...notDeleted }, orderBy: { updatedAt: 'desc' }, select: { weightKg: true } }),
     ]);
 
     const income = Number(incomeTotal._sum.amount ?? 0);

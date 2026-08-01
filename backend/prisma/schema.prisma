@@ -7,8 +7,9 @@ datasource db {
 }
 
 enum UserRole {
-  OWNER
-  MANAGER
+  SUPER_ADMIN
+  FARM_OWNER
+  FARM_MANAGER
   VETERINARIAN
   WORKER
 }
@@ -58,7 +59,10 @@ model Farm {
   id              String   @id @default(cuid())
   name            String
   ownerName       String
+  ownerPhone      String?
   location        String
+  district        String   @default("")
+  sector          String   @default("")
   currency        String   @default("RWF")
   weightUnit      String   @default("kg")
   milkUnit        String   @default("L")
@@ -76,6 +80,7 @@ model Farm {
   healthEvents HealthEvent[]
   transactions Transaction[]
   categories   Category[]
+  auditLogs    AuditLog[]
 }
 
 model User {
@@ -86,11 +91,60 @@ model User {
   email        String   @unique
   phone        String?
   passwordHash String?
-  role         UserRole @default(OWNER)
+  role         UserRole @default(FARM_OWNER)
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   farm Farm? @relation(fields: [farmId], references: [id], onDelete: SetNull)
+
+  cattleCreated       Cattle[]      @relation("CattleCreatedBy")
+  cattleUpdated       Cattle[]      @relation("CattleUpdatedBy")
+  cattleDeleted       Cattle[]      @relation("CattleDeletedBy")
+  eventsCreated       HealthEvent[] @relation("HealthEventCreatedBy")
+  eventsUpdated       HealthEvent[] @relation("HealthEventUpdatedBy")
+  eventsDeleted       HealthEvent[] @relation("HealthEventDeletedBy")
+  milkRecordsCreated  MilkRecord[]  @relation("MilkRecordCreatedBy")
+  milkRecordsUpdated  MilkRecord[]  @relation("MilkRecordUpdatedBy")
+  milkRecordsDeleted  MilkRecord[]  @relation("MilkRecordDeletedBy")
+  transactionsCreated Transaction[] @relation("TransactionCreatedBy")
+  transactionsUpdated Transaction[] @relation("TransactionUpdatedBy")
+  transactionsDeleted Transaction[] @relation("TransactionDeletedBy")
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  farmId     String?
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  summary    String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  farm  Farm? @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([farmId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
 
 model Cattle {
@@ -121,10 +175,17 @@ model Cattle {
   fatherTag          String?
   notes              String?
   photoUri           String?
+  createdByUserId    String?
+  updatedByUserId    String?
+  deletedAt          DateTime?
+  deletedByUserId    String?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
   farm         Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  createdBy    User?         @relation("CattleCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?         @relation("CattleUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  deletedBy    User?         @relation("CattleDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
   healthEvents HealthEvent[]
   milkRecords  MilkRecord[]
   transactions Transaction[]
@@ -133,6 +194,8 @@ model Cattle {
   @@index([farmId])
   @@index([tagNumber])
   @@index([stage, status])
+  @@index([createdByUserId])
+  @@index([deletedAt])
 }
 
 model HealthEvent {
@@ -167,11 +230,18 @@ model HealthEvent {
   sourceEventId        String?
   notes                String?
   photoUri             String?
+  createdByUserId      String?
+  updatedByUserId      String?
+  deletedAt            DateTime?
+  deletedByUserId      String?
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 
   farm         Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
   cattle       Cattle?       @relation(fields: [cattleId], references: [id], onDelete: SetNull)
+  createdBy    User?         @relation("HealthEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?         @relation("HealthEventUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  deletedBy    User?         @relation("HealthEventDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
   sourceEvent  HealthEvent?  @relation("EventCycle", fields: [sourceEventId], references: [id], onDelete: SetNull)
   derivedEvents HealthEvent[] @relation("EventCycle")
   transactions Transaction[]
@@ -182,6 +252,8 @@ model HealthEvent {
   @@index([eventDate])
   @@index([eventType])
   @@index([sourceEventId])
+  @@index([createdByUserId])
+  @@index([deletedAt])
 }
 
 model MilkRecord {
@@ -203,17 +275,26 @@ model MilkRecord {
   proteinPercent   Decimal  @default(0) @db.Decimal(5, 2)
   somaticCellCount Decimal  @default(0) @db.Decimal(12, 2)
   notes            String?
+  createdByUserId  String?
+  updatedByUserId  String?
+  deletedAt        DateTime?
+  deletedByUserId  String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   farm         Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
   cattle       Cattle?       @relation(fields: [cattleId], references: [id], onDelete: SetNull)
+  createdBy    User?         @relation("MilkRecordCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?         @relation("MilkRecordUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  deletedBy    User?         @relation("MilkRecordDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
   transactions Transaction[]
   attachments  Attachment[]
 
   @@index([farmId])
   @@index([cattleId])
   @@index([date])
+  @@index([createdByUserId])
+  @@index([deletedAt])
 }
 
 model Transaction {
@@ -235,6 +316,10 @@ model Transaction {
   taxAmount        Decimal         @default(0) @db.Decimal(12, 2)
   discountAmount   Decimal         @default(0) @db.Decimal(12, 2)
   notes            String?
+  createdByUserId  String?
+  updatedByUserId  String?
+  deletedAt        DateTime?
+  deletedByUserId  String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
@@ -242,11 +327,16 @@ model Transaction {
   cattle      Cattle?      @relation(fields: [cattleId], references: [id], onDelete: SetNull)
   milkRecord  MilkRecord?  @relation(fields: [milkRecordId], references: [id], onDelete: SetNull)
   healthEvent HealthEvent? @relation(fields: [healthEventId], references: [id], onDelete: SetNull)
+  createdBy   User?        @relation("TransactionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy   User?        @relation("TransactionUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  deletedBy   User?        @relation("TransactionDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
   attachments Attachment[]
 
   @@index([farmId])
   @@index([kind, date])
   @@index([category])
+  @@index([createdByUserId])
+  @@index([deletedAt])
 }
 
 model Category {

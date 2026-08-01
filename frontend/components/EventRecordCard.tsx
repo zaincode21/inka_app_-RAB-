@@ -52,9 +52,9 @@ export function EventRecordCard({
     <View className="relative mb-5" style={{ zIndex: menuOpen ? 999 : 1, elevation: menuOpen ? 8 : 0 }}>
       {menuOpen ? (
         <View className="absolute right-2 top-[44px] z-[1000] min-w-[230px] overflow-hidden rounded-[10px] border border-[#E5E7EB] bg-white shadow-lg" style={{ elevation: 10 }}>
-          <EventMenuItem icon="edit-2" label="Edit Event" onPress={onEdit} />
+          {onEdit ? <EventMenuItem icon="edit-2" label="Edit Event" onPress={onEdit} /> : null}
           {showViewCattle ? <EventMenuItem icon="search" label="View Cattle" onPress={onViewCattle} /> : null}
-          <EventMenuItem icon="trash-2" label="Delete" onPress={onDelete} destructive isLast />
+          {onDelete ? <EventMenuItem icon="trash-2" label="Delete" onPress={onDelete} destructive isLast /> : null}
         </View>
       ) : null}
 

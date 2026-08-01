@@ -2,12 +2,15 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { getCurrentSession } from '../data/authApi';
+import { canWriteCattle } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
 export function DetailScreen({ navigation, route }: Props) {
   const { title, subtitle, details, editCattle } = route.params;
+  const canEdit = Boolean(editCattle && canWriteCattle(getCurrentSession()?.user));
 
   return (
     <View className="flex-1 bg-[#F3F4F6]">
@@ -33,7 +36,7 @@ export function DetailScreen({ navigation, route }: Props) {
           ))}
         </View>
 
-        {editCattle ? (
+        {canEdit && editCattle ? (
           <Pressable className="mt-6 h-[56px] items-center justify-center rounded-[12px] bg-[#008B8B]" onPress={() => navigation.navigate('AddCattle', { cattle: editCattle })}>
             <Text className="text-[18px] font-bold text-white">Edit Cattle</Text>
           </Pressable>

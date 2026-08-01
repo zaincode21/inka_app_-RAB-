@@ -2,8 +2,9 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { FlatList, Pressable, Text, View } from 'react-native';
-import { logout } from '../data/authApi';
+import { logout, getCurrentSession } from '../data/authApi';
 import { getReportSummaries, useDatabaseQuery } from '../data/farmDatabase';
+import { canViewFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reports'>;
@@ -13,6 +14,13 @@ export function ReportsScreen({ navigation }: Props) {
   const handleLogout = () => {
     logout();
     navigation.replace('Login');
+  };
+  const openManage = () => {
+    if (!canViewFinance(getCurrentSession()?.user)) {
+      navigation.navigate('MilkRecords');
+      return;
+    }
+    navigation.navigate('ManageExpenses');
   };
 
   return (
@@ -56,7 +64,7 @@ export function ReportsScreen({ navigation }: Props) {
 
       <View className="absolute bottom-0 left-0 right-0 flex-row justify-between rounded-t-[20px] bg-[#008B8B] px-2 py-2">
         <BottomNavItem icon="home" label="Home" onPress={() => navigation.navigate('Dashboard')} />
-        <BottomNavItem icon="briefcase" label="Manage" onPress={() => navigation.navigate('ManageExpenses')} />
+        <BottomNavItem icon="briefcase" label="Manage" onPress={openManage} />
         <BottomNavItem icon="compass" label="Explore" onPress={() => navigation.navigate('Events')} />
         <BottomNavItem icon="archive" label="Reports" onPress={() => navigation.navigate('Reports')} />
         <BottomNavItem icon="log-out" label="Logout" onPress={handleLogout} />

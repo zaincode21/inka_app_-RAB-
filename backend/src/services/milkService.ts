@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { ensureDefaultFarm } from './farmService.js';
+import { notDeleted, softDeleteData } from '../utils/softDelete.js';
 
 export function withMilkTotal(body: Record<string, unknown>) {
   const amTotal = Number(body.amTotal ?? 0);
@@ -23,6 +24,7 @@ export async function syncMilkSaleIncome(
   body: Record<string, unknown>,
   record: Record<string, unknown>,
   _isCreate: boolean,
+  actorUserId?: string | null,
 ): Promise<void> {
   const milkRecordId = typeof record.id === 'string' ? record.id : null;
   if (!milkRecordId) {
@@ -44,12 +46,21 @@ export async function syncMilkSaleIncome(
       milkRecordId,
       kind: 'INCOME',
       category: { equals: 'Milk Sale', mode: 'insensitive' },
+      ...notDeleted,
     },
   });
 
   if (!isWholeFarm || soldLiters <= 0 || unitPrice <= 0) {
-    if (existing) {
-      await prisma.transaction.delete({ where: { id: existing.id } });
+    if (existing && actorUserId) {
+      await prisma.transaction.update({
+        where: { id: existing.id },
+        data: softDeleteData(actorUserId),
+      });
+    } else if (existing) {
+      await prisma.transaction.update({
+        where: { id: existing.id },
+        data: { deletedAt: new Date() },
+      });
     }
     return;
   }
@@ -58,7 +69,13 @@ export async function syncMilkSaleIncome(
     return;
   }
 
-  const farm = await ensureDefaultFarm();
+  const farmId = typeof record.farmId === 'string' ? record.farmId : null;
+  const farm = farmId
+    ? await prisma.farm.findUnique({ where: { id: farmId } })
+    : await ensureDefaultFarm();
+  if (!farm) {
+    return;
+  }
   const eventDate =
     body.date instanceof Date ? body.date : record.date instanceof Date ? record.date : new Date();
   const buyer =
@@ -71,7 +88,7 @@ export async function syncMilkSaleIncome(
     '';
 
   const payload = {
-    farmId: typeof record.farmId === 'string' ? record.farmId : farm.id,
+    farmId: farmId ?? farm.id,
     milkRecordId,
     kind: 'INCOME' as const,
     date: eventDate,
@@ -83,6 +100,14 @@ export async function syncMilkSaleIncome(
     paymentMethod,
     buyerVendor: buyer || null,
     notes: `Linked milk sale: ${soldLiters} L × ${unitPrice}.`,
+    deletedAt: null,
+    deletedByUserId: null,
+    ...(actorUserId
+      ? {
+          updatedByUserId: actorUserId,
+          ...(!existing ? { createdByUserId: actorUserId } : {}),
+        }
+      : {}),
   };
 
   if (existing) {
@@ -93,12 +118,14 @@ export async function syncMilkSaleIncome(
   await prisma.transaction.create({ data: payload });
 }
 
-export async function deleteLinkedMilkSales(milkRecordId: string): Promise<void> {
-  await prisma.transaction.deleteMany({
+export async function deleteLinkedMilkSales(milkRecordId: string, actorUserId: string): Promise<void> {
+  await prisma.transaction.updateMany({
     where: {
       milkRecordId,
       kind: 'INCOME',
       category: { equals: 'Milk Sale', mode: 'insensitive' },
+      ...notDeleted,
     },
+    data: softDeleteData(actorUserId),
   });
 }

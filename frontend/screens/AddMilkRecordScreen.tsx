@@ -3,8 +3,11 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardSafeScroll, KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
+import { useRequireAccess } from '../data/accessGuard';
+import { getCurrentSession } from '../data/authApi';
 import {
   type Cattle,
   type MilkWithdrawalStatus,
@@ -18,6 +21,7 @@ import {
   todayIsoDate,
   useDatabaseQuery,
 } from '../data/farmDatabase';
+import { canWriteMilk } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddMilkRecord'>;
@@ -25,6 +29,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddMilkRecord'>;
 const milkTypes = ['Whole Farm', 'Individual Cow Milk'];
 
 export function AddMilkRecordScreen({ navigation }: Props) {
+  useRequireAccess(canWriteMilk(getCurrentSession()?.user), navigation);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const [date, setDate] = useState(todayIsoDate());
   const [milkType, setMilkType] = useState('');
@@ -217,7 +222,25 @@ export function AddMilkRecordScreen({ navigation }: Props) {
         <View className="w-[30px]" />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 24 }}>
+      <KeyboardSafeScroll
+        contentContainerStyle={{ padding: 24, paddingBottom: 24 }}
+        footer={
+          <View className="flex-row bg-white px-6 py-4">
+            <Pressable onPress={() => navigation.goBack()} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
+              <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                void saveRecord();
+              }}
+              disabled={saving}
+              className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
+            >
+              <Text className="text-[16px] font-bold text-white">{saving ? 'Saving...' : 'Save'}</Text>
+            </Pressable>
+          </View>
+        }
+      >
         <Label text="Milking Date" />
         <DateField value={date} placeholder="Select milking date" onPress={() => setShowDatePicker(true)} />
 
@@ -303,22 +326,7 @@ export function AddMilkRecordScreen({ navigation }: Props) {
 
         <Label text="Notes" />
         <Input placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
-      </ScrollView>
-
-      <View className="flex-row bg-white px-6 py-4">
-        <Pressable onPress={() => navigation.goBack()} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
-          <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            void saveRecord();
-          }}
-          disabled={saving}
-          className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
-        >
-          <Text className="text-[16px] font-bold text-white">{saving ? 'Saving...' : 'Save'}</Text>
-        </Pressable>
-      </View>
+      </KeyboardSafeScroll>
 
       {showDatePicker && Platform.OS !== 'ios' ? (
         <DateTimePicker value={parseDateForPicker(date)} mode="date" display="calendar" onChange={handleDateChange} />
@@ -343,7 +351,10 @@ export function AddMilkRecordScreen({ navigation }: Props) {
 
       <Modal visible={showCowPicker} transparent animationType="fade" onRequestClose={() => setShowCowPicker(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowCowPicker(false)}>
-          <Pressable className="max-h-[80%] rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
+          <KeyboardSafeSheet
+            className="max-h-[80%] rounded-t-[24px] bg-white"
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 20 }}
+          >
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="text-[18px] font-bold text-[#1F2937]">Select Cow</Text>
               <Pressable onPress={() => setShowCowPicker(false)} hitSlop={8}>
@@ -356,7 +367,7 @@ export function AddMilkRecordScreen({ navigation }: Props) {
               <TextInput value={cowSearch} onChangeText={setCowSearch} placeholder="Search by tag, name, or breed" placeholderTextColor="#6B7280" className="ml-3 flex-1 text-[16px] text-[#1F2937]" />
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <View>
               {cowOptions.length === 0 ? (
                 <Text className="py-6 text-center text-[14px] text-[#6B7280]">No cows found</Text>
               ) : (
@@ -381,8 +392,8 @@ export function AddMilkRecordScreen({ navigation }: Props) {
                   );
                 })
               )}
-            </ScrollView>
-          </Pressable>
+            </View>
+          </KeyboardSafeSheet>
         </Pressable>
       </Modal>
 

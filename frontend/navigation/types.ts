@@ -11,7 +11,12 @@ export type RootStackParamList = {
   FarmSetup: undefined;
   Settings: undefined;
   SystemConfig: undefined;
+  ChangePassword: undefined;
+  ActivityLog: undefined;
+  ManageUsers: undefined;
   SignUp: undefined;
+  ForgotPassword: undefined;
+  ResetPassword: { token?: string; email?: string } | undefined;
   Reports: undefined;
   ManageExpenses: undefined;
   CowLifeCycle: { cattleTag?: string } | undefined;
@@ -22,11 +27,6 @@ export type RootStackParamList = {
   CattleProfile: { cattleTag: string };
   AddIncome: undefined;
   AddExpense: undefined;
-  Action: {
-    title: string;
-    subtitle?: string;
-    saveLabel: string;
-  };
   Detail: {
     title: string;
     subtitle?: string;

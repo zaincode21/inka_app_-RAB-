@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { type ReactNode, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { type Cattle, type HealthEvent, addDays, formatNumber, getCattle, getHealthEvents, useDatabaseQuery } from '../data/farmDatabase';
+import { getCurrentSession } from '../data/authApi';
+import { canWriteCattle } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { EventRecordCard } from '../components/EventRecordCard';
 import { lifeCycleLabel, resolveLifeCyclePhase, suggestedStageLabel } from '../utils/lifecycle';
@@ -11,6 +13,7 @@ import { lifeCycleLabel, resolveLifeCyclePhase, suggestedStageLabel } from '../u
 type Props = NativeStackScreenProps<RootStackParamList, 'CattleProfile'>;
 
 export function CattleProfileScreen({ navigation, route }: Props) {
+  const canEdit = canWriteCattle(getCurrentSession()?.user);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const { data: events } = useDatabaseQuery(getHealthEvents, []);
   const [activeTab, setActiveTab] = useState<'details' | 'events'>('details');
@@ -40,7 +43,13 @@ export function CattleProfileScreen({ navigation, route }: Props) {
             <Feather name="arrow-left" size={26} color="#FFFFFF" />
           </Pressable>
           <View className="flex-1" />
-          <Feather name="more-vertical" size={22} color="#FFFFFF" />
+          {canEdit ? (
+            <Pressable onPress={() => navigation.navigate('AddCattle', { cattle: animal })} hitSlop={8}>
+              <Feather name="edit-2" size={22} color="#FFFFFF" />
+            </Pressable>
+          ) : (
+            <View className="w-[22px]" />
+          )}
         </View>
 
         <View className="items-center px-6 pt-4">
@@ -80,7 +89,7 @@ export function CattleProfileScreen({ navigation, route }: Props) {
             <ProfileCard
               title="General Details"
               icon="edit-2"
-              onActionPress={() => navigation.navigate('AddCattle', { cattle: animal })}
+              onActionPress={canEdit ? () => navigation.navigate('AddCattle', { cattle: animal }) : undefined}
             >
               <ProfileRow label="Tag No" value={animal.tagNumber} />
               <ProfileRow label="Name" value={animal.name || 'Not recorded'} />
@@ -91,6 +100,7 @@ export function CattleProfileScreen({ navigation, route }: Props) {
               <ProfileRow label="Stage" value={animal.stage || 'Not recorded'} />
               <ProfileRow label="Group" value={animal.groupName || 'Not assigned'} />
               <ProfileRow label="Breed" value={animal.breed || 'Not recorded'} />
+              {animal.recordedBy ? <ProfileRow label="Recorded by" value={animal.recordedBy} /> : null}
             </ProfileCard>
           </>
         ) : (
@@ -198,12 +208,16 @@ function buildPregnancyOverview(_animal: Cattle | undefined, events: HealthEvent
 }
 
 function buildEventDetailRows(item: HealthEvent, animal: Cattle) {
-  return [
+  const rows = [
     { label: 'Date', value: formatDisplayDate(item.eventDate) },
     { label: 'Tag No', value: animal.name ? `${animal.tagNumber} (${animal.name})` : animal.tagNumber },
     { label: 'Event Type', value: item.eventType },
     { label: 'Notes', value: item.notes || 'None' },
   ];
+  if (item.recordedBy) {
+    rows.push({ label: 'Recorded by', value: item.recordedBy });
+  }
+  return rows;
 }
 
 function formatDisplayDate(value: string) {

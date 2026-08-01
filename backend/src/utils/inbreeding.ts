@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/apiError.js';
+import { notDeleted } from './softDelete.js';
 
 type CattleLineage = {
   tagNumber: string;
@@ -80,8 +81,8 @@ export async function assertNoInbreedingForHealthEvent(body: Record<string, unkn
     return;
   }
 
-  const animal = await prisma.cattle.findUnique({
-    where: { id: cattleId },
+  const animal = await prisma.cattle.findFirst({
+    where: { id: cattleId, ...notDeleted },
     select: {
       tagNumber: true,
       name: true,
@@ -95,6 +96,7 @@ export async function assertNoInbreedingForHealthEvent(body: Record<string, unkn
   }
 
   const herd = await prisma.cattle.findMany({
+    where: notDeleted,
     select: {
       tagNumber: true,
       name: true,

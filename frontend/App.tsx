@@ -1,5 +1,7 @@
 import './global.css';
 
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
@@ -13,6 +15,11 @@ import {
   FarmSetupScreen,
   SettingsScreen,
   SystemConfigScreen,
+  ChangePasswordScreen,
+  ActivityLogScreen,
+  ForgotPasswordScreen,
+  ResetPasswordScreen,
+  ManageUsersScreen,
   SignUpScreen,
   ReportsScreen,
   ManageExpensesScreen,
@@ -22,19 +29,38 @@ import {
   AddMassEventScreen,
   AddIncomeScreen,
   AddExpenseScreen,
-  ActionScreen,
   CattleProfileScreen,
   CowLifeCycleScreen,
   DetailScreen,
 } from './screens';
+import { hydrateSession } from './data/authApi';
 import type { RootStackParamList } from './navigation/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  const [ready, setReady] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList>('Home');
+
+  useEffect(() => {
+    void (async () => {
+      const session = await hydrateSession();
+      setInitialRoute(session ? 'Dashboard' : 'Home');
+      setReady(true);
+    })();
+  }, []);
+
+  if (!ready) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator color="#008B8B" size="large" />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
@@ -46,6 +72,11 @@ export default function App() {
         <Stack.Screen name="FarmSetup" component={FarmSetupScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="SystemConfig" component={SystemConfigScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        <Stack.Screen name="ManageUsers" component={ManageUsersScreen} />
         <Stack.Screen name="Reports" component={ReportsScreen} />
         <Stack.Screen name="ManageExpenses" component={ManageExpensesScreen} />
         <Stack.Screen name="AddCattle" component={AddCattleScreen} />
@@ -54,7 +85,6 @@ export default function App() {
         <Stack.Screen name="AddMassEvent" component={AddMassEventScreen} />
         <Stack.Screen name="AddIncome" component={AddIncomeScreen} />
         <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
-        <Stack.Screen name="Action" component={ActionScreen} />
         <Stack.Screen name="CattleProfile" component={CattleProfileScreen} />
         <Stack.Screen name="CowLifeCycle" component={CowLifeCycleScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />

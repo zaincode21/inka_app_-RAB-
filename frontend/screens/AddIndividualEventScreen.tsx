@@ -3,10 +3,14 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
 import { emptyMedicationValues, MedicationFields } from '../components/MedicationFields';
+import { useRequireAccess } from '../data/accessGuard';
+import { getCurrentSession } from '../data/authApi';
 import { addDays, combineDateAndTime, createHealthEvent, DEFAULT_RETURN_HEAT_DAYS, DEFAULT_RETURN_HEAT_TIME, getBirthPrefillEvent, getCattle, getCategories, getLatestBreedingEvent, getSystemConfig, parseNumber, updateHealthEvent, useDatabaseQuery, type HealthEvent } from '../data/farmDatabase';
+import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { FEMALE_ONLY_EVENT_TYPES, INDIVIDUAL_EVENT_TYPES, requiresClinicalNotes, requiresMedicationDetails, requiresMedicine } from '../utils/eventConstants';
 import { getInbreedingViolation, INBREEDING_CHECK_EVENT_TYPES } from '../utils/inbreeding';
@@ -19,6 +23,7 @@ const breedingMethods = [
 ];
 
 export function AddIndividualEventScreen({ navigation, route }: Props) {
+  useRequireAccess(canWriteEvents(getCurrentSession()?.user), navigation);
   const editingEvent = route.params?.event;
   const isEditing = Boolean(editingEvent);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
@@ -300,7 +305,19 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         <Text className="flex-1 pl-4 text-[20px] font-bold text-white">{isEditing ? 'Edit Individual Event' : 'Add Individual Event'}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}>
+      <KeyboardSafeScroll
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}
+        footer={
+          <View className="flex-row bg-white px-6 py-4">
+            <Pressable onPress={() => navigation.goBack()} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
+              <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
+            </Pressable>
+            <Pressable onPress={saveEvent} className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
+              <Text className="text-[16px] font-bold text-white">{isEditing ? 'Update' : 'Save'}</Text>
+            </Pressable>
+          </View>
+        }
+      >
         <Label text="Event Date" />
         <DateField value={eventDate} placeholder="Select event date" onPress={() => setShowEventDatePicker(true)} />
 
@@ -458,16 +475,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
 
         <Label text="Notes" />
         <Input placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
-      </ScrollView>
-
-      <View className="flex-row bg-white px-6 py-4">
-        <Pressable onPress={() => navigation.goBack()} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
-          <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
-        </Pressable>
-        <Pressable onPress={saveEvent} className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
-          <Text className="text-[16px] font-bold text-white">{isEditing ? 'Update' : 'Save'}</Text>
-        </Pressable>
-      </View>
+      </KeyboardSafeScroll>
 
       {showEventDatePicker && Platform.OS !== 'ios' ? <DateTimePicker value={parseDateForPicker(eventDate)} mode="date" display="calendar" onChange={handleEventDateChange} /> : null}
 

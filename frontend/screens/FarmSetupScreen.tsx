@@ -2,8 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Alert, Modal, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { KeyboardSafeScroll, KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
+import { useRequireAccess } from '../data/accessGuard';
+import { getCurrentSession } from '../data/authApi';
 import { addCategory, getCategories, parseNumber, updateCategory, useDatabaseQuery } from '../data/farmDatabase';
+import { canManageFarmSetup } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FarmSetup'>;
@@ -19,6 +23,7 @@ const cards = [
 ] as const;
 
 export function FarmSetupScreen({ navigation }: Props) {
+  useRequireAccess(canManageFarmSetup(getCurrentSession()?.user), navigation);
   const { width } = useWindowDimensions();
   const horizontalPadding = 24;
   const gap = 10;
@@ -97,7 +102,7 @@ export function FarmSetupScreen({ navigation }: Props) {
         <View className="w-[30px]" />
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingTop: 24, paddingBottom: 32 }}>
+      <KeyboardSafeScroll contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingTop: 24, paddingBottom: 32 }}>
         <Text className="mb-4 text-[14px] text-[#6B7280]">Tap a category to manage its values.</Text>
         <View className="flex-row flex-wrap" style={{ gap }}>
           {cards.map((card) => (
@@ -112,11 +117,11 @@ export function FarmSetupScreen({ navigation }: Props) {
             </Pressable>
           ))}
         </View>
-      </ScrollView>
+      </KeyboardSafeScroll>
 
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={closeModal}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={closeModal}>
-          <Pressable className="max-h-[85%] rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
+          <KeyboardSafeSheet contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 20 }}>
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="flex-1 text-[18px] font-bold text-[#1F2937]">Manage {selectedCard?.title}</Text>
               <Pressable onPress={closeModal} hitSlop={8}>
@@ -156,7 +161,7 @@ export function FarmSetupScreen({ navigation }: Props) {
               </Pressable>
             </View>
 
-            <ScrollView className="mt-4" showsVerticalScrollIndicator={false}>
+            <View className="mt-4">
               {selectedCategories.length === 0 ? (
                 <Text className="py-6 text-center text-[14px] text-[#6B7280]">No items yet</Text>
               ) : (
@@ -204,8 +209,8 @@ export function FarmSetupScreen({ navigation }: Props) {
                   </View>
                 ))
               )}
-            </ScrollView>
-          </Pressable>
+            </View>
+          </KeyboardSafeSheet>
         </Pressable>
       </Modal>
 

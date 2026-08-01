@@ -2,9 +2,13 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
+import { useRequireAccess } from '../data/accessGuard';
+import { getCurrentSession } from '../data/authApi';
 import { createTransaction, getCategories, getSystemConfig, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
+import { canWriteFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddIncome'>;
@@ -12,6 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddIncome'>;
 const paymentMethods = ['Cash', 'Mobile Money', 'Bank Transfer', 'Credit'];
 
 export function AddIncomeScreen({ navigation }: Props) {
+  useRequireAccess(canWriteFinance(getCurrentSession()?.user), navigation);
   const { data: categories } = useDatabaseQuery(() => getCategories('income'), []);
   const incomeTypes = useMemo(() => categories.map((category) => category.name), [categories]);
   const [date, setDate] = useState(todayIsoDate());
@@ -111,7 +116,16 @@ export function AddIncomeScreen({ navigation }: Props) {
         <Text className="flex-1 pl-4 text-[24px] font-bold text-white">New Income</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}>
+      <KeyboardSafeScroll
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}
+        footer={
+          <View className="px-6 pb-6">
+            <Pressable onPress={saveIncome} className="h-[56px] items-center justify-center rounded-[12px] bg-[#E6B86F]">
+              <Text className="text-[16px] font-bold text-white">Save</Text>
+            </Pressable>
+          </View>
+        }
+      >
         <Field label="Date" placeholder="YYYY-MM-DD" value={date} onChangeText={setDate} />
 
         <SelectDropdown label="Income Type" value={incomeType} placeholder="Select" options={incomeTypes} onSelect={setIncomeType} />
@@ -133,13 +147,7 @@ export function AddIncomeScreen({ navigation }: Props) {
         <Field label="Discount Amount" placeholder="0" keyboardType="decimal-pad" value={discountAmount} onChangeText={setDiscountAmount} />
         <Field label="Linked Cattle Tag" placeholder="Optional animal tag" value={linkedCattleTag} onChangeText={setLinkedCattleTag} />
         <Field label="Notes" placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
-      </ScrollView>
-
-      <View className="px-6 pb-6">
-        <Pressable onPress={saveIncome} className="h-[56px] items-center justify-center rounded-[12px] bg-[#E6B86F]">
-          <Text className="text-[16px] font-bold text-white">Save</Text>
-        </Pressable>
-      </View>
+      </KeyboardSafeScroll>
 
       <StatusBar style="light" />
     </View>

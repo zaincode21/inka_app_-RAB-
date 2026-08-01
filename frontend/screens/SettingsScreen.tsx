@@ -2,28 +2,62 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { getCurrentSession } from '../data/authApi';
+import { canManageFarmSetup, canManageUsers, canEditSystemConfig } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
-const settingsItems = [
-  {
-    id: 'system',
-    title: 'System Configuration',
-    subtitle: 'Return heat days and breeding defaults',
-    icon: 'sliders' as const,
-    route: 'SystemConfig' as const,
-  },
-  {
-    id: 'farm-setup',
-    title: 'Farm Setup',
-    subtitle: 'Categories, breeds, medicines + milk withdrawal days',
-    icon: 'grid' as const,
-    route: 'FarmSetup' as const,
-  },
-] as const;
-
 export function SettingsScreen({ navigation }: Props) {
+  const user = getCurrentSession()?.user;
+  const settingsItems = [
+    {
+      id: 'password',
+      title: 'Change Password',
+      subtitle: 'Update the password for your account',
+      icon: 'lock' as const,
+      route: 'ChangePassword' as const,
+    },
+    {
+      id: 'system',
+      title: 'System Configuration',
+      subtitle: canEditSystemConfig(user)
+        ? 'Return heat days, milk price, and buyers'
+        : 'View breeding defaults (owner can edit)',
+      icon: 'sliders' as const,
+      route: 'SystemConfig' as const,
+    },
+    ...(canManageFarmSetup(user)
+      ? [
+          {
+            id: 'farm-setup',
+            title: 'Farm Setup',
+            subtitle: 'Categories, breeds, medicines + milk withdrawal days',
+            icon: 'grid' as const,
+            route: 'FarmSetup' as const,
+          },
+        ]
+      : []),
+    ...(canManageUsers(user)
+      ? [
+          {
+            id: 'users',
+            title: 'Users & Privileges',
+            subtitle: 'Add farm managers and activate or deactivate staff',
+            icon: 'users' as const,
+            route: 'ManageUsers' as const,
+          },
+          {
+            id: 'activity',
+            title: 'Activity Log',
+            subtitle: 'See who created, updated, or deleted farm records',
+            icon: 'activity' as const,
+            route: 'ActivityLog' as const,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <View className="flex-1 bg-[#F5F7F7]">
       <View className="flex-row items-center rounded-b-[50px] bg-[#008B8B] px-6 pb-6 pt-12">
@@ -35,7 +69,7 @@ export function SettingsScreen({ navigation }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }}>
-        <Text className="mb-4 text-[14px] text-[#6B7280]">Manage farm preferences and system defaults used across events and reports.</Text>
+        <Text className="mb-4 text-[14px] text-[#6B7280]">Manage farm preferences and team access used across events and reports.</Text>
         {settingsItems.map((item) => (
           <Pressable
             key={item.id}

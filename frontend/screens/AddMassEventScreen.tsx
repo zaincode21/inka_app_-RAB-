@@ -2,16 +2,21 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
 import { emptyMedicationValues, MedicationFields } from '../components/MedicationFields';
+import { useRequireAccess } from '../data/accessGuard';
+import { getCurrentSession } from '../data/authApi';
 import { createHealthEvent, getCategories, parseNumber, todayIsoDate, updateHealthEvent, useDatabaseQuery } from '../data/farmDatabase';
+import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { MASS_EVENT_TYPES, normalizeMassEventType, requiresMedicine } from '../utils/eventConstants';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddMassEvent'>;
 
 export function AddMassEventScreen({ navigation, route }: Props) {
+  useRequireAccess(canWriteEvents(getCurrentSession()?.user), navigation);
   const editingEvent = route.params?.event;
   const isEditing = Boolean(editingEvent);
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
@@ -116,7 +121,19 @@ export function AddMassEventScreen({ navigation, route }: Props) {
         <Text className="flex-1 pl-4 text-[20px] font-bold text-white">{isEditing ? 'Edit Mass Event' : 'Add Mass Event'}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}>
+      <KeyboardSafeScroll
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}
+        footer={
+          <View className="flex-row bg-white px-6 py-4">
+            <Pressable onPress={() => navigation.goBack()} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
+              <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
+            </Pressable>
+            <Pressable onPress={saveEvent} className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
+              <Text className="text-[16px] font-bold text-white">{isEditing ? 'Update' : 'Save'}</Text>
+            </Pressable>
+          </View>
+        }
+      >
         <Label text="Event Date" />
         <Input placeholder="YYYY-MM-DD" value={eventDate} onChangeText={setEventDate} />
 
@@ -136,16 +153,7 @@ export function AddMassEventScreen({ navigation, route }: Props) {
 
         <Label text="Notes" />
         <Input placeholder="Herd notes, product details, or observations" multiline value={notes} onChangeText={setNotes} />
-      </ScrollView>
-
-      <View className="flex-row bg-white px-6 py-4">
-        <Pressable onPress={() => navigation.goBack()} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
-          <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
-        </Pressable>
-        <Pressable onPress={saveEvent} className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
-          <Text className="text-[16px] font-bold text-white">{isEditing ? 'Update' : 'Save'}</Text>
-        </Pressable>
-      </View>
+      </KeyboardSafeScroll>
 
       <StatusBar style="light" />
     </View>

@@ -4,8 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { buildEventCardRows, EventRecordCard, isEventFollowUpDue } from '../components/EventRecordCard';
+import { KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
-import { logout } from '../data/authApi';
+import { logout, getCurrentSession } from '../data/authApi';
 import {
   type HealthEvent,
   addDays,
@@ -17,6 +18,7 @@ import {
   updateHealthEvent,
   useDatabaseQuery,
 } from '../data/farmDatabase';
+import { canViewFinance, canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { allEventTypeFilterOptions, normalizeMassEventType } from '../utils/eventConstants';
 import { isActiveEvent, isEventArchived } from '../utils/eventArchive';
@@ -26,6 +28,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Events'>;
 type EventFilter = 'all' | 'archive' | 'followUpDue';
 
 export function EventsScreen({ navigation }: Props) {
+  const sessionUser = getCurrentSession()?.user;
+  const canMutateEvents = canWriteEvents(sessionUser);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const [selectedScope, setSelectedScope] = useState<'individual' | 'mass'>('individual');
   const [searchQuery, setSearchQuery] = useState('');
@@ -231,6 +235,13 @@ export function EventsScreen({ navigation }: Props) {
     logout();
     navigation.replace('Login');
   };
+  const openManage = () => {
+    if (!canViewFinance(sessionUser)) {
+      navigation.navigate('MilkRecords');
+      return;
+    }
+    navigation.navigate('ManageExpenses');
+  };
 
   const handleAddEvent = () => {
     if (selectedScope === 'mass') {
@@ -251,10 +262,14 @@ export function EventsScreen({ navigation }: Props) {
   };
 
   const openEventDetail = (item: HealthEvent) => {
+    const details = buildEventCardRows(item, cattleByTag).map((row) => ({ label: row.label, value: row.value }));
+    if (item.recordedBy) {
+      details.push({ label: 'Recorded by', value: item.recordedBy });
+    }
     navigation.navigate('Detail', {
       title: item.scope === 'mass' ? normalizeMassEventType(item.eventType) : item.eventType,
       subtitle: item.scope === 'mass' ? 'Mass herd event' : 'Individual cattle event',
-      details: buildEventCardRows(item, cattleByTag).map((row) => ({ label: row.label, value: row.value })),
+      details,
     });
   };
 
@@ -278,21 +293,25 @@ export function EventsScreen({ navigation }: Props) {
 
   const handleDeleteEvent = (event: HealthEvent) => {
     setMenuEvent(null);
-    Alert.alert('Delete event', 'Are you sure you want to delete this event?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteHealthEvent(event.id);
-            await reload();
-          } catch (deleteError) {
-            Alert.alert('Could not delete event', deleteError instanceof Error ? deleteError.message : 'Please try again.');
-          }
+    Alert.alert(
+      'Delete event',
+      'Remove this event from lists? It stays in farm records and will no longer appear in the app.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteHealthEvent(event.id);
+              await reload();
+            } catch (deleteError) {
+              Alert.alert('Could not delete event', deleteError instanceof Error ? deleteError.message : 'Please try again.');
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   return (
@@ -391,28 +410,34 @@ export function EventsScreen({ navigation }: Props) {
                   setMenuEvent(null);
                   openEventDetail(item);
                 }}
-                onMenuPress={() => setMenuEvent((current) => (current?.id === item.id ? null : item))}
-                onEdit={() => handleEditEvent(item)}
+                onMenuPress={
+                  canMutateEvents || item.cattleTag
+                    ? () => setMenuEvent((current) => (current?.id === item.id ? null : item))
+                    : undefined
+                }
+                onEdit={canMutateEvents ? () => handleEditEvent(item) : undefined}
                 onViewCattle={() => handleViewCattle(item)}
-                onDelete={() => handleDeleteEvent(item)}
-                onConfirmHeatReturned={() => handleConfirmHeatReturned(item)}
-                onConfirmGusama={() => handleConfirmGusama(item)}
-                onConfirmKuramburura={() => handleConfirmKuramburura(item)}
-                onConfirmKubyara={() => handleConfirmKubyara(item)}
+                onDelete={canMutateEvents ? () => handleDeleteEvent(item) : undefined}
+                onConfirmHeatReturned={canMutateEvents ? () => handleConfirmHeatReturned(item) : undefined}
+                onConfirmGusama={canMutateEvents ? () => handleConfirmGusama(item) : undefined}
+                onConfirmKuramburura={canMutateEvents ? () => handleConfirmKuramburura(item) : undefined}
+                onConfirmKubyara={canMutateEvents ? () => handleConfirmKubyara(item) : undefined}
               />
             ))
           )}
         </ScrollView>
       </View>
 
-      <Pressable accessibilityRole="button" onPress={handleAddEvent} className="absolute bottom-[100px] right-6 flex-row items-center rounded-full bg-[#E6B86F] px-5 py-3 shadow-lg">
-        <Feather name="plus" size={20} color="#FFFFFF" />
-        <Text className="ml-2 text-[16px] font-bold text-white">Add</Text>
-      </Pressable>
+      {canMutateEvents ? (
+        <Pressable accessibilityRole="button" onPress={handleAddEvent} className="absolute bottom-[100px] right-6 flex-row items-center rounded-full bg-[#E6B86F] px-5 py-3 shadow-lg">
+          <Feather name="plus" size={20} color="#FFFFFF" />
+          <Text className="ml-2 text-[16px] font-bold text-white">Add</Text>
+        </Pressable>
+      ) : null}
 
       <View className="absolute bottom-0 left-0 right-0 flex-row justify-between rounded-t-[20px] bg-[#008B8B] px-2 py-2">
         <BottomNavItem icon="home" label="Home" onPress={() => navigation.navigate('Dashboard')} />
-        <BottomNavItem icon="briefcase" label="Manage" onPress={() => navigation.navigate('ManageExpenses')} />
+        <BottomNavItem icon="briefcase" label="Manage" onPress={openManage} />
         <BottomNavItem icon="compass" label="Explore" onPress={() => navigation.navigate('Events')} />
         <BottomNavItem icon="archive" label="Reports" onPress={() => navigation.navigate('Reports')} />
         <BottomNavItem icon="log-out" label="Logout" onPress={handleLogout} />
@@ -420,7 +445,7 @@ export function EventsScreen({ navigation }: Props) {
 
       <Modal visible={Boolean(abortSource)} transparent animationType="fade" onRequestClose={() => setAbortSource(null)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setAbortSource(null)}>
-          <Pressable className="rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
+          <KeyboardSafeSheet contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 20 }}>
             <Text className="mb-1 text-center text-[18px] font-bold text-[#1F2937]">Kuramburura (Abort)</Text>
             <Text className="mb-4 text-center text-[13px] text-[#6B7280]">
               {abortSource ? `${abortSource.cattleTag} — write reason, then submit` : ''}
@@ -448,7 +473,7 @@ export function EventsScreen({ navigation }: Props) {
                 <Text className="text-[16px] font-bold text-white">{abortBusy ? 'Saving...' : 'Submit'}</Text>
               </Pressable>
             </View>
-          </Pressable>
+          </KeyboardSafeSheet>
         </Pressable>
       </Modal>
 
@@ -466,13 +491,16 @@ export function EventsScreen({ navigation }: Props) {
 
       <Modal visible={showCattleDialog} transparent animationType="fade" onRequestClose={() => setShowCattleDialog(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowCattleDialog(false)}>
-          <Pressable className="max-h-[80%] rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
+          <KeyboardSafeSheet
+            className="max-h-[80%] rounded-t-[24px] bg-white"
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 20 }}
+          >
             <Text className="mb-4 text-center text-[18px] font-bold text-[#1F2937]">Select Cattle</Text>
             <View className="mb-4 h-12 flex-row items-center rounded-[14px] border border-[#D9E4E4] bg-white px-4">
               <Feather name="search" size={18} color="#6B7280" />
               <TextInput value={cattleSearch} onChangeText={setCattleSearch} placeholder="Search cattle" placeholderTextColor="#6B7280" className="ml-3 flex-1 text-[16px] text-[#1F2937]" />
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <View>
               {cattleOptions.length === 0 ? (
                 <Text className="py-6 text-center text-[14px] text-[#6B7280]">No cattle found</Text>
               ) : (
@@ -489,7 +517,7 @@ export function EventsScreen({ navigation }: Props) {
                   );
                 })
               )}
-            </ScrollView>
+            </View>
             <View className="mt-4 flex-row">
               <Pressable onPress={() => setShowCattleDialog(false)} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
                 <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
@@ -498,7 +526,7 @@ export function EventsScreen({ navigation }: Props) {
                 <Text className="text-[16px] font-bold text-white">Next</Text>
               </Pressable>
             </View>
-          </Pressable>
+          </KeyboardSafeSheet>
         </Pressable>
       </Modal>
 

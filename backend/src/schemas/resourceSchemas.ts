@@ -16,7 +16,10 @@ export const listQuerySchema = z.object({
 export const farmSchema = z.object({
   name: z.string().min(1),
   ownerName: z.string().min(1),
+  ownerPhone: optionalString,
   location: z.string().min(1),
+  district: z.string().trim().min(1),
+  sector: z.string().trim().min(1),
   currency: z.string().default('RWF'),
   weightUnit: z.string().default('kg'),
   milkUnit: z.string().default('L'),
@@ -64,14 +67,73 @@ export const categorySchema = z.object({
 export const registerSchema = z.object({
   fullName: z.string().min(2),
   email: z.string().email(),
-  phone: optionalString,
+  phone: z.string().trim().min(7, 'Owner phone number is required.'),
   password: z.string().min(6),
+  farmName: z.string().trim().min(2, 'Farm name is required.'),
+  district: z.string().trim().min(2, 'District is required.'),
+  sector: z.string().trim().min(2, 'Sector is required.'),
 });
 
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required.'),
+    newPassword: z.string().min(6, 'New password must be at least 6 characters.'),
+  })
+  .refine((value) => value.currentPassword !== value.newPassword, {
+    message: 'New password must be different from the current password.',
+    path: ['newPassword'],
+  });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset code is required.'),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters.'),
+});
+
+export const createUserSchema = z
+  .object({
+    fullName: z.string().min(2),
+    email: z.string().email(),
+    phone: optionalString,
+    password: z.string().min(6),
+    role: z.enum(['SUPER_ADMIN', 'FARM_OWNER', 'FARM_MANAGER', 'VETERINARIAN', 'WORKER']),
+    farmId: optionalString,
+  })
+  .refine(
+    (value) => {
+      if (value.role === 'FARM_MANAGER' || value.role === 'FARM_OWNER') {
+        return Boolean(value.phone && value.phone.trim().length >= 7);
+      }
+      return true;
+    },
+    { message: 'Phone number is required for farm owner and farm manager.', path: ['phone'] },
+  );
+
+export const updateUserSchema = z
+  .object({
+    fullName: z.string().min(2).optional(),
+    phone: optionalString,
+    password: z.string().min(6).optional(),
+    role: z.enum(['SUPER_ADMIN', 'FARM_OWNER', 'FARM_MANAGER', 'VETERINARIAN', 'WORKER']).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine(
+    (value) =>
+      value.fullName !== undefined ||
+      value.phone !== undefined ||
+      value.password !== undefined ||
+      value.role !== undefined ||
+      value.isActive !== undefined,
+    { message: 'Provide at least one field to update.' },
+  );
 
 export const cattleSchema = z.object({
   farmId: optionalString,

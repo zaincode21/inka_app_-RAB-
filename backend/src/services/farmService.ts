@@ -1,4 +1,7 @@
 import { prisma } from '../config/prisma.js';
+import { ApiError } from '../utils/apiError.js';
+import type { AuthUser } from '../utils/permissions.js';
+import { isSuperAdmin, resolveFarmIdForUser } from '../utils/permissions.js';
 
 export const DEFAULT_FARM_ID = 'default-farm';
 
@@ -22,8 +25,11 @@ export async function ensureDefaultFarm() {
     create: {
       id: DEFAULT_FARM_ID,
       name: 'Inka Farm',
-      ownerName: 'Farm Manager',
-      location: 'Rwanda',
+      ownerName: 'Farm Owner',
+      ownerPhone: '',
+      location: 'Gasabo, Remera',
+      district: 'Gasabo',
+      sector: 'Remera',
       currency: 'RWF',
       weightUnit: 'kg',
       milkUnit: 'L',
@@ -32,6 +38,25 @@ export async function ensureDefaultFarm() {
       milkPricePerLiter: 0,
     },
   });
+}
+
+export async function resolveFarmIdForRequest(
+  auth: AuthUser,
+  requestedFarmId?: string | null,
+): Promise<string> {
+  if (isSuperAdmin(auth)) {
+    const farmId = resolveFarmIdForUser(auth, requestedFarmId) ?? auth.farmId ?? DEFAULT_FARM_ID;
+    const farm = await prisma.farm.findUnique({ where: { id: farmId } });
+    if (!farm) {
+      throw new ApiError(404, 'Farm not found.');
+    }
+    return farm.id;
+  }
+
+  if (!auth.farmId) {
+    throw new ApiError(403, 'Your account is not linked to a farm.');
+  }
+  return auth.farmId;
 }
 
 function toSystemConfig(farm: {
@@ -60,20 +85,24 @@ function toSystemConfig(farm: {
   };
 }
 
-export async function getSystemConfig(): Promise<SystemConfig> {
-  const farm = await ensureDefaultFarm();
+export async function getSystemConfig(farmId: string): Promise<SystemConfig> {
+  const farm = await prisma.farm.findUnique({ where: { id: farmId } });
+  if (!farm) {
+    throw new ApiError(404, 'Farm not found.');
+  }
   return toSystemConfig(farm);
 }
 
-export async function updateSystemConfig(body: {
-  returnHeatDays?: number;
-  returnHeatTime?: string;
-  milkPricePerLiter?: number;
-  defaultMilkBuyer?: string;
-  defaultMilkDestination?: string;
-}): Promise<SystemConfig> {
-  await ensureDefaultFarm();
-
+export async function updateSystemConfig(
+  farmId: string,
+  body: {
+    returnHeatDays?: number;
+    returnHeatTime?: string;
+    milkPricePerLiter?: number;
+    defaultMilkBuyer?: string;
+    defaultMilkDestination?: string;
+  },
+): Promise<SystemConfig> {
   const data: {
     returnHeatDays?: number;
     returnHeatTime?: string;
@@ -99,9 +128,73 @@ export async function updateSystemConfig(body: {
   }
 
   const farm = await prisma.farm.update({
-    where: { id: DEFAULT_FARM_ID },
+    where: { id: farmId },
     data,
   });
 
   return toSystemConfig(farm);
+}
+
+export async function seedFarmCategories(farmId: string): Promise<void> {
+  const defaultCategories: Array<[string, string, number?]> = [
+    ['income', 'Milk Sale'],
+    ['income', 'Cattle Sale'],
+    ['income', 'Breeding Service'],
+    ['income', 'Manure Sale'],
+    ['expense', 'Feed'],
+    ['expense', 'Veterinary'],
+    ['expense', 'Transport'],
+    ['expense', 'Labor'],
+    ['expense', 'Utilities'],
+    ['breed', 'Friesian'],
+    ['breed', 'Jersey'],
+    ['breed', 'Ankole'],
+    ['breed', 'Crossbreed'],
+    ['group', 'Dairy'],
+    ['group', 'Breeding'],
+    ['group', 'Calving'],
+    ['group', 'Young stock'],
+    ['group', 'Calves'],
+    ['medicine', 'Oxytetracycline', 7],
+    ['medicine', 'Ivermectin', 28],
+    ['medicine', 'Multivitamin', 0],
+    ['event', 'Treated'],
+    ['event', 'Vaccinated'],
+    ['event', 'Deworming'],
+    ['event', 'Hoof Trimming'],
+    ['event', 'Pregnancy Diagnosis'],
+    ['event', 'Dry Off'],
+    ['event', 'Mastitis'],
+    ['event', 'Lameness'],
+    ['event', 'Heat Observed'],
+    ['event', 'Death'],
+    ['event', 'Euthanasia'],
+    ['event', 'Weighed'],
+    ['event', 'Breeding'],
+    ['event', 'Pregnant'],
+    ['event', 'Giving Birth'],
+    ['milkDestination', 'Home Use'],
+    ['milkDestination', 'Processor'],
+    ['milkDestination', 'Direct Customer'],
+  ];
+
+  for (const [kind, name, withdrawalDays] of defaultCategories) {
+    await prisma.category.upsert({
+      where: {
+        farmId_kind_name: {
+          farmId,
+          kind,
+          name,
+        },
+      },
+      update: {},
+      create: {
+        farmId,
+        kind,
+        name,
+        isDefault: true,
+        defaultWithdrawalDays: kind === 'medicine' ? (withdrawalDays ?? 0) : 0,
+      },
+    });
+  }
 }

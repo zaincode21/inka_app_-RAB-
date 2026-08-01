@@ -8,11 +8,13 @@ import {
 import {
   afterHealthEventCreate,
   afterHealthEventUpdate,
+  archiveLinkedEventTransactions,
   stripHealthEventExtras,
   validateHealthEventCreate,
   validateHealthEventUpdate,
 } from '../services/healthEventService.js';
 import { createCrudRouter, models } from '../lib/createCrudRouter.js';
+import { canDeleteEvents, canWriteEvents } from '../utils/permissions.js';
 
 const healthEventCrud = createCrudRouter({
   model: models.healthEvent,
@@ -30,11 +32,10 @@ const healthEventCrud = createCrudRouter({
   },
   listWhere: (query) => {
     const where: Record<string, unknown> = {
-      ...(typeof query.farmId === 'string' ? { farmId: query.farmId } : {}),
       ...(typeof query.eventType === 'string'
         ? { eventType: { equals: query.eventType, mode: 'insensitive' as const } }
         : {}),
-      ...(typeof query.cattleTag === 'string' ? { cattle: { tagNumber: query.cattleTag } } : {}),
+      ...(typeof query.cattleTag === 'string' ? { cattle: { tagNumber: query.cattleTag, deletedAt: null } } : {}),
       ...(typeof query.cattleId === 'string' ? { cattleId: query.cattleId } : {}),
       ...(typeof query.scope === 'string' ? { scope: query.scope.toUpperCase() } : {}),
     };
@@ -47,12 +48,29 @@ const healthEventCrud = createCrudRouter({
 
     return where;
   },
-  createData: stripHealthEventExtras,
-  updateData: stripHealthEventExtras,
-  beforeCreate: validateHealthEventCreate,
-  beforeUpdate: validateHealthEventUpdate,
-  afterCreate: afterHealthEventCreate,
-  afterUpdate: afterHealthEventUpdate,
+  createData: (body) => stripHealthEventExtras(body),
+  updateData: (body) => stripHealthEventExtras(body),
+  beforeCreate: async (body) => {
+    await validateHealthEventCreate(body);
+  },
+  beforeUpdate: async (id, body) => {
+    await validateHealthEventUpdate(id, body);
+  },
+  afterCreate: async (body, record, auth) => {
+    await afterHealthEventCreate(body, record, auth.id);
+  },
+  afterUpdate: async (id, body, record) => {
+    await afterHealthEventUpdate(id, body, record);
+  },
+  beforeDelete: async (id, _existing, auth) => {
+    await archiveLinkedEventTransactions(id, auth.id);
+  },
+  canCreate: (auth) => canWriteEvents(auth),
+  canUpdate: (auth) => canWriteEvents(auth),
+  canDelete: (auth) => canDeleteEvents(auth),
+  trackActor: true,
+  softDelete: true,
+  auditEntityType: 'HealthEvent',
 });
 
 export const healthEventRouter = Router();

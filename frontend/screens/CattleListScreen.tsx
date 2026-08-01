@@ -2,13 +2,16 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { FlatList, Pressable, Text, View } from 'react-native';
-import { formatNumber, getCattle, useDatabaseQuery } from '../data/farmDatabase';
+import { getCattle, useDatabaseQuery } from '../data/farmDatabase';
+import { getCurrentSession } from '../data/authApi';
+import { canWriteCattle } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CattleList'>;
 
 export function CattleListScreen({ navigation }: Props) {
   const { data: cattle, loading, error } = useDatabaseQuery(getCattle, []);
+  const canAdd = canWriteCattle(getCurrentSession()?.user);
 
   return (
     <View className="flex-1 bg-white">
@@ -32,29 +35,7 @@ export function CattleListScreen({ navigation }: Props) {
         }
         renderItem={({ item }) => (
           <Pressable
-            onPress={() =>
-              navigation.navigate('Detail', {
-                title: item.name,
-                subtitle: 'Cattle details',
-                editCattle: item,
-                details: [
-                  { label: 'Tag Number', value: item.tagNumber },
-                  { label: 'Name', value: item.name },
-                  { label: 'Breed', value: item.breed },
-                  { label: 'Gender', value: item.gender },
-                  { label: 'Cattle Stage', value: item.stage },
-                  { label: 'Weight', value: `${formatNumber(item.weightKg)} kg` },
-                  { label: 'Date of Birth', value: item.dateOfBirth || 'Not recorded' },
-                  { label: 'Farm Entry Date', value: item.entryDate || 'Not recorded' },
-                  { label: 'Group', value: item.groupName || 'Not assigned' },
-                  { label: 'How Obtained', value: item.source || 'Not recorded' },
-                  ...(item.sourceDetail ? [{ label: 'Other Source', value: item.sourceDetail }] : []),
-                  { label: 'Mother Tag', value: item.motherTag || 'Not recorded' },
-                  { label: 'Father Tag', value: item.fatherTag || 'Not recorded' },
-                  { label: 'Notes', value: item.notes || 'None' },
-                ],
-              })
-            }
+            onPress={() => navigation.navigate('CattleProfile', { cattleTag: item.tagNumber })}
             className="mx-2 mb-4 rounded-[12px] bg-[#E0F7F7] px-4 py-4 shadow"
           >
             <View className="mb-2 flex-row items-center">
@@ -80,13 +61,15 @@ export function CattleListScreen({ navigation }: Props) {
         )}
       />
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => navigation.navigate('AddCattle')}
-        className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#008B8B] shadow-lg"
-      >
-        <Feather name="plus" size={28} color="#FFFFFF" />
-      </Pressable>
+      {canAdd ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('AddCattle')}
+          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#008B8B] shadow-lg"
+        >
+          <Feather name="plus" size={28} color="#FFFFFF" />
+        </Pressable>
+      ) : null}
 
       <StatusBar style="light" />
     </View>

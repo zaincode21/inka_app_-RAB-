@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma.js';
+import { notDeleted } from './softDelete.js';
 
 type CattleStage = 'CALF' | 'WEANER' | 'HEIFER' | 'COW' | 'BULL' | 'STEER';
 type CattleRecord = {
@@ -86,6 +87,7 @@ export async function promoteCattleStagesByAge(): Promise<number> {
   const herd = await prisma.cattle.findMany({
     where: {
       status: { notIn: ['DEAD', 'SOLD', 'CULLED', 'INACTIVE'] },
+      ...notDeleted,
     },
     select: {
       id: true,

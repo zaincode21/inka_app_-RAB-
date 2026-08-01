@@ -2,13 +2,18 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { FlatList, Pressable, ScrollView, Text, View } from 'react-native';
-import { logout } from '../data/authApi';
+import { logout, getCurrentSession } from '../data/authApi';
+import { useRequireAccess } from '../data/accessGuard';
 import { formatMoney, getDashboardMetrics, getTransactions, useDatabaseQuery } from '../data/farmDatabase';
+import { canViewFinance, canWriteFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ManageExpenses'>;
 
 export function ManageExpensesScreen({ navigation }: Props) {
+  const user = getCurrentSession()?.user;
+  useRequireAccess(canViewFinance(user), navigation, 'You do not have permission to view financial records.');
+  const canWrite = canWriteFinance(user);
   const { data: metrics } = useDatabaseQuery(getDashboardMetrics, {
     calves: 0,
     cows: 0,
@@ -58,7 +63,7 @@ export function ManageExpensesScreen({ navigation }: Props) {
 
         <View className="mt-8 flex-row items-center justify-between">
           <Text className="text-[18px] font-bold text-[#1F2937]">Recent Transactions</Text>
-          <Pressable>
+          <Pressable onPress={() => navigation.navigate('Transactions')}>
             <Text className="text-[14px] text-[#008B8B]">View All</Text>
           </Pressable>
         </View>
@@ -106,13 +111,15 @@ export function ManageExpensesScreen({ navigation }: Props) {
         />
       </ScrollView>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => navigation.navigate('AddExpense')}
-        className="absolute bottom-24 right-6 rounded-[12px] bg-[#E6B86F] px-5 py-4 shadow-lg"
-      >
-        <Text className="text-[16px] font-bold text-white">+ Add</Text>
-      </Pressable>
+      {canWrite ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('AddExpense')}
+          className="absolute bottom-24 right-6 rounded-[12px] bg-[#E6B86F] px-5 py-4 shadow-lg"
+        >
+          <Text className="text-[16px] font-bold text-white">+ Add</Text>
+        </Pressable>
+      ) : null}
 
       <View className="absolute bottom-0 left-0 right-0 flex-row justify-between rounded-t-[20px] bg-[#008B8B] px-2 py-2">
         <BottomNavItem icon="home" label="Home" onPress={() => navigation.navigate('Dashboard')} />

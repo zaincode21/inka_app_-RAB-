@@ -2,6 +2,21 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useRef, useState } from 'react';
 import { apiRequest, toJsonBody } from './apiClient';
 
+export type RecordActor = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
+function formatActorName(actor?: RecordActor | null): string {
+  if (!actor) {
+    return '';
+  }
+  const name = `${actor.firstName ?? ''} ${actor.lastName ?? ''}`.trim();
+  return name || actor.email || '';
+}
+
 export type Cattle = {
   id: string;
   tagNumber: string;
@@ -29,6 +44,7 @@ export type Cattle = {
   fatherTag: string;
   notes: string;
   photoUri: string;
+  recordedBy: string;
   createdAt: string;
 };
 
@@ -52,6 +68,7 @@ export type MilkRecord = {
   proteinPercent: number;
   somaticCellCount: number;
   notes: string;
+  recordedBy: string;
   createdAt: string;
 };
 
@@ -87,6 +104,7 @@ export type HealthEvent = {
   sourceEventId: string;
   notes: string;
   photoUri: string;
+  recordedBy: string;
   createdAt: string;
 };
 
@@ -107,6 +125,7 @@ export type FarmTransaction = {
   linkedCattleTag: string;
   linkedMilkRecordId: string;
   notes: string;
+  recordedBy: string;
   createdAt: string;
 };
 
@@ -245,11 +264,11 @@ export async function getMilkWithdrawalStatus(cattleTag: string, onDate: string)
   return apiRequest<MilkWithdrawalStatus>(`/events/milk-withdrawal?${params.toString()}`);
 }
 
-export async function createCattle(input: Omit<Cattle, 'id' | 'createdAt'>): Promise<void> {
+export async function createCattle(input: Omit<Cattle, 'id' | 'createdAt' | 'recordedBy'>): Promise<void> {
   await apiRequest<BackendCattle>('/cattle', toJsonBody(toBackendCattle(input)));
 }
 
-export async function updateCattle(id: string, input: Omit<Cattle, 'id' | 'createdAt'>): Promise<void> {
+export async function updateCattle(id: string, input: Omit<Cattle, 'id' | 'createdAt' | 'recordedBy'>): Promise<void> {
   await apiRequest<BackendCattle>(`/cattle/${id}`, {
     ...toJsonBody(toBackendCattle(input)),
     method: 'PATCH',
@@ -262,7 +281,7 @@ export async function getCattle(): Promise<Cattle[]> {
 }
 
 export async function createMilkRecord(
-  input: Omit<MilkRecord, 'id' | 'createdAt'> & { createMilkSale?: boolean; paymentMethod?: string },
+  input: Omit<MilkRecord, 'id' | 'createdAt' | 'recordedBy'> & { createMilkSale?: boolean; paymentMethod?: string },
 ): Promise<MilkRecord> {
   const { createMilkSale, paymentMethod, ...milk } = input;
   const row = await apiRequest<BackendMilkRecord>(
@@ -281,7 +300,7 @@ export async function getMilkRecords(): Promise<MilkRecord[]> {
   return rows.map(mapBackendMilkRecord);
 }
 
-export async function createHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt'>): Promise<HealthEvent> {
+export async function createHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt' | 'recordedBy'>): Promise<HealthEvent> {
   const row = await apiRequest<BackendHealthEvent>('/events', toJsonBody(await toBackendHealthEvent(input)));
   return mapBackendHealthEvent(row);
 }
@@ -330,7 +349,7 @@ export async function getBirthPrefillEvent(cattleTag: string): Promise<HealthEve
   return row ? mapBackendHealthEvent(row) : null;
 }
 
-export async function updateHealthEvent(id: string, input: Omit<HealthEvent, 'id' | 'createdAt'>): Promise<void> {
+export async function updateHealthEvent(id: string, input: Omit<HealthEvent, 'id' | 'createdAt' | 'recordedBy'>): Promise<void> {
   await apiRequest<BackendHealthEvent>(`/events/${id}`, {
     ...toJsonBody(await toBackendHealthEvent(input)),
     method: 'PATCH',
@@ -341,7 +360,7 @@ export async function deleteHealthEvent(id: string): Promise<void> {
   await apiRequest<void>(`/events/${id}`, { method: 'DELETE' });
 }
 
-export async function createTransaction(input: Omit<FarmTransaction, 'id' | 'createdAt'>): Promise<void> {
+export async function createTransaction(input: Omit<FarmTransaction, 'id' | 'createdAt' | 'recordedBy'>): Promise<void> {
   await apiRequest<BackendTransaction>('/transactions', toJsonBody(await toBackendTransaction(input)));
 }
 
@@ -352,6 +371,52 @@ export async function getTransactions(): Promise<FarmTransaction[]> {
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   return apiRequest<DashboardMetrics>('/reports/dashboard');
+}
+
+export type AuditLogItem = {
+  id: string;
+  farmId: string | null;
+  actorId: string | null;
+  actorName: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  summary: string | null;
+  createdAt: string;
+};
+
+export type AuditLogPage = {
+  page: number;
+  limit: number;
+  total: number;
+  items: AuditLogItem[];
+};
+
+export async function listAuditLogs(options?: {
+  entityType?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}): Promise<AuditLogPage> {
+  const params = new URLSearchParams();
+  if (options?.entityType) {
+    params.set('entityType', options.entityType);
+  }
+  if (options?.from) {
+    params.set('from', options.from);
+  }
+  if (options?.to) {
+    params.set('to', options.to);
+  }
+  if (options?.page) {
+    params.set('page', String(options.page));
+  }
+  if (options?.limit) {
+    params.set('limit', String(options.limit));
+  }
+  const query = params.toString();
+  return apiRequest<AuditLogPage>(`/audit-logs${query ? `?${query}` : ''}`);
 }
 
 export async function getReportSummaries(): Promise<ReportSummary[]> {
@@ -474,6 +539,13 @@ type BackendCategory = {
   createdAt: string;
 };
 
+type BackendActor = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
 type BackendCattle = {
   id: string;
   tagNumber: string;
@@ -501,6 +573,7 @@ type BackendCattle = {
   fatherTag?: string | null;
   notes?: string | null;
   photoUri?: string | null;
+  createdBy?: BackendActor | null;
   createdAt: string;
 };
 
@@ -527,6 +600,7 @@ type BackendMilkRecord = {
   proteinPercent: number | string;
   somaticCellCount: number | string;
   notes?: string | null;
+  createdBy?: BackendActor | null;
   createdAt: string;
 };
 
@@ -565,6 +639,7 @@ type BackendHealthEvent = {
   sourceEventId?: string | null;
   notes?: string | null;
   photoUri?: string | null;
+  createdBy?: BackendActor | null;
   createdAt: string;
 };
 
@@ -584,6 +659,7 @@ type BackendTransaction = {
   discountAmount: number | string;
   milkRecordId?: string | null;
   notes?: string | null;
+  createdBy?: BackendActor | null;
   createdAt: string;
 };
 
@@ -594,7 +670,7 @@ type BackendReportSummary = {
   detail: string;
 };
 
-function toBackendCattle(input: Omit<Cattle, 'id' | 'createdAt'>) {
+function toBackendCattle(input: Omit<Cattle, 'id' | 'createdAt' | 'recordedBy'>) {
   return {
     tagNumber: input.tagNumber,
     name: input.name,
@@ -624,7 +700,7 @@ function toBackendCattle(input: Omit<Cattle, 'id' | 'createdAt'>) {
   };
 }
 
-function toBackendMilkRecord(input: Omit<MilkRecord, 'id' | 'createdAt'>) {
+function toBackendMilkRecord(input: Omit<MilkRecord, 'id' | 'createdAt' | 'recordedBy'>) {
   return {
     cattleId: emptyToUndefined(input.cattleId),
     date: dateOrUndefined(input.date) ?? todayIsoDate(),
@@ -645,7 +721,7 @@ function toBackendMilkRecord(input: Omit<MilkRecord, 'id' | 'createdAt'>) {
   };
 }
 
-async function toBackendHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt'>) {
+async function toBackendHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt' | 'recordedBy'>) {
   const cattleId = input.cattleTag ? await findCattleIdByTag(input.cattleTag) : undefined;
   return {
     cattleId,
@@ -681,7 +757,7 @@ async function toBackendHealthEvent(input: Omit<HealthEvent, 'id' | 'createdAt'>
   };
 }
 
-async function toBackendTransaction(input: Omit<FarmTransaction, 'id' | 'createdAt'>) {
+async function toBackendTransaction(input: Omit<FarmTransaction, 'id' | 'createdAt' | 'recordedBy'>) {
   const cattleId = input.linkedCattleTag ? await findCattleIdByTag(input.linkedCattleTag) : undefined;
   return {
     cattleId,
@@ -741,6 +817,7 @@ function mapBackendCattle(row: BackendCattle): Cattle {
     fatherTag: row.fatherTag ?? '',
     notes: row.notes ?? '',
     photoUri: row.photoUri ?? '',
+    recordedBy: formatActorName(row.createdBy),
     createdAt: row.createdAt,
   };
 }
@@ -766,6 +843,7 @@ function mapBackendMilkRecord(row: BackendMilkRecord): MilkRecord {
     proteinPercent: toNumber(row.proteinPercent),
     somaticCellCount: toNumber(row.somaticCellCount),
     notes: row.notes ?? '',
+    recordedBy: formatActorName(row.createdBy),
     createdAt: row.createdAt,
   };
 }
@@ -802,6 +880,7 @@ function mapBackendHealthEvent(row: BackendHealthEvent): HealthEvent {
     sourceEventId: row.sourceEventId ?? '',
     notes: row.notes ?? '',
     photoUri: row.photoUri ?? '',
+    recordedBy: formatActorName(row.createdBy),
     createdAt: row.createdAt,
   };
 }
@@ -824,6 +903,7 @@ function mapBackendTransaction(row: BackendTransaction): FarmTransaction {
     linkedCattleTag: '',
     linkedMilkRecordId: row.milkRecordId ?? '',
     notes: row.notes ?? '',
+    recordedBy: formatActorName(row.createdBy),
     createdAt: row.createdAt,
   };
 }

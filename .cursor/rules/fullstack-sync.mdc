@@ -43,7 +43,13 @@ router.delete('/:id', ...)
 ## Current API surface
 
 - `/api/v1/categories`, `/cattle`, `/milk-records`, `/events`, `/transactions`
+- `/api/v1/users` (Owner/Super Admin), `/api/v1/users/me`
+- Role capabilities: Worker = milk write; Vet = events write; Manager = cattle/milk/events + finance view; Owner = all including finance write / setup / users
 - `/api/v1/events/latest-breeding?cattleTag=...` for pregnancy prefill from breeding records
 - `/api/v1/events/birth-prefill?cattleTag=...` for birth prefill from pregnancy and breeding records
 - `/api/v1/reports/dashboard`, `/api/v1/reports/summaries`
-- CRUD resources use `backend/src/lib/createCrudRouter.ts` (includes DELETE)
+- Authenticated routes require `Authorization: Bearer <token>`
+- `POST /auth/change-password` (authenticated) for self-service password update
+- `POST /auth/forgot-password` `{ email }` and `POST /auth/reset-password` `{ token, newPassword }` (unauthenticated)
+- `GET /audit-logs` (Owner/Super Admin) activity trail for create/update/soft-delete and auth events
+- CRUD resources use `backend/src/lib/createCrudRouter.ts` (includes DELETE; create/update/delete gated by role; `trackActor` stamps createdBy/updatedBy; `softDelete` archives instead of removing rows; `auditEntityType` writes AuditLog)

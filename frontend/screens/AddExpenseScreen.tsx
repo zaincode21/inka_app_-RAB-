@@ -2,9 +2,13 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
+import { useRequireAccess } from '../data/accessGuard';
+import { getCurrentSession } from '../data/authApi';
 import { createTransaction, getCategories, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
+import { canWriteFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddExpense'>;
@@ -12,6 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddExpense'>;
 const paymentMethods = ['Cash', 'Mobile Money', 'Bank Transfer', 'Credit'];
 
 export function AddExpenseScreen({ navigation }: Props) {
+  useRequireAccess(canWriteFinance(getCurrentSession()?.user), navigation);
   const { data: categories } = useDatabaseQuery(() => getCategories('expense'), []);
   const expenseTypes = useMemo(() => [...categories.map((category) => category.name), 'Other'], [categories]);
   const [date, setDate] = useState(todayIsoDate());
@@ -69,7 +74,16 @@ export function AddExpenseScreen({ navigation }: Props) {
         <Text className="flex-1 pl-4 text-[24px] font-bold text-white">New Expense</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}>
+      <KeyboardSafeScroll
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 }}
+        footer={
+          <View className="px-6 pb-6">
+            <Pressable onPress={saveExpense} className="h-[56px] items-center justify-center rounded-[12px] bg-[#E6B86F]">
+              <Text className="text-[16px] font-bold text-white">Save</Text>
+            </Pressable>
+          </View>
+        }
+      >
         <Field label="Date" placeholder="YYYY-MM-DD" value={date} onChangeText={setDate} />
 
         <SelectDropdown label="Expense Type" value={expenseType} placeholder="Select" options={expenseTypes} onSelect={setExpenseType} />
@@ -86,13 +100,7 @@ export function AddExpenseScreen({ navigation }: Props) {
         <Field label="Discount Amount" placeholder="0" keyboardType="decimal-pad" value={discountAmount} onChangeText={setDiscountAmount} />
         <Field label="Linked Cattle Tag" placeholder="Optional animal tag" value={linkedCattleTag} onChangeText={setLinkedCattleTag} />
         <Field label="Notes" placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
-      </ScrollView>
-
-      <View className="px-6 pb-6">
-        <Pressable onPress={saveExpense} className="h-[56px] items-center justify-center rounded-[12px] bg-[#E6B86F]">
-          <Text className="text-[16px] font-bold text-white">Save</Text>
-        </Pressable>
-      </View>
+      </KeyboardSafeScroll>
 
       <StatusBar style="light" />
     </View>
