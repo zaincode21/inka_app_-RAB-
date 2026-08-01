@@ -11,11 +11,22 @@ export type AuthUser = {
   phone: string | null;
   role: string;
   farmId: string | null;
+  farmName?: string | null;
 };
 
 export type AuthSession = {
   token: string;
   user: AuthUser;
+};
+
+export type MyFarm = {
+  farmId: string;
+  name: string;
+  location: string;
+  district: string;
+  sector: string;
+  role: string;
+  isActive: boolean;
 };
 
 export type ManagedUser = AuthUser & {
@@ -106,6 +117,16 @@ export function getCurrentSession(): AuthSession | null {
 
 export async function logout() {
   await persistSession(null);
+}
+
+export async function listMyFarms(): Promise<MyFarm[]> {
+  return apiRequest<MyFarm[]>('/farms/mine');
+}
+
+export async function switchFarm(farmId: string): Promise<AuthSession> {
+  const session = await apiRequest<AuthSession>('/auth/switch-farm', toJsonBody({ farmId }));
+  await persistSession(session);
+  return session;
 }
 
 export async function listUsers(farmId?: string): Promise<ManagedUser[]> {

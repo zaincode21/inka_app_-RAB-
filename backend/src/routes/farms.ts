@@ -2,9 +2,11 @@ import { farmSchema, updateFarmSchema } from '../schemas/resourceSchemas.js';
 import { getSystemConfig, patchSystemConfig } from '../controllers/farmController.js';
 import { createCrudRouter, models } from '../lib/createCrudRouter.js';
 import { isSuperAdmin, type AuthUser } from '../utils/permissions.js';
-import { requireAnyRole } from '../middleware/auth.js';
+import { authenticate, requireAnyRole, requireAuthUser } from '../middleware/auth.js';
 import { ApiError, notFound } from '../utils/apiError.js';
 import { Router } from 'express';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { listFarmsForUser } from '../services/farmMembershipService.js';
 
 function assertFarmRowAccess(auth: AuthUser, record: Record<string, unknown>) {
   if (isSuperAdmin(auth)) {
@@ -42,4 +44,12 @@ export const farmRouter = Router();
 
 farmRouter.get('/system-config', getSystemConfig);
 farmRouter.patch('/system-config', requireAnyRole('FARM_OWNER'), patchSystemConfig);
+farmRouter.get(
+  '/mine',
+  authenticate,
+  asyncHandler(async (request, response) => {
+    const auth = requireAuthUser(request);
+    response.json(await listFarmsForUser(auth));
+  }),
+);
 farmRouter.use(farmCrud);

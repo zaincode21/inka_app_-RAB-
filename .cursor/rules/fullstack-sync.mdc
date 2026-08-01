@@ -42,9 +42,11 @@ router.delete('/:id', ...)
 
 ## Current API surface
 
-- `/api/v1/categories`, `/cattle`, `/milk-records`, `/events`, `/transactions`
+- `/api/v1/categories`, `/cattle`, `/milk-records`, `/events`, `/transactions`, `/inventory`
 - `POST /cattle/:id/exit` for sold/culled/dead/inactive with optional linked sale/disposal transaction
 - `/api/v1/users` (Owner/Super Admin), `/api/v1/users/me`
+- `GET /farms/mine`, `POST /auth/switch-farm` for multi-farm memberships (`FarmMembership`)
+- `/api/v1/inventory` (+ `/:id/receive`, `/:id/use`, `/:id/movements`) for feed stock
 - Role capabilities: Worker = milk write; Vet = events write; Manager = cattle/milk/events + finance view; Owner = all including finance write / setup / users
 - `/api/v1/events/latest-breeding?cattleTag=...` for pregnancy prefill from breeding records
 - `/api/v1/events/birth-prefill?cattleTag=...` for birth prefill from pregnancy and breeding records

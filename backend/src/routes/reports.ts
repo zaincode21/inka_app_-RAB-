@@ -6,6 +6,7 @@ import { resolveFarmIdForRequest } from '../services/farmService.js';
 import { notDeleted } from '../utils/softDelete.js';
 import { ApiError } from '../utils/apiError.js';
 import { canViewFinance } from '../utils/permissions.js';
+import { addDays, isoDate, parseDateRange, startOfDay, toCsv } from '../utils/reportExport.js';
 
 export const reportRouter = Router();
 
@@ -346,55 +347,3 @@ reportRouter.get(
   }),
 );
 
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function isoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function parseDateQuery(value: unknown, fallback: Date): Date {
-  if (typeof value !== 'string' || !value.trim()) {
-    return startOfDay(fallback);
-  }
-  const parsed = new Date(`${value.trim()}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new ApiError(400, 'Invalid date. Use YYYY-MM-DD.');
-  }
-  return startOfDay(parsed);
-}
-
-function parseDateRange(fromRaw: unknown, toRaw: unknown) {
-  const today = startOfDay(new Date());
-  const defaultFrom = new Date(today.getFullYear(), today.getMonth(), 1);
-  const from = parseDateQuery(fromRaw, defaultFrom);
-  const toInclusive = parseDateQuery(toRaw, today);
-  if (toInclusive < from) {
-    throw new ApiError(400, '`to` must be on or after `from`.');
-  }
-  const toExclusive = addDays(toInclusive, 1);
-  return { from, toExclusive };
-}
-
-function csvEscape(value: string | number) {
-  const text = String(value ?? '');
-  if (/[",\n\r]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-  return text;
-}
-
-function toCsv(headers: string[], rows: Array<Array<string | number>>) {
-  const lines = [headers.map(csvEscape).join(',')];
-  for (const row of rows) {
-    lines.push(row.map(csvEscape).join(','));
-  }
-  return `${lines.join('\n')}\n`;
-}

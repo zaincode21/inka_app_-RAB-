@@ -5,6 +5,7 @@ import { ApiError } from '../utils/apiError.js';
 import type { AuthUser } from '../utils/permissions.js';
 import { canManageUsers, isSuperAdmin } from '../utils/permissions.js';
 import { seedFarmCategories } from './farmService.js';
+import { ensureMembership } from './farmMembershipService.js';
 
 export type PublicUser = {
   id: string;
@@ -90,6 +91,14 @@ export async function registerFarmOwner(input: {
       select: publicUserSelect,
     });
 
+    await tx.farmMembership.create({
+      data: {
+        userId: user.id,
+        farmId: farm.id,
+        role: 'FARM_OWNER',
+      },
+    });
+
     return { farm, user };
   });
 
@@ -115,7 +124,9 @@ export async function listUsers(actor: AuthUser, farmIdFilter?: string): Promise
   }
 
   return prisma.user.findMany({
-    where: { farmId: actor.farmId },
+    where: {
+      OR: [{ farmId: actor.farmId }, { memberships: { some: { farmId: actor.farmId } } }],
+    },
     orderBy: { createdAt: 'desc' },
     select: publicUserSelect,
   });
@@ -185,6 +196,10 @@ export async function createFarmUser(
     select: publicUserSelect,
   });
 
+  if (role !== 'SUPER_ADMIN' && farmId) {
+    await ensureMembership(user.id, farmId, role);
+  }
+
   return toPublicUser(user);
 }
 
@@ -209,7 +224,15 @@ export async function updateFarmUser(
   }
 
   if (!isSuperAdmin(actor)) {
-    if (!actor.farmId || existing.farmId !== actor.farmId) {
+    if (!actor.farmId) {
+      throw new ApiError(403, 'Your account is not linked to a farm.');
+    }
+    const onFarm =
+      existing.farmId === actor.farmId ||
+      (await prisma.farmMembership.findUnique({
+        where: { userId_farmId: { userId: existing.id, farmId: actor.farmId } },
+      }));
+    if (!onFarm) {
       throw new ApiError(404, 'User not found.');
     }
     if (existing.role === 'FARM_OWNER' || existing.role === 'SUPER_ADMIN') {
@@ -256,6 +279,11 @@ export async function updateFarmUser(
     data,
     select: publicUserSelect,
   });
+
+  const membershipFarmId = user.farmId || actor.farmId;
+  if (input.role && membershipFarmId && user.role !== 'SUPER_ADMIN') {
+    await ensureMembership(user.id, membershipFarmId, input.role);
+  }
 
   return toPublicUser(user);
 }

@@ -79,6 +79,10 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const switchFarmSchema = z.object({
+  farmId: z.string().min(1, 'farmId is required.'),
+});
+
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password is required.'),
@@ -264,4 +268,36 @@ export const cattleExitSchema = z.object({
   amount: z.coerce.number().nonnegative().optional(),
   buyerVendor: optionalString,
   paymentMethod: optionalString,
+});
+
+export const inventoryItemSchema = z.object({
+  name: z.string().trim().min(1),
+  category: z.string().trim().min(1).default('Feed'),
+  unit: z.string().trim().min(1).default('kg'),
+  quantityOnHand: z.coerce.number().nonnegative().default(0),
+  reorderLevel: z.coerce.number().nonnegative().default(0),
+  notes: optionalString,
+});
+
+export const updateInventoryItemSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  category: z.string().trim().min(1).optional(),
+  unit: z.string().trim().min(1).optional(),
+  reorderLevel: z.coerce.number().nonnegative().optional(),
+  notes: optionalString,
+});
+
+export const inventoryReceiveSchema = z.object({
+  quantity: z.coerce.number().positive(),
+  unitCost: z.coerce.number().nonnegative().optional(),
+  date: z.coerce.date(),
+  notes: optionalString,
+  createExpense: z.boolean().optional(),
+  vendor: optionalString,
+});
+
+export const inventoryUseSchema = z.object({
+  quantity: z.coerce.number().positive(),
+  date: z.coerce.date(),
+  notes: optionalString,
 });

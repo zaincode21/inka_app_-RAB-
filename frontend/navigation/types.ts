@@ -29,6 +29,9 @@ export type RootStackParamList = {
   CattleExit: { cattleTag: string };
   AddIncome: undefined;
   AddExpense: undefined;
+  Inventory: undefined;
+  InventoryReceive: { itemId: string; itemName: string; unit: string };
+  InventoryUse: { itemId: string; itemName: string; unit: string };
   Detail: {
     title: string;
     subtitle?: string;

@@ -513,6 +513,95 @@ export async function restoreArchivedRecord(kind: ArchivedRecordKind, id: string
   await apiRequest<unknown>(path, { method: 'POST' });
 }
 
+export type InventoryItem = {
+  id: string;
+  farmId: string | null;
+  name: string;
+  category: string;
+  unit: string;
+  quantityOnHand: number;
+  reorderLevel: number;
+  notes: string | null;
+  lowStock: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InventoryMovement = {
+  id: string;
+  itemId: string;
+  kind: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  date: string;
+  notes: string | null;
+  transactionId: string | null;
+  createdAt: string;
+};
+
+export async function getInventoryItems(): Promise<InventoryItem[]> {
+  return apiRequest<InventoryItem[]>('/inventory');
+}
+
+export async function createInventoryItem(input: {
+  name: string;
+  category?: string;
+  unit?: string;
+  quantityOnHand?: number;
+  reorderLevel?: number;
+  notes?: string;
+}): Promise<InventoryItem> {
+  return apiRequest<InventoryItem>('/inventory', toJsonBody(input));
+}
+
+export async function updateInventoryItem(
+  id: string,
+  input: {
+    name?: string;
+    category?: string;
+    unit?: string;
+    reorderLevel?: number;
+    notes?: string;
+  },
+): Promise<InventoryItem> {
+  return apiRequest<InventoryItem>(`/inventory/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function receiveInventory(
+  id: string,
+  input: {
+    quantity: number;
+    unitCost?: number;
+    date: string;
+    notes?: string;
+    createExpense?: boolean;
+    vendor?: string;
+  },
+): Promise<{ item: InventoryItem; movement: InventoryMovement }> {
+  return apiRequest(`/inventory/${id}/receive`, toJsonBody({
+    ...input,
+    date: dateOrUndefined(input.date) ?? todayIsoDate(),
+  }));
+}
+
+export async function useInventory(
+  id: string,
+  input: { quantity: number; date: string; notes?: string },
+): Promise<{ item: InventoryItem; movement: InventoryMovement }> {
+  return apiRequest(`/inventory/${id}/use`, toJsonBody({
+    ...input,
+    date: dateOrUndefined(input.date) ?? todayIsoDate(),
+  }));
+}
+
+export async function getInventoryMovements(id: string): Promise<InventoryMovement[]> {
+  return apiRequest<InventoryMovement[]>(`/inventory/${id}/movements`);
+}
+
 export type AttachmentOwnerType = 'cattle' | 'healthEvent' | 'transaction' | 'milkRecord';
 
 export type FarmAttachment = {

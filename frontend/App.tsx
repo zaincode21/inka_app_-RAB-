@@ -32,6 +32,9 @@ import {
   AddExpenseScreen,
   CattleProfileScreen,
   CattleExitScreen,
+  InventoryScreen,
+  InventoryReceiveScreen,
+  InventoryUseScreen,
   CowLifeCycleScreen,
   DetailScreen,
 } from './screens';
@@ -100,6 +103,9 @@ export default function App() {
         <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
         <Stack.Screen name="CattleProfile" component={CattleProfileScreen} />
         <Stack.Screen name="CattleExit" component={CattleExitScreen} />
+        <Stack.Screen name="Inventory" component={InventoryScreen} />
+        <Stack.Screen name="InventoryReceive" component={InventoryReceiveScreen} />
+        <Stack.Screen name="InventoryUse" component={InventoryUseScreen} />
         <Stack.Screen name="CowLifeCycle" component={CowLifeCycleScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />
       </Stack.Navigator>

@@ -11,9 +11,10 @@ import {
   canViewFinance,
   roleLabel,
 } from '../data/permissions';
-import { formatMoney, formatNumber, getDashboardMetrics, useDatabaseQuery } from '../data/farmDatabase';
+import { formatMoney, formatNumber, getDashboardMetrics, getInventoryItems, useDatabaseQuery } from '../data/farmDatabase';
 import { flushOfflineQueue, getOfflineQueueCount } from '../data/offlineQueue';
 import { syncFarmReminders, type FarmAlert } from '../data/reminderService';
+import { FarmSwitcher } from '../components/FarmSwitcher';
 import type { RootStackParamList } from '../navigation/types';
 
 type MetricIconProps = {
@@ -32,7 +33,8 @@ export function DashboardScreen({ navigation }: Props) {
   const [alerts, setAlerts] = useState<FarmAlert[]>([]);
   const [pendingSync, setPendingSync] = useState(0);
   const [syncing, setSyncing] = useState(false);
-  const { data: metrics } = useDatabaseQuery(getDashboardMetrics, {
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const { data: metrics, reload: reloadMetrics } = useDatabaseQuery(getDashboardMetrics, {
     calves: 0,
     cows: 0,
     bulls: 0,
@@ -47,12 +49,17 @@ export function DashboardScreen({ navigation }: Props) {
       let active = true;
       void (async () => {
         try {
-          const [nextAlerts, queueCount] = await Promise.all([syncFarmReminders(), getOfflineQueueCount()]);
+          const [nextAlerts, queueCount, inventory] = await Promise.all([
+            syncFarmReminders(),
+            getOfflineQueueCount(),
+            getInventoryItems().catch(() => []),
+          ]);
           if (!active) {
             return;
           }
           setAlerts(nextAlerts);
           setPendingSync(queueCount);
+          setLowStockCount(inventory.filter((item) => item.lowStock).length);
           if (queueCount > 0) {
             setSyncing(true);
             const result = await flushOfflineQueue();
@@ -111,6 +118,9 @@ export function DashboardScreen({ navigation }: Props) {
             <View>
               <Text className="text-[24px] font-extrabold leading-[28px] text-white">Good Morning,</Text>
               <Text className="text-[24px] font-extrabold leading-[28px] text-white">{session?.user.firstName ?? 'Farmer'}</Text>
+              {session?.user.farmName ? (
+                <Text className="mt-1 text-[12px] font-semibold text-white/90">{session.user.farmName}</Text>
+              ) : null}
               {session?.user.role ? (
                 <Text className="mt-1 text-[12px] font-semibold text-white/80">{roleLabel(session.user.role)}</Text>
               ) : null}
@@ -126,6 +136,42 @@ export function DashboardScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
         <View className="px-6 pt-5">
           <Text className="text-[18px] font-extrabold text-[#008B8B]">Dashboard</Text>
+
+          <View className="mt-3">
+            <FarmSwitcher
+              compact
+              onSwitched={() => {
+                void (async () => {
+                  try {
+                    await reloadMetrics();
+                    const [nextAlerts, queueCount] = await Promise.all([
+                      syncFarmReminders(),
+                      getOfflineQueueCount(),
+                    ]);
+                    setAlerts(nextAlerts);
+                    setPendingSync(queueCount);
+                  } catch {
+                    setAlerts([]);
+                  }
+                })();
+              }}
+            />
+          </View>
+
+          {lowStockCount > 0 ? (
+            <Pressable
+              onPress={() => navigation.navigate('Inventory')}
+              className="mt-4 flex-row items-center rounded-[16px] border border-[#FCD34D] bg-[#FFFBEB] px-4 py-3"
+            >
+              <Feather name="package" size={18} color="#B45309" />
+              <View className="ml-3 flex-1">
+                <Text className="text-[14px] font-bold text-[#92400E]">
+                  {lowStockCount} inventory item{lowStockCount === 1 ? '' : 's'} low on stock
+                </Text>
+                <Text className="mt-1 text-[12px] text-[#A16207]">Tap to review feed inventory</Text>
+              </View>
+            </Pressable>
+          ) : null}
 
           {pendingSync > 0 ? (
             <Pressable
@@ -229,6 +275,7 @@ export function DashboardScreen({ navigation }: Props) {
             <QuickLink icon="repeat" label="Life Cycle" onPress={() => navigation.navigate('CowLifeCycle')} />
             <QuickLink icon="coffee" label="Milk Records" onPress={() => navigation.navigate('MilkRecords')} />
             <QuickLink icon="calendar" label="Events" onPress={() => navigation.navigate('Events')} />
+            <QuickLink icon="package" label="Inventory" onPress={() => navigation.navigate('Inventory')} />
             {showFinance ? (
               <QuickLink icon="dollar-sign" label="Transactions" onPress={() => navigation.navigate('Transactions')} />
             ) : null}

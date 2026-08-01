@@ -6,12 +6,13 @@ import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { authenticate, requireAuthUser } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
-import { changePasswordSchema, forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '../schemas/resourceSchemas.js';
+import { changePasswordSchema, forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, switchFarmSchema } from '../schemas/resourceSchemas.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { registerFarmOwner } from '../services/userService.js';
 import { requestPasswordReset, resetPasswordWithToken } from '../services/passwordResetService.js';
 import { writeAudit } from '../services/auditService.js';
+import { getFarmName, switchActiveFarm } from '../services/farmMembershipService.js';
 
 export const authRouter = Router();
 
@@ -30,7 +31,7 @@ authRouter.post(
     };
 
     const user = await registerFarmOwner(body);
-    response.status(201).json(createAuthResponse(user));
+    response.status(201).json(await createAuthResponse(user));
   }),
 );
 
@@ -59,7 +60,27 @@ authRouter.post(
       summary: `Signed in (${user.email})`,
     });
 
-    response.json(createAuthResponse(user));
+    response.json(await createAuthResponse(user));
+  }),
+);
+
+authRouter.post(
+  '/switch-farm',
+  authenticate,
+  validateBody(switchFarmSchema),
+  asyncHandler(async (request, response) => {
+    const auth = requireAuthUser(request);
+    const { farmId } = request.body as { farmId: string };
+    const switched = await switchActiveFarm(auth, farmId);
+    await writeAudit({
+      actorId: switched.user.id,
+      farmId: switched.farm.id,
+      action: 'SWITCH_FARM',
+      entityType: 'Farm',
+      entityId: switched.farm.id,
+      summary: `Switched active farm to ${switched.farm.name}`,
+    });
+    response.json(await createAuthResponse(switched.user, switched.farm.name));
   }),
 );
 
@@ -131,20 +152,25 @@ authRouter.post(
   }),
 );
 
-function createAuthResponse(user: {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-  role: UserRole;
-  farmId: string | null;
-}) {
+async function createAuthResponse(
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string | null;
+    role: UserRole;
+    farmId: string | null;
+  },
+  farmName?: string | null,
+) {
   const token = jwt.sign(
     { sub: user.id, email: user.email, role: user.role, farmId: user.farmId },
     env.jwtSecret,
     { expiresIn: '7d' },
   );
+
+  const resolvedFarmName = farmName === undefined ? await getFarmName(user.farmId) : farmName;
 
   return {
     token,
@@ -156,6 +182,7 @@ function createAuthResponse(user: {
       phone: user.phone,
       role: user.role,
       farmId: user.farmId,
+      farmName: resolvedFarmName,
     },
   };
 }

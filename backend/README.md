@@ -89,8 +89,10 @@ All business routes are under `/api/v1`.
   - `PATCH /users/:id`: update role, `isActive`, password, name/phone.
 - `GET /health` and `GET /api/v1/health`: service status.
 - `/api/v1/farms`: farm profile records.
+  - `GET /farms/mine`: farms the caller can access (memberships; Super Admin sees all). Includes `isActive` for the current session farm.
   - `GET /farms/system-config`: system configuration for the caller's farm.
   - `PATCH /farms/system-config`: Owner/Super Admin only — partial update of system settings.
+- `POST /api/v1/auth/switch-farm` `{ farmId }`: switch active farm (updates `User.farmId` / membership role, returns new JWT + `user.farmName`).
 - `/api/v1/categories`: configurable breeds, groups, medicines, event types, income categories, expense categories, and milk destinations. Mutations: Owner/Super Admin only.
 - `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records. Listing cattle auto-promotes lifecycle stages by age (never demotes). Create/update stamp `createdByUserId` / `updatedByUserId`; list/get include `createdBy`. `DELETE` soft-archives (`deletedAt`); prefer status change (sold/culled/dead) for herd exits via `POST /cattle/:id/exit` (optional Cattle Sale / Cattle Disposal transaction).
 - `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records (`fatPercent`, `proteinPercent`, `somaticCellCount`). Actor tracking and soft-delete same as cattle. App supports create, edit (`PATCH`), and soft-delete from Milk Records UI. Individual milk requires an **Active** cattle link.
@@ -107,6 +109,12 @@ All business routes are under `/api/v1`.
   - Breeding, Pregnant, and Pregnancy Diagnosis events reject bulls that match the female's father or maternal grandfather (mother's father).
   - Reproductive cycle: Kwimisha (Breeding) sets `followUpDate` to the return-heat date. After the return-heat window, the Events UI offers **Heat returned** or **Confirm Gusama**. Open Gusama cards offer **Kuramburura (Abort)** (notes required) or **Kubyara (Birth)** (opens birth form). Linked events store `sourceEventId`. Creating a second open Pregnant for the same animal is blocked until Abort or Birth closes the cycle.
 - `/api/v1/transactions`: income and expense records with category, amount, quantity, unit price, buyer/vendor, payment, receipt, tax, discount, and resource links. Actor tracking and soft-delete same as cattle. Delete: Owner/Super Admin only.
+- `/api/v1/inventory`: feed and store items with `quantityOnHand` / `reorderLevel`.
+  - `POST /inventory`: create item (Owner/Manager).
+  - `PATCH /inventory/:id`: update name/unit/reorder level.
+  - `POST /inventory/:id/receive`: add stock; optional `createExpense` writes a Feed expense transaction.
+  - `POST /inventory/:id/use`: deduct stock (cannot exceed on-hand).
+  - `GET /inventory/:id/movements`: recent IN/OUT history.
 - `/api/v1/reports/dashboard`: dashboard metrics.
 - `/api/v1/reports/summaries`: report summary cards.
 - `/api/v1/reports/period?from=YYYY-MM-DD&to=YYYY-MM-DD`: milk, herd, events, and (when allowed) finance totals for a date range.
@@ -115,7 +123,7 @@ All business routes are under `/api/v1`.
 Seeded demo accounts (from `npm run seed`):
 
 - Super Admin: `admin@inka.local` / `admin123`
-- Farm Owner: `owner@inka.local` / `owner123` (linked to `default-farm`)
+- Farm Owner: `owner@inka.local` / `owner123` (linked to `default-farm` and `second-farm` / Inka East Farm — use Settings or Dashboard to switch)
 - Farm Manager: `manager@inka.local` / `manager123`
 - Veterinarian: `vet@inka.local` / `vet123`
 - Worker: `worker@inka.local` / `worker123`
@@ -137,7 +145,11 @@ Most resource routes support:
 - `src/controllers/` — HTTP handlers for non-CRUD endpoints (farm system-config, event prefills)
 - `src/services/` — domain logic (milk-sale sync, birth/pregnancy rules, farm defaults)
 - `src/schemas/` — Zod request validation
-- `src/utils/` — shared helpers (inbreeding, lifecycle)
+- `src/utils/` — shared helpers (inbreeding, lifecycle, report export); `*.test.ts` run via `npm test` (Vitest)
+
+## CI
+
+- GitHub Actions workflow at `.github/workflows/ci.yml` runs backend `prisma validate` + typecheck + tests and frontend `tsc --noEmit` on push/PR to `main`.
 
 ## Notes
 
@@ -145,3 +157,4 @@ Most resource routes support:
 - When adding or changing frontend API usage, update backend routes/schemas in the same change.
 - The Prisma config includes a local fallback database URL only so schema validation works before `.env` is created.
 - Use uppercase enum values in API payloads, such as `MALE`, `FEMALE`, `COW`, `ACTIVE`, `INDIVIDUAL`, `MASS`, `INCOME`, and `EXPENSE`.
+- Run `npm test` in `backend/` for unit tests (no live database required).

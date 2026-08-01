@@ -25,5 +25,8 @@ export { AddIncomeScreen } from './AddIncomeScreen';
 export { AddExpenseScreen } from './AddExpenseScreen';
 export { CattleProfileScreen } from './CattleProfileScreen';
 export { CattleExitScreen } from './CattleExitScreen';
+export { InventoryScreen } from './InventoryScreen';
+export { InventoryReceiveScreen } from './InventoryReceiveScreen';
+export { InventoryUseScreen } from './InventoryUseScreen';
 export { CowLifeCycleScreen } from './CowLifeCycleScreen';
 export { DetailScreen } from './DetailScreen';

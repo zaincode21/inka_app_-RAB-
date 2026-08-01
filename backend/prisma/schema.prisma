@@ -55,6 +55,12 @@ enum TransactionKind {
   EXPENSE
 }
 
+enum InventoryMovementKind {
+  IN
+  OUT
+  ADJUST
+}
+
 model Farm {
   id              String   @id @default(cuid())
   name            String
@@ -74,13 +80,32 @@ model Farm {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  users        User[]
-  cattle       Cattle[]
-  milkRecords  MilkRecord[]
-  healthEvents HealthEvent[]
-  transactions Transaction[]
-  categories   Category[]
-  auditLogs    AuditLog[]
+  users            User[]
+  memberships      FarmMembership[]
+  cattle           Cattle[]
+  milkRecords      MilkRecord[]
+  healthEvents     HealthEvent[]
+  transactions     Transaction[]
+  categories       Category[]
+  auditLogs        AuditLog[]
+  inventoryItems   InventoryItem[]
+  inventoryMovements InventoryMovement[]
+}
+
+model FarmMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  farmId    String
+  role      UserRole @default(FARM_OWNER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, farmId])
+  @@index([farmId])
+  @@index([userId])
 }
 
 model User {
@@ -96,7 +121,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  farm Farm? @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  farm         Farm?             @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  memberships  FarmMembership[]
 
   cattleCreated       Cattle[]      @relation("CattleCreatedBy")
   cattleUpdated       Cattle[]      @relation("CattleUpdatedBy")
@@ -110,6 +136,7 @@ model User {
   transactionsCreated Transaction[] @relation("TransactionCreatedBy")
   transactionsUpdated Transaction[] @relation("TransactionUpdatedBy")
   transactionsDeleted Transaction[] @relation("TransactionDeletedBy")
+  inventoryMovementsCreated InventoryMovement[] @relation("InventoryMovementCreatedBy")
   passwordResetTokens PasswordResetToken[]
   auditLogs           AuditLog[]           @relation("AuditActor")
 }
@@ -331,6 +358,7 @@ model Transaction {
   updatedBy   User?        @relation("TransactionUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   deletedBy   User?        @relation("TransactionDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
   attachments Attachment[]
+  inventoryMovements InventoryMovement[]
 
   @@index([farmId])
   @@index([kind, date])
@@ -372,4 +400,48 @@ model Attachment {
   transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@index([ownerType])
+}
+
+model InventoryItem {
+  id             String   @id @default(cuid())
+  farmId         String?
+  name           String
+  category       String   @default("Feed")
+  unit           String   @default("kg")
+  quantityOnHand Decimal  @default(0) @db.Decimal(12, 2)
+  reorderLevel   Decimal  @default(0) @db.Decimal(12, 2)
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  farm       Farm?               @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  movements  InventoryMovement[]
+
+  @@unique([farmId, name])
+  @@index([farmId])
+  @@index([category])
+}
+
+model InventoryMovement {
+  id              String                @id @default(cuid())
+  farmId          String?
+  itemId          String
+  kind            InventoryMovementKind
+  quantity        Decimal               @db.Decimal(12, 2)
+  unitCost        Decimal               @default(0) @db.Decimal(12, 2)
+  totalCost       Decimal               @default(0) @db.Decimal(12, 2)
+  date            DateTime
+  notes           String?
+  transactionId   String?
+  createdByUserId String?
+  createdAt       DateTime              @default(now())
+
+  farm        Farm?         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  item        InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  transaction Transaction?  @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  createdBy   User?         @relation("InventoryMovementCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([farmId])
+  @@index([itemId, date])
+  @@index([kind])
 }

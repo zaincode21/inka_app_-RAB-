@@ -10,6 +10,7 @@ import { reportRouter } from './reports.js';
 import { userRouter } from './users.js';
 import { auditLogRouter } from './auditLogs.js';
 import { attachmentRouter } from './attachments.js';
+import { inventoryRouter } from './inventory.js';
 import { authenticate } from '../middleware/auth.js';
 
 export const apiRouter = Router();
@@ -29,6 +30,7 @@ apiRouter.use('/cattle', cattleRouter);
 apiRouter.use('/milk-records', milkRecordRouter);
 apiRouter.use('/events', healthEventRouter);
 apiRouter.use('/transactions', transactionRouter);
+apiRouter.use('/inventory', inventoryRouter);
 apiRouter.use('/reports', reportRouter);
 apiRouter.use('/audit-logs', auditLogRouter);
 apiRouter.use('/attachments', attachmentRouter);

@@ -81,6 +81,11 @@ export function canDeleteTransactions(user: Pick<AuthUser, 'role'>): boolean {
   return user.role === 'SUPER_ADMIN' || user.role === 'FARM_OWNER';
 }
 
+/** Feed/inventory create, receive, use — Owner / Manager (same as cattle ops). */
+export function canWriteInventory(user: Pick<AuthUser, 'role'>): boolean {
+  return canWriteCattle(user);
+}
+
 /** Farm id for data access: Super Admin may pass override; others use their farm. */
 export function resolveFarmIdForUser(
   user: Pick<AuthUser, 'role' | 'farmId'>,

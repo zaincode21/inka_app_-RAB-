@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { getCurrentSession } from '../data/authApi';
+import { FarmSwitcher } from '../components/FarmSwitcher';
 import {
   canManageFarmSetup,
   canManageUsers,
@@ -124,6 +125,8 @@ export function SettingsScreen({ navigation }: Props) {
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }}>
         <Text className="mb-4 text-[14px] text-[#6B7280]">Manage farm preferences and team access used across events and reports.</Text>
+
+        <FarmSwitcher onSwitched={() => navigation.navigate('Dashboard')} />
 
         <View className="mb-4 flex-row items-center rounded-[16px] border border-[#E5E7EB] bg-white px-4 py-4 shadow-sm">
           <View className="mr-4 h-12 w-12 items-center justify-center rounded-[14px] bg-[#E0F7F7]">
