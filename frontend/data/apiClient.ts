@@ -43,6 +43,39 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   return payload as T;
 }
 
+/** Fetch a non-JSON body (e.g. CSV export). */
+export async function apiRequestText(path: string, options: RequestInit = {}): Promise<string> {
+  const headers: Record<string, string> = {
+    Accept: 'text/csv, text/plain, */*',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers,
+  });
+
+  const text = await response.text();
+  if (!response.ok) {
+    let message = `API request failed with status ${response.status}.`;
+    try {
+      const payload = text ? JSON.parse(text) : null;
+      if (typeof payload?.message === 'string') {
+        message = payload.message;
+      }
+    } catch {
+      // keep default message
+    }
+    throw new Error(message);
+  }
+
+  return text;
+}
+
 /** Absolute URL for media stored as /uploads/... or already absolute. */
 export function resolveMediaUrl(uri?: string | null): string {
   if (!uri?.trim()) {

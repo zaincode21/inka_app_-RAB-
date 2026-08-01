@@ -4,7 +4,7 @@ Ordered by effort (smallest first). Goal: bring Inka to a commercial baseline fo
 
 **Shipped order:** A1 (RBAC) → A4 (change password) → A2 (createdBy) → A3 (soft delete) → A5 (forgot password) → A6 (audit).
 
-Deferred: **A3b** restore / archived-list UI.
+**A3b** restore / archived-list UI ✅ DONE (Settings → Archived Records).
 
 ---
 
@@ -55,9 +55,9 @@ Deferred: **A3b** restore / archived-list UI.
 - `createCrudRouter` `softDelete: true` — `DELETE` stamps archive fields; lists/get/update skip archived rows.
 - Linked milk sales and treatment expenses soft-archived with their parent record.
 - Reports, lifecycle, breeding/pregnancy prefills, and milk withdrawal ignore archived rows.
-- Restore UI / `?archived=true` filter deferred to **A3b**.
+- **A3b:** `GET /resource?archived=true` lists archived rows; `POST /resource/:id/restore` clears `deletedAt` (Owner/Manager/Vet per delete rights). Restoring milk/events also restores linked Milk Sale / treatment expenses. Settings → Archived Records.
 
-**Acceptance:** Deleting a transaction/event hides it from default lists but row remains in DB.
+**Acceptance:** Deleting a transaction/event hides it from default lists but row remains in DB; owners/managers can restore from Settings.
 
 ---
 

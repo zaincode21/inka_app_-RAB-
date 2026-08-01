@@ -452,6 +452,19 @@ export async function archiveLinkedEventTransactions(eventId: string, actorUserI
   });
 }
 
+export async function restoreLinkedEventTransactions(eventId: string): Promise<void> {
+  await prisma.transaction.updateMany({
+    where: {
+      healthEventId: eventId,
+      deletedAt: { not: null },
+    },
+    data: {
+      deletedAt: null,
+      deletedByUserId: null,
+    },
+  });
+}
+
 export async function getLatestBreedingByCattleTag(cattleTag: string) {
   return prisma.healthEvent.findFirst({
     where: {

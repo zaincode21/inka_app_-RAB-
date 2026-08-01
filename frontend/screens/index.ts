@@ -10,6 +10,7 @@ export { SettingsScreen } from './SettingsScreen';
 export { SystemConfigScreen } from './SystemConfigScreen';
 export { ChangePasswordScreen } from './ChangePasswordScreen';
 export { ActivityLogScreen } from './ActivityLogScreen';
+export { ArchivedRecordsScreen } from './ArchivedRecordsScreen';
 export { ForgotPasswordScreen } from './ForgotPasswordScreen';
 export { ResetPasswordScreen } from './ResetPasswordScreen';
 export { ManageUsersScreen } from './ManageUsersScreen';

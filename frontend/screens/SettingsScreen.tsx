@@ -3,7 +3,12 @@ import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { getCurrentSession } from '../data/authApi';
-import { canManageFarmSetup, canManageUsers, canEditSystemConfig } from '../data/permissions';
+import {
+  canManageFarmSetup,
+  canManageUsers,
+  canEditSystemConfig,
+  canViewArchivedRecords,
+} from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
@@ -35,6 +40,17 @@ export function SettingsScreen({ navigation }: Props) {
             subtitle: 'Categories, breeds, medicines + milk withdrawal days',
             icon: 'grid' as const,
             route: 'FarmSetup' as const,
+          },
+        ]
+      : []),
+    ...(canViewArchivedRecords(user)
+      ? [
+          {
+            id: 'archived',
+            title: 'Archived Records',
+            subtitle: 'Restore soft-deleted cattle, milk, events, or finance rows',
+            icon: 'archive' as const,
+            route: 'ArchivedRecords' as const,
           },
         ]
       : []),

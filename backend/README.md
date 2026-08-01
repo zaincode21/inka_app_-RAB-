@@ -109,6 +109,8 @@ All business routes are under `/api/v1`.
 - `/api/v1/transactions`: income and expense records with category, amount, quantity, unit price, buyer/vendor, payment, receipt, tax, discount, and resource links. Actor tracking and soft-delete same as cattle. Delete: Owner/Super Admin only.
 - `/api/v1/reports/dashboard`: dashboard metrics.
 - `/api/v1/reports/summaries`: report summary cards.
+- `/api/v1/reports/period?from=YYYY-MM-DD&to=YYYY-MM-DD`: milk, herd, events, and (when allowed) finance totals for a date range.
+- `/api/v1/reports/export.csv?from=...&to=...&dataset=milk|transactions|events|cattle`: CSV download for the range (`transactions` requires finance view).
 
 Seeded demo accounts (from `npm run seed`):
 
@@ -125,6 +127,8 @@ Most resource routes support:
 - `POST /`: create a record.
 - `PATCH /:id`: update a record.
 - `DELETE /:id`: soft-archive (`deletedAt`) for cattle, milk-records, events, and transactions; hard delete only where soft-delete is off.
+- `GET /?archived=true`: list soft-archived rows (requires the same permission as delete/restore for that resource).
+- `POST /:id/restore`: clear `deletedAt` / `deletedByUserId` and write a `RESTORE` audit entry. Restoring a milk record also restores its linked Milk Sale; restoring an event restores linked treatment expenses.
 
 ## Project layout
 

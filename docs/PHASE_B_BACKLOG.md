@@ -4,7 +4,7 @@ Goal: expose schema fields and workflows that already exist (or nearly exist) on
 
 **Shipped order:** B4 (milk edit/delete) → B2 (milk quality) → B3 (cattle exit) → B1 (photos/attachments).
 
-Carry-over from Phase A: **A3b** restore / archived-list UI (optional).
+Carry-over from Phase A: **A3b** restore / archived-list UI ✅ DONE.
 
 ---
 

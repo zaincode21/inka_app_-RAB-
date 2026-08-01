@@ -17,6 +17,7 @@ import {
   SystemConfigScreen,
   ChangePasswordScreen,
   ActivityLogScreen,
+  ArchivedRecordsScreen,
   ForgotPasswordScreen,
   ResetPasswordScreen,
   ManageUsersScreen,
@@ -75,6 +76,7 @@ export default function App() {
         <Stack.Screen name="SystemConfig" component={SystemConfigScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
+        <Stack.Screen name="ArchivedRecords" component={ArchivedRecordsScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="ManageUsers" component={ManageUsersScreen} />

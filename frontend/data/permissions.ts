@@ -68,6 +68,11 @@ export function canDeleteTransactions(user?: RoleUser): boolean {
   return user?.role === 'SUPER_ADMIN' || user?.role === 'FARM_OWNER';
 }
 
+/** Any role that can soft-delete at least one core resource may open Archived Records. */
+export function canViewArchivedRecords(user?: RoleUser): boolean {
+  return canDeleteCattle(user) || canDeleteMilk(user) || canDeleteEvents(user) || canDeleteTransactions(user);
+}
+
 export function roleLabel(role: string): string {
   switch (role) {
     case 'SUPER_ADMIN':

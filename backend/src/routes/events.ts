@@ -9,6 +9,7 @@ import {
   afterHealthEventCreate,
   afterHealthEventUpdate,
   archiveLinkedEventTransactions,
+  restoreLinkedEventTransactions,
   stripHealthEventExtras,
   validateHealthEventCreate,
   validateHealthEventUpdate,
@@ -64,6 +65,9 @@ const healthEventCrud = createCrudRouter({
   },
   beforeDelete: async (id, _existing, auth) => {
     await archiveLinkedEventTransactions(id, auth.id);
+  },
+  afterRestore: async (id) => {
+    await restoreLinkedEventTransactions(id);
   },
   canCreate: (auth) => canWriteEvents(auth),
   canUpdate: (auth) => canWriteEvents(auth),

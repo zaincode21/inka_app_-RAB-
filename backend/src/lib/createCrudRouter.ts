@@ -7,7 +7,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError, notFound } from '../utils/apiError.js';
 import { isSuperAdmin, resolveFarmIdForUser, type AuthUser } from '../utils/permissions.js';
 import { requireAuthUser } from '../middleware/auth.js';
-import { isDeleted, notDeleted, softDeleteData } from '../utils/softDelete.js';
+import { isDeleted, notDeleted, onlyDeleted, restoreData, softDeleteData } from '../utils/softDelete.js';
 import { recordFarmId, recordId, writeAudit } from '../services/auditService.js';
 
 type PrismaDelegate = {
@@ -37,6 +37,7 @@ export type CrudOptions = {
   beforeCreate?: (body: Record<string, unknown>, auth: AuthUser) => Promise<void>;
   beforeUpdate?: (id: string, body: Record<string, unknown>, auth: AuthUser) => Promise<void>;
   beforeDelete?: (id: string, existing: Record<string, unknown>, auth: AuthUser) => Promise<void>;
+  afterRestore?: (id: string, record: Record<string, unknown>, auth: AuthUser) => Promise<void>;
   afterCreate?: (body: Record<string, unknown>, record: Record<string, unknown>, auth: AuthUser) => Promise<void>;
   afterUpdate?: (
     id: string,
@@ -48,6 +49,8 @@ export type CrudOptions = {
   canCreate?: (auth: AuthUser) => boolean;
   canUpdate?: (auth: AuthUser) => boolean;
   canDelete?: (auth: AuthUser) => boolean;
+  /** Defaults to canDelete when softDelete is enabled. */
+  canRestore?: (auth: AuthUser) => boolean;
   /** When true, set createdByUserId / updatedByUserId from the authenticated user. */
   trackActor?: boolean;
   /** When true, DELETE sets deletedAt instead of removing the row; lists exclude archived. */
@@ -131,15 +134,24 @@ export function createCrudRouter(options: CrudOptions) {
   const auditEntityType = options.auditEntityType?.trim() || null;
   const include = withActorInclude(options.include, trackActor);
 
+  const canRestore =
+    options.canRestore ??
+    ((auth: AuthUser) => (options.canDelete ? options.canDelete(auth) : true));
+
   router.get(
     '/',
     asyncHandler(async (request, response) => {
       const auth = requireAuthUser(request);
       await options.beforeList?.(auth);
-      const extraWhere = options.listWhere?.(request.query as Record<string, unknown>, auth) ?? {};
+      const query = request.query as Record<string, unknown>;
+      const listArchived = softDelete && query.archived === 'true';
+      if (listArchived && !canRestore(auth)) {
+        throw new ApiError(403, 'You do not have permission to view archived records.');
+      }
+      const extraWhere = options.listWhere?.(query, auth) ?? {};
       const where = {
-        ...(farmScoped ? farmScopeWhere(auth, request.query as Record<string, unknown>) : {}),
-        ...(softDelete ? notDeleted : {}),
+        ...(farmScoped ? farmScopeWhere(auth, query) : {}),
+        ...(softDelete ? (listArchived ? onlyDeleted : notDeleted) : {}),
         ...extraWhere,
       };
       const records = await options.model.findMany({
@@ -307,6 +319,53 @@ export function createCrudRouter(options: CrudOptions) {
       response.status(204).send();
     }),
   );
+
+  if (softDelete) {
+    router.post(
+      '/:id/restore',
+      asyncHandler(async (request, response) => {
+        const auth = requireAuthUser(request);
+        if (!canRestore(auth)) {
+          throw new ApiError(403, 'You do not have permission to restore this record.');
+        }
+        const existing = await options.model.findUnique({
+          where: { id: request.params.id },
+          include,
+        });
+        if (!existing) {
+          throw notFound(options.resourceName);
+        }
+        const record = existing as Record<string, unknown>;
+        if (!isDeleted(record)) {
+          throw new ApiError(400, `${options.resourceName} is not archived.`);
+        }
+        if (farmScoped) {
+          assertFarmAccess(auth, record, options.resourceName, options.recordFarmId);
+        }
+        options.assertRecordAccess?.(auth, record);
+        const restored = (await options.model.update({
+          where: { id: request.params.id },
+          data: {
+            ...restoreData(),
+            ...(trackActor ? { updatedByUserId: auth.id } : {}),
+          },
+          include,
+        })) as Record<string, unknown>;
+        await options.afterRestore?.(String(request.params.id), restored, auth);
+        if (auditEntityType) {
+          await writeAudit({
+            auth,
+            farmId: recordFarmId(restored),
+            action: 'RESTORE',
+            entityType: auditEntityType,
+            entityId: recordId(restored),
+            summary: `Restored ${options.resourceName}`,
+          });
+        }
+        response.json(restored);
+      }),
+    );
+  }
 
   return router;
 }

@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useRef, useState } from 'react';
-import { apiRequest, toJsonBody } from './apiClient';
+import { apiRequest, apiRequestText, toJsonBody } from './apiClient';
 
 export type RecordActor = {
   id: string;
@@ -415,6 +415,104 @@ export async function getTransactions(): Promise<FarmTransaction[]> {
   return rows.map(mapBackendTransaction);
 }
 
+export type ArchivedRecordKind = 'cattle' | 'milk' | 'events' | 'transactions';
+
+export type ArchivedListItem = {
+  id: string;
+  kind: ArchivedRecordKind;
+  title: string;
+  subtitle: string;
+  deletedAt: string;
+};
+
+type ArchivedBackendRow = {
+  id: string;
+  deletedAt?: string | null;
+  tagNumber?: string | null;
+  name?: string | null;
+  stage?: string | null;
+  status?: string | null;
+  date?: string | null;
+  milkType?: string | null;
+  totalProduced?: number | string | null;
+  cattle?: { tagNumber?: string | null; name?: string | null } | null;
+  eventType?: string | null;
+  eventDate?: string | null;
+  cattleTag?: string | null;
+  scope?: string | null;
+  kind?: string | null;
+  title?: string | null;
+  category?: string | null;
+  amount?: number | string | null;
+};
+
+function mapArchivedRow(kind: ArchivedRecordKind, row: ArchivedBackendRow): ArchivedListItem {
+  if (kind === 'cattle') {
+    return {
+      id: row.id,
+      kind,
+      title: row.tagNumber?.trim() || row.name?.trim() || 'Cattle',
+      subtitle: [row.name, row.stage, row.status].filter(Boolean).join(' · '),
+      deletedAt: row.deletedAt ?? '',
+    };
+  }
+  if (kind === 'milk') {
+    const tag = row.cattle?.tagNumber || row.cattle?.name || row.milkType || 'Milk';
+    return {
+      id: row.id,
+      kind,
+      title: `${tag} · ${row.date?.slice(0, 10) || 'Unknown date'}`,
+      subtitle: `${Number(row.totalProduced ?? 0)} L produced`,
+      deletedAt: row.deletedAt ?? '',
+    };
+  }
+  if (kind === 'events') {
+    return {
+      id: row.id,
+      kind,
+      title: row.eventType?.trim() || 'Event',
+      subtitle: [row.cattleTag || row.cattle?.tagNumber, row.eventDate?.slice(0, 10), row.scope]
+        .filter(Boolean)
+        .join(' · '),
+      deletedAt: row.deletedAt ?? '',
+    };
+  }
+  return {
+    id: row.id,
+    kind,
+    title: row.title?.trim() || row.category?.trim() || 'Transaction',
+    subtitle: [row.kind, row.category, row.amount != null ? `${Number(row.amount)} RWF` : '']
+      .filter(Boolean)
+      .join(' · '),
+    deletedAt: row.deletedAt ?? '',
+  };
+}
+
+export async function getArchivedRecords(kind: ArchivedRecordKind): Promise<ArchivedListItem[]> {
+  const path =
+    kind === 'cattle'
+      ? '/cattle?archived=true'
+      : kind === 'milk'
+        ? '/milk-records?archived=true'
+        : kind === 'events'
+          ? '/events?archived=true'
+          : '/transactions?archived=true';
+  const rows = await apiRequest<ArchivedBackendRow[]>(path);
+  return rows.map((row) => mapArchivedRow(kind, row));
+}
+
+export async function restoreArchivedRecord(kind: ArchivedRecordKind, id: string): Promise<void> {
+  const path =
+    kind === 'cattle'
+      ? `/cattle/${id}/restore`
+      : kind === 'milk'
+        ? `/milk-records/${id}/restore`
+        : kind === 'events'
+          ? `/events/${id}/restore`
+          : `/transactions/${id}/restore`;
+  await apiRequest<unknown>(path, { method: 'POST' });
+}
+
 export type AttachmentOwnerType = 'cattle' | 'healthEvent' | 'transaction' | 'milkRecord';
 
 export type FarmAttachment = {
@@ -496,6 +594,44 @@ export async function listAttachments(filters?: {
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   return apiRequest<DashboardMetrics>('/reports/dashboard');
+}
+
+export type PeriodReport = {
+  from: string;
+  to: string;
+  milk: {
+    records: number;
+    produced: number;
+    used: number;
+    rejected: number;
+    soldEstimate: number;
+  };
+  herd: {
+    active: number;
+    exited: number;
+  };
+  events: {
+    total: number;
+  };
+  finance: {
+    income: number;
+    expenses: number;
+    net: number;
+    incomeByCategory: Array<{ category: string; amount: number }>;
+    expenseByCategory: Array<{ category: string; amount: number }>;
+  } | null;
+};
+
+export type ReportExportDataset = 'milk' | 'transactions' | 'events' | 'cattle';
+
+export async function getPeriodReport(from: string, to: string): Promise<PeriodReport> {
+  const params = new URLSearchParams({ from, to });
+  return apiRequest<PeriodReport>(`/reports/period?${params.toString()}`);
+}
+
+export async function exportReportCsv(dataset: ReportExportDataset, from: string, to: string): Promise<string> {
+  const params = new URLSearchParams({ dataset, from, to });
+  return apiRequestText(`/reports/export.csv?${params.toString()}`);
 }
 
 export type AuditLogItem = {

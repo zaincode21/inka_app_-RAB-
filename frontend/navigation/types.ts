@@ -13,6 +13,7 @@ export type RootStackParamList = {
   SystemConfig: undefined;
   ChangePassword: undefined;
   ActivityLog: undefined;
+  ArchivedRecords: undefined;
   ManageUsers: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;

@@ -129,3 +129,18 @@ export async function deleteLinkedMilkSales(milkRecordId: string, actorUserId: s
     data: softDeleteData(actorUserId),
   });
 }
+
+export async function restoreLinkedMilkSales(milkRecordId: string): Promise<void> {
+  await prisma.transaction.updateMany({
+    where: {
+      milkRecordId,
+      kind: 'INCOME',
+      category: { equals: 'Milk Sale', mode: 'insensitive' },
+      deletedAt: { not: null },
+    },
+    data: {
+      deletedAt: null,
+      deletedByUserId: null,
+    },
+  });
+}
