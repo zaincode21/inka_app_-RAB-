@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
+import { PhotoPickerField } from '../components/PhotoPickerField';
 import { SelectDropdown } from '../components/SelectDropdown';
 import { emptyMedicationValues, MedicationFields } from '../components/MedicationFields';
 import { useRequireAccess } from '../data/accessGuard';
@@ -53,6 +54,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   const [bullResponsible, setBullResponsible] = useState(editingEvent?.bullResponsible ?? '');
   const [breedingDate, setBreedingDate] = useState(editingEvent?.breedingDate ?? '');
   const [notes, setNotes] = useState(editingEvent?.notes ?? '');
+  const [photoUri, setPhotoUri] = useState(editingEvent?.photoUri ?? '');
   const [returnHeatDays, setReturnHeatDays] = useState(DEFAULT_RETURN_HEAT_DAYS);
   const [returnHeatTime, setReturnHeatTime] = useState(DEFAULT_RETURN_HEAT_TIME);
   const [medication, setMedication] = useState(
@@ -69,7 +71,8 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   );
 
   const cattleTagOptions = useMemo(() => {
-    const eligibleCattle = FEMALE_ONLY_EVENT_TYPES.has(eventType) ? cattle.filter(isFemaleCattle) : cattle;
+    const activeCattle = cattle.filter((animal) => animal.status.trim().toLowerCase() === 'active');
+    const eligibleCattle = FEMALE_ONLY_EVENT_TYPES.has(eventType) ? activeCattle.filter(isFemaleCattle) : activeCattle;
     return eligibleCattle.map((animal) => animal.tagNumber);
   }, [cattle, eventType]);
   const activeCattleTag = route.params?.cattleTag ?? cattleTag;
@@ -282,7 +285,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         calfGender: eventType === 'Giving Birth' ? calfGender : '',
         sourceEventId: sourceEventId.trim(),
         notes: notes.trim(),
-        photoUri: '',
+        photoUri: photoUri.trim(),
       };
 
       if (isEditing && editingEvent) {
@@ -475,6 +478,15 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
 
         <Label text="Notes" />
         <Input placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
+        <PhotoPickerField
+          label="Event photo"
+          value={photoUri}
+          onChange={setPhotoUri}
+          ownerType="healthEvent"
+          healthEventId={editingEvent?.id}
+          cattleId={selectedCattle?.id}
+          attachmentLabel={eventType || 'Event photo'}
+        />
       </KeyboardSafeScroll>
 
       {showEventDatePicker && Platform.OS !== 'ios' ? <DateTimePicker value={parseDateForPicker(eventDate)} mode="date" display="calendar" onChange={handleEventDateChange} /> : null}

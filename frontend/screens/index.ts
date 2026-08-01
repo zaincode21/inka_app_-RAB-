@@ -23,5 +23,6 @@ export { AddMassEventScreen } from './AddMassEventScreen';
 export { AddIncomeScreen } from './AddIncomeScreen';
 export { AddExpenseScreen } from './AddExpenseScreen';
 export { CattleProfileScreen } from './CattleProfileScreen';
+export { CattleExitScreen } from './CattleExitScreen';
 export { CowLifeCycleScreen } from './CowLifeCycleScreen';
 export { DetailScreen } from './DetailScreen';

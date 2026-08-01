@@ -2,7 +2,9 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { type ReactNode, useMemo, useState } from 'react';
+import { Image } from 'expo-image';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { resolveMediaUrl } from '../data/apiClient';
 import { type Cattle, type HealthEvent, addDays, formatNumber, getCattle, getHealthEvents, useDatabaseQuery } from '../data/farmDatabase';
 import { getCurrentSession } from '../data/authApi';
 import { canWriteCattle } from '../data/permissions';
@@ -53,8 +55,12 @@ export function CattleProfileScreen({ navigation, route }: Props) {
         </View>
 
         <View className="items-center px-6 pt-4">
-          <View className="mb-4 h-24 w-24 items-center justify-center rounded-[20px] bg-white/20">
-            <Text className="text-[48px]">🐄</Text>
+          <View className="mb-4 h-24 w-24 items-center justify-center overflow-hidden rounded-[20px] bg-white/20">
+            {animal.photoUri ? (
+              <Image source={{ uri: resolveMediaUrl(animal.photoUri) }} style={{ width: 96, height: 96 }} contentFit="cover" />
+            ) : (
+              <Text className="text-[48px]">🐄</Text>
+            )}
           </View>
           <Text className="text-[28px] font-extrabold text-white">{animal.tagNumber}</Text>
           {animal.name ? <Text className="mt-1 text-[16px] text-white/90">{animal.name}</Text> : null}
@@ -100,8 +106,18 @@ export function CattleProfileScreen({ navigation, route }: Props) {
               <ProfileRow label="Stage" value={animal.stage || 'Not recorded'} />
               <ProfileRow label="Group" value={animal.groupName || 'Not assigned'} />
               <ProfileRow label="Breed" value={animal.breed || 'Not recorded'} />
+              <ProfileRow label="Status" value={animal.status || 'Not recorded'} accent={animal.status.toLowerCase() === 'active'} />
               {animal.recordedBy ? <ProfileRow label="Recorded by" value={animal.recordedBy} /> : null}
             </ProfileCard>
+
+            {canEdit && animal.status.toLowerCase() === 'active' ? (
+              <Pressable
+                onPress={() => navigation.navigate('CattleExit', { cattleTag: animal.tagNumber })}
+                className="mb-4 h-[56px] items-center justify-center rounded-[12px] border border-[#DC2626] bg-white"
+              >
+                <Text className="text-[16px] font-bold text-[#DC2626]">Record Exit (Sold / Culled / Dead)</Text>
+              </Pressable>
+            ) : null}
           </>
         ) : (
           <>
@@ -118,6 +134,7 @@ export function CattleProfileScreen({ navigation, route }: Props) {
                       title: item.eventType,
                       subtitle: 'Individual cattle event',
                       details: buildEventDetailRows(item, animal),
+                      imageUri: item.photoUri || undefined,
                     })
                   }
                 />

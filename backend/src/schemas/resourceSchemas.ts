@@ -256,3 +256,12 @@ export const updateCattleSchema = cattleSchema.partial();
 export const updateMilkRecordSchema = milkRecordSchema.partial();
 export const updateHealthEventSchema = healthEventSchema.partial();
 export const updateTransactionSchema = transactionSchema.partial();
+
+export const cattleExitSchema = z.object({
+  status: z.enum(['SOLD', 'CULLED', 'DEAD', 'INACTIVE']),
+  exitDate: z.coerce.date(),
+  reason: optionalString,
+  amount: z.coerce.number().nonnegative().optional(),
+  buyerVendor: optionalString,
+  paymentMethod: optionalString,
+});

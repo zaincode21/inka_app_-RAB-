@@ -1,16 +1,51 @@
 import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { resolveMediaUrl } from '../data/apiClient';
 import { getCurrentSession } from '../data/authApi';
-import { canWriteCattle } from '../data/permissions';
+import { deleteMilkRecord } from '../data/farmDatabase';
+import { canDeleteMilk, canWriteCattle, canWriteMilk } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
 export function DetailScreen({ navigation, route }: Props) {
-  const { title, subtitle, details, editCattle } = route.params;
-  const canEdit = Boolean(editCattle && canWriteCattle(getCurrentSession()?.user));
+  const { title, subtitle, details, editCattle, editMilk, imageUri } = route.params;
+  const user = getCurrentSession()?.user;
+  const canEditCattle = Boolean(editCattle && canWriteCattle(user));
+  const canEditMilk = Boolean(editMilk && canWriteMilk(user));
+  const canRemoveMilk = Boolean(editMilk && canDeleteMilk(user));
+  const preview = resolveMediaUrl(imageUri);
+
+  const handleDeleteMilk = () => {
+    if (!editMilk) {
+      return;
+    }
+    Alert.alert(
+      'Delete milk record',
+      'Remove this milk record from lists? It stays in farm records and any linked Milk Sale is archived too.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMilkRecord(editMilk.id);
+              navigation.navigate('MilkRecords');
+            } catch (deleteError) {
+              Alert.alert(
+                'Could not delete milk record',
+                deleteError instanceof Error ? deleteError.message : 'Please try again.',
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View className="flex-1 bg-[#F3F4F6]">
@@ -27,6 +62,12 @@ export function DetailScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
         {subtitle ? <Text className="mb-4 text-[16px] text-[#4B5563]">{subtitle}</Text> : null}
 
+        {preview ? (
+          <View className="mb-4 overflow-hidden rounded-[20px] bg-white shadow-sm">
+            <Image source={{ uri: preview }} style={{ width: '100%', height: 220 }} contentFit="cover" />
+          </View>
+        ) : null}
+
         <View className="rounded-[20px] bg-white p-5 shadow-sm">
           {details.map((item) => (
             <View key={item.label} className="mb-4 border-b border-[#E5E7EB] pb-4 last:border-b-0 last:pb-0">
@@ -36,9 +77,30 @@ export function DetailScreen({ navigation, route }: Props) {
           ))}
         </View>
 
-        {canEdit && editCattle ? (
-          <Pressable className="mt-6 h-[56px] items-center justify-center rounded-[12px] bg-[#008B8B]" onPress={() => navigation.navigate('AddCattle', { cattle: editCattle })}>
+        {canEditCattle && editCattle ? (
+          <Pressable
+            className="mt-6 h-[56px] items-center justify-center rounded-[12px] bg-[#008B8B]"
+            onPress={() => navigation.navigate('AddCattle', { cattle: editCattle })}
+          >
             <Text className="text-[18px] font-bold text-white">Edit Cattle</Text>
+          </Pressable>
+        ) : null}
+
+        {canEditMilk && editMilk ? (
+          <Pressable
+            className="mt-6 h-[56px] items-center justify-center rounded-[12px] bg-[#008B8B]"
+            onPress={() => navigation.navigate('AddMilkRecord', { milkRecord: editMilk })}
+          >
+            <Text className="text-[18px] font-bold text-white">Edit Milk Record</Text>
+          </Pressable>
+        ) : null}
+
+        {canRemoveMilk && editMilk ? (
+          <Pressable
+            className="mt-3 h-[56px] items-center justify-center rounded-[12px] border border-[#DC2626] bg-white"
+            onPress={handleDeleteMilk}
+          >
+            <Text className="text-[18px] font-bold text-[#DC2626]">Delete Milk Record</Text>
           </Pressable>
         ) : null}
 

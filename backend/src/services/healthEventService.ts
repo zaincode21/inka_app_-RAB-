@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/apiError.js';
 import { assertNoInbreedingForHealthEvent } from '../utils/inbreeding.js';
 import { notDeleted, softDeleteData } from '../utils/softDelete.js';
+import { assertCattleIsActive } from './cattleExitService.js';
 
 const femaleOnlyEventTypes = new Set([
   'breeding',
@@ -177,6 +178,9 @@ export async function validateHealthEventCreate(body: Record<string, unknown>): 
   await assertFemaleCattleForReproductiveEvent(body);
   await assertNoInbreedingForHealthEvent(body);
   await assertNoDuplicateOpenPregnancy(body);
+  if (typeof body.cattleId === 'string' && body.cattleId) {
+    await assertCattleIsActive(body.cattleId);
+  }
 }
 
 export async function validateHealthEventUpdate(id: string, body: Record<string, unknown>): Promise<void> {

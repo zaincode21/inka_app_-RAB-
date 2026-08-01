@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { formatMoney, formatNumber, getTransactions, useDatabaseQuery } from '../data/farmDatabase';
+import { formatMoney, formatNumber, getTransactions, listAttachments, useDatabaseQuery } from '../data/farmDatabase';
 import { useRequireAccess } from '../data/accessGuard';
 import { getCurrentSession } from '../data/authApi';
 import { canViewFinance, canWriteFinance } from '../data/permissions';
@@ -49,25 +49,35 @@ export function TransactionsScreen({ navigation }: Props) {
           transactions.map((item) => (
             <Pressable
               key={item.id}
-              onPress={() =>
-                navigation.navigate('Detail', {
-                  title: item.title,
-                  subtitle: item.kind === 'income' ? 'Income transaction' : 'Expense transaction',
-                  details: [
-                    { label: 'Date', value: item.date },
-                    { label: 'Category', value: item.category },
-                    { label: 'Amount', value: formatMoney(item.amount) },
-                    { label: 'Quantity / Unit Price', value: `${formatNumber(item.quantity)} / ${formatMoney(item.unitPrice)}` },
-                    { label: 'Payment Method', value: item.paymentMethod || 'Not recorded' },
-                    { label: item.kind === 'income' ? 'Buyer' : 'Vendor', value: item.buyerVendor || 'Not recorded' },
-                    { label: 'Receipt No', value: item.receiptNumber || 'Not recorded' },
-                    { label: 'Tax / Discount', value: `${formatMoney(item.taxAmount)} / ${formatMoney(item.discountAmount)}` },
-                    { label: 'Linked Cattle', value: item.linkedCattleTag || 'Not linked' },
-                    { label: 'Notes', value: item.notes || 'None' },
-                    ...(item.recordedBy ? [{ label: 'Recorded by', value: item.recordedBy }] : []),
-                  ],
-                })
-              }
+              onPress={() => {
+                void (async () => {
+                  let imageUri: string | undefined;
+                  try {
+                    const attachments = await listAttachments({ transactionId: item.id });
+                    imageUri = attachments[0]?.uri;
+                  } catch {
+                    imageUri = undefined;
+                  }
+                  navigation.navigate('Detail', {
+                    title: item.title,
+                    subtitle: item.kind === 'income' ? 'Income transaction' : 'Expense transaction',
+                    imageUri,
+                    details: [
+                      { label: 'Date', value: item.date },
+                      { label: 'Category', value: item.category },
+                      { label: 'Amount', value: formatMoney(item.amount) },
+                      { label: 'Quantity / Unit Price', value: `${formatNumber(item.quantity)} / ${formatMoney(item.unitPrice)}` },
+                      { label: 'Payment Method', value: item.paymentMethod || 'Not recorded' },
+                      { label: item.kind === 'income' ? 'Buyer' : 'Vendor', value: item.buyerVendor || 'Not recorded' },
+                      { label: 'Receipt No', value: item.receiptNumber || 'Not recorded' },
+                      { label: 'Tax / Discount', value: `${formatMoney(item.taxAmount)} / ${formatMoney(item.discountAmount)}` },
+                      { label: 'Linked Cattle', value: item.linkedCattleTag || 'Not linked' },
+                      { label: 'Notes', value: item.notes || 'None' },
+                      ...(item.recordedBy ? [{ label: 'Recorded by', value: item.recordedBy }] : []),
+                    ],
+                  });
+                })();
+              }}
               className="mb-3 flex-row items-center rounded-[16px] bg-[#E0F7F7] px-4 py-4"
             >
               <View className={`h-10 w-10 items-center justify-center rounded-full ${item.kind === 'income' ? 'bg-[#DCFCE7]' : 'bg-[#FEE2E2]'}`}>

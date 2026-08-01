@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { KeyboardSafeScroll, KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
+import { PhotoPickerField } from '../components/PhotoPickerField';
 import { useRequireAccess } from '../data/accessGuard';
 import { getCurrentSession } from '../data/authApi';
 import { createCattle, getCategories, parseNumber, todayIsoDate, updateCattle, useDatabaseQuery } from '../data/farmDatabase';
@@ -49,6 +50,7 @@ export function AddCattleScreen({ navigation, route }: Props) {
   const [entryDate, setEntryDate] = useState(editingCattle?.entryDate || todayIsoDate());
   const [otherSource, setOtherSource] = useState(editingCattle?.sourceDetail ?? '');
   const [notes, setNotes] = useState(editingCattle?.notes ?? '');
+  const [photoUri, setPhotoUri] = useState(editingCattle?.photoUri ?? '');
   const [showOtherSource, setShowOtherSource] = useState(editingCattle?.source === 'Other');
   const [newBreedName, setNewBreedName] = useState('');
   const [showCreateBreedDialog, setShowCreateBreedDialog] = useState(false);
@@ -108,7 +110,7 @@ export function AddCattleScreen({ navigation, route }: Props) {
         motherTag: motherTag.trim(),
         fatherTag: fatherTag.trim(),
         notes: notes.trim(),
-        photoUri: '',
+        photoUri: photoUri.trim(),
       };
 
       if (editingCattle) {
@@ -245,10 +247,14 @@ export function AddCattleScreen({ navigation, route }: Props) {
           <SelectField label="Father's Tag No" value={fatherTag} placeholder="Select father tag" onPress={() => setActivePicker({ label: "Father's Tag No", value: fatherTag, options: fatherTagOptions, onSelect: setFatherTag })} />
           <MultilineField label="Notes" placeholder="Write something" value={notes} onChangeText={setNotes} />
 
-          <Pressable className="mt-5 h-32 items-center justify-center rounded-[18px] border-2 border-dashed border-[#B7D9D9] bg-[#F5FBFB]">
-            <Feather name="camera" size={24} color="#008B8B" />
-            <Text className="mt-2 text-[12px] text-[#008B8B]">Tap to add photo</Text>
-          </Pressable>
+          <PhotoPickerField
+            label="Animal photo"
+            value={photoUri}
+            onChange={setPhotoUri}
+            ownerType="cattle"
+            cattleId={editingCattle?.id}
+            attachmentLabel={tagNumber.trim() || name.trim() || 'Cattle photo'}
+          />
         </View>
       </KeyboardSafeScroll>
 

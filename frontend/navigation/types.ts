@@ -1,4 +1,4 @@
-import type { Cattle, HealthEvent } from '../data/farmDatabase';
+import type { Cattle, HealthEvent, MilkRecord } from '../data/farmDatabase';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -21,10 +21,11 @@ export type RootStackParamList = {
   ManageExpenses: undefined;
   CowLifeCycle: { cattleTag?: string } | undefined;
   AddCattle: { cattle?: Cattle } | undefined;
-  AddMilkRecord: undefined;
+  AddMilkRecord: { milkRecord?: MilkRecord } | undefined;
   AddIndividualEvent: { cattleTag?: string; event?: HealthEvent; presetEventType?: string; sourceEventId?: string } | undefined;
   AddMassEvent: { event?: HealthEvent } | undefined;
   CattleProfile: { cattleTag: string };
+  CattleExit: { cattleTag: string };
   AddIncome: undefined;
   AddExpense: undefined;
   Detail: {
@@ -32,5 +33,7 @@ export type RootStackParamList = {
     subtitle?: string;
     details: Array<{ label: string; value: string }>;
     editCattle?: Cattle;
+    editMilk?: MilkRecord;
+    imageUri?: string;
   };
 };

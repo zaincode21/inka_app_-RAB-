@@ -19,6 +19,7 @@ import {
   getSystemConfig,
   parseNumber,
   todayIsoDate,
+  updateMilkRecord,
   useDatabaseQuery,
 } from '../data/farmDatabase';
 import { canWriteMilk } from '../data/permissions';
@@ -28,23 +29,30 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AddMilkRecord'>;
 
 const milkTypes = ['Whole Farm', 'Individual Cow Milk'];
 
-export function AddMilkRecordScreen({ navigation }: Props) {
+export function AddMilkRecordScreen({ navigation, route }: Props) {
   useRequireAccess(canWriteMilk(getCurrentSession()?.user), navigation);
+  const editing = route.params?.milkRecord;
+  const isEditing = Boolean(editing);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
-  const [date, setDate] = useState(todayIsoDate());
-  const [milkType, setMilkType] = useState('');
+  const [date, setDate] = useState(editing?.date || todayIsoDate());
+  const [milkType, setMilkType] = useState(editing?.milkType || '');
   const [selectedCow, setSelectedCow] = useState<Cattle | null>(null);
   const [cowSearch, setCowSearch] = useState('');
   const [showCowPicker, setShowCowPicker] = useState(false);
-  const [amTotal, setAmTotal] = useState('');
-  const [pmTotal, setPmTotal] = useState('');
-  const [totalUsed, setTotalUsed] = useState('');
-  const [rejectedMilk, setRejectedMilk] = useState('');
-  const [buyer, setBuyer] = useState('');
-  const [destination, setDestination] = useState('');
-  const [milkPricePerLiter, setMilkPricePerLiter] = useState(0);
+  const [amTotal, setAmTotal] = useState(editing ? String(editing.amTotal || '') : '');
+  const [pmTotal, setPmTotal] = useState(editing ? String(editing.pmTotal || '') : '');
+  const [totalUsed, setTotalUsed] = useState(editing ? String(editing.totalUsed || '') : '');
+  const [rejectedMilk, setRejectedMilk] = useState(editing ? String(editing.rejectedMilk || '') : '');
+  const [buyer, setBuyer] = useState(editing?.buyer || '');
+  const [destination, setDestination] = useState(editing?.destination || '');
+  const [fatPercent, setFatPercent] = useState(editing?.fatPercent ? String(editing.fatPercent) : '');
+  const [proteinPercent, setProteinPercent] = useState(editing?.proteinPercent ? String(editing.proteinPercent) : '');
+  const [somaticCellCount, setSomaticCellCount] = useState(
+    editing?.somaticCellCount ? String(editing.somaticCellCount) : '',
+  );
+  const [milkPricePerLiter, setMilkPricePerLiter] = useState(editing?.pricePerLiter || 0);
   const [withdrawal, setWithdrawal] = useState<MilkWithdrawalStatus | null>(null);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(editing?.notes || '');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -56,6 +64,9 @@ export function AddMilkRecordScreen({ navigation }: Props) {
   const estimatedSale = Number((soldLiters * milkPricePerLiter).toFixed(2));
 
   const cowOptions = cattle.filter((animal) => {
+    if (animal.status.trim().toLowerCase() !== 'active') {
+      return false;
+    }
     const query = cowSearch.trim().toLowerCase();
     const isFemaleCow = animal.gender.toLowerCase() === 'female' || ['Cow', 'Heifer'].includes(animal.stage);
     if (!isFemaleCow) {
@@ -68,12 +79,26 @@ export function AddMilkRecordScreen({ navigation }: Props) {
   });
 
   useEffect(() => {
+    if (!editing || editing.milkType !== 'Individual Cow Milk' || cattle.length === 0) {
+      return;
+    }
+    const match =
+      cattle.find((animal) => animal.id === editing.cattleId) ||
+      cattle.find((animal) => animal.tagNumber === editing.cattleTag);
+    if (match) {
+      setSelectedCow(match);
+    }
+  }, [editing, cattle]);
+
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const config = await getSystemConfig();
         if (!cancelled) {
-          setMilkPricePerLiter(config.milkPricePerLiter);
+          if (!isEditing || !editing?.pricePerLiter) {
+            setMilkPricePerLiter(config.milkPricePerLiter);
+          }
           const shared = config.defaultMilkBuyer.trim() || config.defaultMilkDestination.trim();
           setBuyer((current) => current || shared);
           setDestination((current) => current || shared);
@@ -85,7 +110,7 @@ export function AddMilkRecordScreen({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isEditing, editing?.pricePerLiter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,39 +145,54 @@ export function AddMilkRecordScreen({ navigation }: Props) {
     }
   }, [underWithdrawal, totalProduced]);
 
-  const persistRecord = async (createMilkSale: boolean) => {
-    const withdrawalNote =
-      underWithdrawal && withdrawal?.active
-        ? `Milk withheld: ${withdrawal.active.medicine} until ${withdrawal.active.withdrawalEndsOn} (${withdrawal.active.eventType}).`
-        : '';
+  const buildPayload = (createMilkSale: boolean) => {
+    return {
+      cattleId: milkType === 'Individual Cow Milk' ? selectedCow?.id ?? '' : '',
+      cattleTag: milkType === 'Individual Cow Milk' ? selectedCow?.tagNumber ?? '' : '',
+      cattleName: milkType === 'Individual Cow Milk' ? selectedCow?.name ?? '' : '',
+      date: date.trim(),
+      milkType,
+      amTotal: parseNumber(amTotal),
+      noonTotal: 0,
+      pmTotal: parseNumber(pmTotal),
+      totalProduced,
+      totalUsed: usedLiters,
+      rejectedMilk: rejectedLiters,
+      destination: destination.trim(),
+      buyer: buyer.trim(),
+      pricePerLiter: milkPricePerLiter,
+      fatPercent: parseNumber(fatPercent),
+      proteinPercent: parseNumber(proteinPercent),
+      somaticCellCount: parseNumber(somaticCellCount),
+      notes: notes.trim(),
+      createMilkSale,
+      paymentMethod: 'Cash',
+    };
+  };
 
+  const persistRecord = async (createMilkSale: boolean) => {
     setSaving(true);
     try {
-      await createMilkRecord({
-        cattleId: milkType === 'Individual Cow Milk' ? selectedCow?.id ?? '' : '',
-        cattleTag: milkType === 'Individual Cow Milk' ? selectedCow?.tagNumber ?? '' : '',
-        cattleName: milkType === 'Individual Cow Milk' ? selectedCow?.name ?? '' : '',
-        date: date.trim(),
-        milkType,
-        amTotal: parseNumber(amTotal),
-        noonTotal: 0,
-        pmTotal: parseNumber(pmTotal),
-        totalProduced,
-        totalUsed: usedLiters,
-        rejectedMilk: rejectedLiters,
-        destination: destination.trim(),
-        buyer: buyer.trim(),
-        pricePerLiter: milkPricePerLiter,
-        fatPercent: 0,
-        proteinPercent: 0,
-        somaticCellCount: 0,
-        notes: [notes.trim(), withdrawalNote].filter(Boolean).join(' '),
-        createMilkSale,
-        paymentMethod: 'Cash',
-      });
+      const base = buildPayload(createMilkSale);
+      const withdrawalNote =
+        !isEditing && underWithdrawal && withdrawal?.active
+          ? `Milk withheld: ${withdrawal.active.medicine} until ${withdrawal.active.withdrawalEndsOn} (${withdrawal.active.eventType}).`
+          : '';
+      const payload = {
+        ...base,
+        notes: [base.notes, withdrawalNote].filter(Boolean).join(' '),
+      };
+      if (editing) {
+        await updateMilkRecord(editing.id, payload);
+      } else {
+        await createMilkRecord(payload);
+      }
       navigation.replace('MilkRecords');
     } catch (error) {
-      Alert.alert('Could not save milk record', error instanceof Error ? error.message : 'Please check the details and try again.');
+      Alert.alert(
+        isEditing ? 'Could not update milk record' : 'Could not save milk record',
+        error instanceof Error ? error.message : 'Please check the details and try again.',
+      );
     } finally {
       setSaving(false);
     }
@@ -179,6 +219,11 @@ export function AddMilkRecordScreen({ navigation }: Props) {
       return;
     }
 
+    if (parseNumber(fatPercent) < 0 || parseNumber(proteinPercent) < 0 || parseNumber(somaticCellCount) < 0) {
+      Alert.alert('Invalid quality values', 'Fat %, protein %, and SCC must be zero or greater.');
+      return;
+    }
+
     const canOfferSale = milkType === 'Whole Farm' && soldLiters > 0 && milkPricePerLiter > 0;
     if (!canOfferSale) {
       await persistRecord(false);
@@ -186,11 +231,11 @@ export function AddMilkRecordScreen({ navigation }: Props) {
     }
 
     Alert.alert(
-      'Create Milk Sale?',
+      isEditing ? 'Update Milk Sale?' : 'Create Milk Sale?',
       `Sold liters: ${formatNumber(soldLiters)} L\nPrice: ${formatMoney(milkPricePerLiter)} / L\nEstimated income: ${formatMoney(estimatedSale)}\n\nRejected liters are not included in the sale.`,
       [
-        { text: 'Save without income', style: 'cancel', onPress: () => void persistRecord(false) },
-        { text: 'Create Milk Sale', onPress: () => void persistRecord(true) },
+        { text: isEditing ? 'Save without updating sale' : 'Save without income', style: 'cancel', onPress: () => void persistRecord(false) },
+        { text: isEditing ? 'Update Milk Sale' : 'Create Milk Sale', onPress: () => void persistRecord(true) },
       ],
     );
   };
@@ -218,7 +263,7 @@ export function AddMilkRecordScreen({ navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="arrow-left" size={26} color="#FFFFFF" />
         </Pressable>
-        <Text className="flex-1 pl-4 text-[20px] font-bold text-white">New Milk Record</Text>
+        <Text className="flex-1 pl-4 text-[20px] font-bold text-white">{isEditing ? 'Edit Milk Record' : 'New Milk Record'}</Text>
         <View className="w-[30px]" />
       </View>
 
@@ -236,7 +281,7 @@ export function AddMilkRecordScreen({ navigation }: Props) {
               disabled={saving}
               className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
             >
-              <Text className="text-[16px] font-bold text-white">{saving ? 'Saving...' : 'Save'}</Text>
+              <Text className="text-[16px] font-bold text-white">{saving ? 'Saving...' : isEditing ? 'Update' : 'Save'}</Text>
             </Pressable>
           </View>
         }
@@ -301,6 +346,23 @@ export function AddMilkRecordScreen({ navigation }: Props) {
         ) : (
           <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Mastitis discard, spill, or withheld milk.</Text>
         )}
+
+        <Text className="mb-2 mt-2 text-[15px] font-bold text-[#1F2937]">Milk quality (optional)</Text>
+        <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Leave blank when lab results are not available.</Text>
+
+        <Label text="Fat %" />
+        <Input placeholder="e.g. 3.8" keyboardType="decimal-pad" value={fatPercent} onChangeText={setFatPercent} />
+
+        <Label text="Protein %" />
+        <Input placeholder="e.g. 3.2" keyboardType="decimal-pad" value={proteinPercent} onChangeText={setProteinPercent} />
+
+        <Label text="Somatic cell count (SCC)" />
+        <Input
+          placeholder="e.g. 200000"
+          keyboardType="decimal-pad"
+          value={somaticCellCount}
+          onChangeText={setSomaticCellCount}
+        />
 
         {milkType === 'Whole Farm' ? (
           <>

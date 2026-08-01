@@ -9,6 +9,7 @@ import { transactionRouter } from './transactions.js';
 import { reportRouter } from './reports.js';
 import { userRouter } from './users.js';
 import { auditLogRouter } from './auditLogs.js';
+import { attachmentRouter } from './attachments.js';
 import { authenticate } from '../middleware/auth.js';
 
 export const apiRouter = Router();
@@ -30,3 +31,4 @@ apiRouter.use('/events', healthEventRouter);
 apiRouter.use('/transactions', transactionRouter);
 apiRouter.use('/reports', reportRouter);
 apiRouter.use('/audit-logs', auditLogRouter);
+apiRouter.use('/attachments', attachmentRouter);

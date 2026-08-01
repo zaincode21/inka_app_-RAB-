@@ -81,6 +81,7 @@ All business routes are under `/api/v1`.
 - `POST /auth/reset-password`: body `{ token, newPassword }` (min 6 chars).
 - `POST /auth/change-password`: authenticated; body `{ currentPassword, newPassword }` (min 6 chars).
 - `/api/v1/audit-logs`: Owner/Super Admin activity trail (`GET`, query `entityType`, `from`, `to`, `page`, `limit`). Written automatically on cattle/milk/events/transactions mutations and login/password events.
+- `/api/v1/attachments`: multipart image upload (`POST`, field `file` + `ownerType`) and list (`GET` with optional `cattleId` / `transactionId` / `healthEventId`). Files are stored under `UPLOAD_DIR` and served at `/uploads/...`. Set `PUBLIC_BASE_URL` to a reachable host (LAN IP on devices).
 - `/api/v1/users`:
   - `GET /users/me`: current user profile.
   - `GET /users`: list users (Owner: own farm; Super Admin: all, optional `?farmId=`).
@@ -91,8 +92,8 @@ All business routes are under `/api/v1`.
   - `GET /farms/system-config`: system configuration for the caller's farm.
   - `PATCH /farms/system-config`: Owner/Super Admin only — partial update of system settings.
 - `/api/v1/categories`: configurable breeds, groups, medicines, event types, income categories, expense categories, and milk destinations. Mutations: Owner/Super Admin only.
-- `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records. Listing cattle auto-promotes lifecycle stages by age (never demotes). Create/update stamp `createdByUserId` / `updatedByUserId`; list/get include `createdBy`. `DELETE` soft-archives (`deletedAt`); prefer status change (sold/culled/dead) for herd exits.
-- `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records. Actor tracking and soft-delete same as cattle.
+- `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records. Listing cattle auto-promotes lifecycle stages by age (never demotes). Create/update stamp `createdByUserId` / `updatedByUserId`; list/get include `createdBy`. `DELETE` soft-archives (`deletedAt`); prefer status change (sold/culled/dead) for herd exits via `POST /cattle/:id/exit` (optional Cattle Sale / Cattle Disposal transaction).
+- `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records (`fatPercent`, `proteinPercent`, `somaticCellCount`). Actor tracking and soft-delete same as cattle. App supports create, edit (`PATCH`), and soft-delete from Milk Records UI. Individual milk requires an **Active** cattle link.
   - Whole Farm saves may create/update a linked **Milk Sale** income when `createMilkSale=true`, using `soldLiters = produced − used − rejected` × `pricePerLiter` (locked at save). Duplicate Milk Sale per milk record is prevented. Deleting a milk record soft-archives its linked Milk Sale.
 - `/api/v1/events`: individual and mass veterinary, breeding, pregnancy, birth, weighing, vaccination, treatment, and deworming events. Actor tracking and soft-delete same as cattle. Deleting an event also soft-archives linked treatment expenses.
   - `GET /events/latest-breeding?cattleTag=TAG`: latest breeding event for an animal (used by pregnancy form prefill).

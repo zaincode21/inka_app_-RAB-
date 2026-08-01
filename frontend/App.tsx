@@ -30,6 +30,7 @@ import {
   AddIncomeScreen,
   AddExpenseScreen,
   CattleProfileScreen,
+  CattleExitScreen,
   CowLifeCycleScreen,
   DetailScreen,
 } from './screens';
@@ -86,6 +87,7 @@ export default function App() {
         <Stack.Screen name="AddIncome" component={AddIncomeScreen} />
         <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
         <Stack.Screen name="CattleProfile" component={CattleProfileScreen} />
+        <Stack.Screen name="CattleExit" component={CattleExitScreen} />
         <Stack.Screen name="CowLifeCycle" component={CowLifeCycleScreen} />
         <Stack.Screen name="Detail" component={DetailScreen} />
       </Stack.Navigator>

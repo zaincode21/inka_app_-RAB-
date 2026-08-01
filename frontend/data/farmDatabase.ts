@@ -275,6 +275,31 @@ export async function updateCattle(id: string, input: Omit<Cattle, 'id' | 'creat
   });
 }
 
+export async function exitCattle(
+  id: string,
+  input: {
+    status: string;
+    exitDate: string;
+    reason?: string;
+    amount?: number;
+    buyerVendor?: string;
+    paymentMethod?: string;
+  },
+): Promise<Cattle> {
+  const row = await apiRequest<{ cattle: BackendCattle }>(
+    `/cattle/${id}/exit`,
+    toJsonBody({
+      status: toEnum(input.status, 'SOLD'),
+      exitDate: dateOrUndefined(input.exitDate) ?? todayIsoDate(),
+      reason: emptyToUndefined(input.reason ?? ''),
+      amount: input.amount ?? 0,
+      buyerVendor: emptyToUndefined(input.buyerVendor ?? ''),
+      paymentMethod: emptyToUndefined(input.paymentMethod ?? ''),
+    }),
+  );
+  return mapBackendCattle(row.cattle);
+}
+
 export async function getCattle(): Promise<Cattle[]> {
   const rows = await apiRequest<BackendCattle[]>('/cattle');
   return rows.map(mapBackendCattle);
@@ -293,6 +318,26 @@ export async function createMilkRecord(
     }),
   );
   return mapBackendMilkRecord(row);
+}
+
+export async function updateMilkRecord(
+  id: string,
+  input: Omit<MilkRecord, 'id' | 'createdAt' | 'recordedBy'> & { createMilkSale?: boolean; paymentMethod?: string },
+): Promise<MilkRecord> {
+  const { createMilkSale, paymentMethod, ...milk } = input;
+  const row = await apiRequest<BackendMilkRecord>(`/milk-records/${id}`, {
+    ...toJsonBody({
+      ...toBackendMilkRecord(milk),
+      ...(createMilkSale ? { createMilkSale: true } : {}),
+      ...(paymentMethod ? { paymentMethod } : {}),
+    }),
+    method: 'PATCH',
+  });
+  return mapBackendMilkRecord(row);
+}
+
+export async function deleteMilkRecord(id: string): Promise<void> {
+  await apiRequest<void>(`/milk-records/${id}`, { method: 'DELETE' });
 }
 
 export async function getMilkRecords(): Promise<MilkRecord[]> {
@@ -360,13 +405,93 @@ export async function deleteHealthEvent(id: string): Promise<void> {
   await apiRequest<void>(`/events/${id}`, { method: 'DELETE' });
 }
 
-export async function createTransaction(input: Omit<FarmTransaction, 'id' | 'createdAt' | 'recordedBy'>): Promise<void> {
-  await apiRequest<BackendTransaction>('/transactions', toJsonBody(await toBackendTransaction(input)));
+export async function createTransaction(input: Omit<FarmTransaction, 'id' | 'createdAt' | 'recordedBy'>): Promise<FarmTransaction> {
+  const row = await apiRequest<BackendTransaction>('/transactions', toJsonBody(await toBackendTransaction(input)));
+  return mapBackendTransaction(row);
 }
 
 export async function getTransactions(): Promise<FarmTransaction[]> {
   const rows = await apiRequest<BackendTransaction[]>('/transactions');
   return rows.map(mapBackendTransaction);
+}
+
+export type AttachmentOwnerType = 'cattle' | 'healthEvent' | 'transaction' | 'milkRecord';
+
+export type FarmAttachment = {
+  id: string;
+  ownerType: string;
+  uri: string;
+  label: string | null;
+  cattleId: string | null;
+  milkRecordId: string | null;
+  healthEventId: string | null;
+  transactionId: string | null;
+  createdAt: string;
+};
+
+export async function uploadAttachment(input: {
+  uri: string;
+  mimeType?: string | null;
+  fileName?: string | null;
+  ownerType: AttachmentOwnerType;
+  cattleId?: string;
+  healthEventId?: string;
+  transactionId?: string;
+  milkRecordId?: string;
+  label?: string;
+}): Promise<FarmAttachment> {
+  const form = new FormData();
+  const name = input.fileName?.trim() || `photo-${Date.now()}.jpg`;
+  const type = input.mimeType?.trim() || 'image/jpeg';
+  form.append('file', { uri: input.uri, name, type } as unknown as Blob);
+  form.append('ownerType', input.ownerType);
+  if (input.cattleId) {
+    form.append('cattleId', input.cattleId);
+  }
+  if (input.healthEventId) {
+    form.append('healthEventId', input.healthEventId);
+  }
+  if (input.transactionId) {
+    form.append('transactionId', input.transactionId);
+  }
+  if (input.milkRecordId) {
+    form.append('milkRecordId', input.milkRecordId);
+  }
+  if (input.label) {
+    form.append('label', input.label);
+  }
+
+  return apiRequest<FarmAttachment>('/attachments', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export async function listAttachments(filters?: {
+  cattleId?: string;
+  healthEventId?: string;
+  transactionId?: string;
+  milkRecordId?: string;
+  ownerType?: AttachmentOwnerType;
+}): Promise<FarmAttachment[]> {
+  const params = new URLSearchParams();
+  if (filters?.cattleId) {
+    params.set('cattleId', filters.cattleId);
+  }
+  if (filters?.healthEventId) {
+    params.set('healthEventId', filters.healthEventId);
+  }
+  if (filters?.transactionId) {
+    params.set('transactionId', filters.transactionId);
+  }
+  if (filters?.milkRecordId) {
+    params.set('milkRecordId', filters.milkRecordId);
+  }
+  if (filters?.ownerType) {
+    params.set('ownerType', filters.ownerType);
+  }
+  const query = params.toString();
+  return apiRequest<FarmAttachment[]>(`/attachments${query ? `?${query}` : ''}`);
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {

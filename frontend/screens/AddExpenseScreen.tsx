@@ -4,10 +4,11 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
+import { PhotoPickerField } from '../components/PhotoPickerField';
 import { SelectDropdown } from '../components/SelectDropdown';
 import { useRequireAccess } from '../data/accessGuard';
 import { getCurrentSession } from '../data/authApi';
-import { createTransaction, getCategories, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
+import { createTransaction, uploadAttachment, getCategories, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
 import { canWriteFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -32,6 +33,7 @@ export function AddExpenseScreen({ navigation }: Props) {
   const [discountAmount, setDiscountAmount] = useState('');
   const [linkedCattleTag, setLinkedCattleTag] = useState('');
   const [notes, setNotes] = useState('');
+  const [receiptUri, setReceiptUri] = useState('');
   const calculatedAmount = parseNumber(quantity) * parseNumber(unitPrice);
 
   const saveExpense = async () => {
@@ -42,7 +44,7 @@ export function AddExpenseScreen({ navigation }: Props) {
     }
 
     try {
-      await createTransaction({
+      const created = await createTransaction({
         kind: 'expense',
         date: date.trim(),
         category: expenseType,
@@ -59,6 +61,27 @@ export function AddExpenseScreen({ navigation }: Props) {
         linkedMilkRecordId: '',
         notes: notes.trim(),
       });
+
+      if (receiptUri.trim()) {
+        try {
+          await uploadAttachment({
+            uri: receiptUri.trim(),
+            ownerType: 'transaction',
+            transactionId: created.id,
+            label: 'Receipt',
+          });
+        } catch (uploadError) {
+          Alert.alert(
+            'Expense saved',
+            uploadError instanceof Error
+              ? `Expense was saved, but the receipt upload failed: ${uploadError.message}`
+              : 'Expense was saved, but the receipt upload failed.',
+          );
+          navigation.navigate('ManageExpenses');
+          return;
+        }
+      }
+
       navigation.navigate('ManageExpenses');
     } catch (error) {
       Alert.alert('Could not save expense', error instanceof Error ? error.message : 'Please check the details and try again.');
@@ -100,6 +123,16 @@ export function AddExpenseScreen({ navigation }: Props) {
         <Field label="Discount Amount" placeholder="0" keyboardType="decimal-pad" value={discountAmount} onChangeText={setDiscountAmount} />
         <Field label="Linked Cattle Tag" placeholder="Optional animal tag" value={linkedCattleTag} onChangeText={setLinkedCattleTag} />
         <Field label="Notes" placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
+        <View className="mt-4">
+          <PhotoPickerField
+            label="Receipt photo"
+            value={receiptUri}
+            onChange={setReceiptUri}
+            ownerType="transaction"
+            deferUpload
+            attachmentLabel="Receipt"
+          />
+        </View>
       </KeyboardSafeScroll>
 
       <StatusBar style="light" />

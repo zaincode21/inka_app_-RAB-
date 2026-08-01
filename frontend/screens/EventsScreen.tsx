@@ -270,6 +270,7 @@ export function EventsScreen({ navigation }: Props) {
       title: item.scope === 'mass' ? normalizeMassEventType(item.eventType) : item.eventType,
       subtitle: item.scope === 'mass' ? 'Mass herd event' : 'Individual cattle event',
       details,
+      imageUri: item.photoUri || undefined,
     });
   };
 

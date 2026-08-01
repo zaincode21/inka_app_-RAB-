@@ -35,7 +35,13 @@
     },
     "owner": "serge0208",
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Inka to attach cattle, event, and receipt photos."
+        }
+      ]
     ]
   }
 }

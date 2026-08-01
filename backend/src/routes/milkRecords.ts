@@ -1,5 +1,6 @@
 import { milkRecordSchema, updateMilkRecordSchema } from '../schemas/resourceSchemas.js';
 import { deleteLinkedMilkSales, syncMilkSaleIncome, withMilkTotal } from '../services/milkService.js';
+import { assertCattleIsActive } from '../services/cattleExitService.js';
 import { canDeleteMilk, canWriteMilk } from '../utils/permissions.js';
 import { createCrudRouter, models } from '../lib/createCrudRouter.js';
 
@@ -20,6 +21,12 @@ export const milkRecordRouter = createCrudRouter({
   },
   createData: (body) => withMilkTotal(body),
   updateData: (body) => withMilkTotal(body),
+  beforeCreate: async (body) => {
+    await assertCattleIsActive(typeof body.cattleId === 'string' ? body.cattleId : null);
+  },
+  beforeUpdate: async (_id, body) => {
+    await assertCattleIsActive(typeof body.cattleId === 'string' ? body.cattleId : null);
+  },
   afterCreate: async (body, record, auth) => {
     await syncMilkSaleIncome(body, record, true, auth.id);
   },

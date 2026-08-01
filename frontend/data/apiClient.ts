@@ -15,7 +15,7 @@ export function getAuthToken(): string | null {
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string> | undefined),
   };
 
@@ -41,6 +41,18 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   }
 
   return payload as T;
+}
+
+/** Absolute URL for media stored as /uploads/... or already absolute. */
+export function resolveMediaUrl(uri?: string | null): string {
+  if (!uri?.trim()) {
+    return '';
+  }
+  if (/^https?:\/\//i.test(uri) || uri.startsWith('file:') || uri.startsWith('content:')) {
+    return uri;
+  }
+  const origin = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+  return `${origin}${uri.startsWith('/') ? uri : `/${uri}`}`;
 }
 
 export function toJsonBody(data: unknown): RequestInit {

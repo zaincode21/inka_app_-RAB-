@@ -131,7 +131,7 @@ A1 unblocks correct multi-user demos. A4 is quick trust win. A2/A3/A6 share migr
 - Feed inventory  
 - Multi-farm switcher  
 
-Those remain Phase B–D from the product gap analysis.
+Those remain Phase B–D from the product gap analysis. See **[PHASE_B_BACKLOG.md](./PHASE_B_BACKLOG.md)** for the next build.
 
 ---
 

@@ -15,6 +15,9 @@ export const env = {
   exposeDevResetToken:
     process.env.EXPOSE_DEV_RESET_TOKEN === 'true' ||
     (process.env.EXPOSE_DEV_RESET_TOKEN !== 'false' && (process.env.NODE_ENV ?? 'development') !== 'production'),
+  uploadDir: process.env.UPLOAD_DIR?.trim() || 'uploads',
+  /** Public origin used to build attachment URLs (no trailing slash). */
+  publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? process.env.APP_PUBLIC_URL ?? 'http://localhost:4000').replace(/\/$/, ''),
 };
 
 if (!env.databaseUrl && process.env.NODE_ENV !== 'test') {
