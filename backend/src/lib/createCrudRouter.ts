@@ -13,7 +13,7 @@ type PrismaDelegate = {
   delete: (args: unknown) => Promise<unknown>;
 };
 
-type CrudOptions = {
+export type CrudOptions = {
   model: PrismaDelegate;
   resourceName: string;
   createSchema: ZodType;
@@ -25,11 +25,13 @@ type CrudOptions = {
   updateData?: (body: Record<string, unknown>) => Record<string, unknown>;
   beforeCreate?: (body: Record<string, unknown>) => Promise<void>;
   beforeUpdate?: (id: string, body: Record<string, unknown>) => Promise<void>;
+  beforeDelete?: (id: string, existing: Record<string, unknown>) => Promise<void>;
   afterCreate?: (body: Record<string, unknown>, record: Record<string, unknown>) => Promise<void>;
   afterUpdate?: (id: string, body: Record<string, unknown>, record: Record<string, unknown>) => Promise<void>;
   beforeList?: () => Promise<void>;
 };
 
+/** Shared factory for standard list / get / create / update / delete resource routes. */
 export function createCrudRouter(options: CrudOptions) {
   const router = Router();
 
@@ -49,7 +51,10 @@ export function createCrudRouter(options: CrudOptions) {
   router.get(
     '/:id',
     asyncHandler(async (request, response) => {
-      const record = await options.model.findUnique({ where: { id: request.params.id }, include: options.include });
+      const record = await options.model.findUnique({
+        where: { id: request.params.id },
+        include: options.include,
+      });
       if (!record) {
         throw notFound(options.resourceName);
       }
@@ -63,7 +68,10 @@ export function createCrudRouter(options: CrudOptions) {
     asyncHandler(async (request, response) => {
       const body = request.body as Record<string, unknown>;
       await options.beforeCreate?.(body);
-      const record = await options.model.create({ data: options.createData?.(body) ?? body, include: options.include });
+      const record = await options.model.create({
+        data: options.createData?.(body) ?? body,
+        include: options.include,
+      });
       await options.afterCreate?.(body, record as Record<string, unknown>);
       response.status(201).json(record);
     }),
@@ -92,6 +100,7 @@ export function createCrudRouter(options: CrudOptions) {
       if (!existing) {
         throw notFound(options.resourceName);
       }
+      await options.beforeDelete?.(String(request.params.id), existing as Record<string, unknown>);
       await options.model.delete({ where: { id: request.params.id } });
       response.status(204).send();
     }),
@@ -100,6 +109,7 @@ export function createCrudRouter(options: CrudOptions) {
   return router;
 }
 
+/** Prisma model delegates used by resource route files. */
 export const models = {
   farm: prisma.farm as unknown as PrismaDelegate,
   category: prisma.category as unknown as PrismaDelegate,

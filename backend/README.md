@@ -60,11 +60,12 @@ All business routes are under `/api/v1`.
 
 - `GET /health` and `GET /api/v1/health`: service status.
 - `/api/v1/farms`: farm profile records.
-  - `GET /farms/system-config`: system configuration for the default farm (includes `returnHeatDays` default 21, `returnHeatTime` default `08:00`).
-  - `PATCH /farms/system-config`: update system configuration (`returnHeatDays` 0–45, `returnHeatTime` as `HH:mm` 24-hour). Used by Settings → System Configuration for estimated return heat date and time after Kwimisha.
+  - `GET /farms/system-config`: system configuration for the default farm (`returnHeatDays`, `returnHeatTime`, `milkPricePerLiter`, `defaultMilkBuyer`, `defaultMilkDestination`).
+  - `PATCH /farms/system-config`: partial update of system settings (send only the fields you want to change).
 - `/api/v1/categories`: configurable breeds, groups, medicines, event types, income categories, expense categories, and milk destinations.
 - `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records. Listing cattle auto-promotes lifecycle stages by age (never demotes).
 - `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records.
+  - Whole Farm saves may create/update a linked **Milk Sale** income when `createMilkSale=true`, using `soldLiters = produced − used − rejected` × `pricePerLiter` (locked at save). Duplicate Milk Sale per milk record is prevented. Deleting a milk record removes its linked Milk Sale.
 - `/api/v1/events`: individual and mass veterinary, breeding, pregnancy, birth, weighing, vaccination, treatment, and deworming events.
   - `GET /events/latest-breeding?cattleTag=TAG`: latest breeding event for an animal (used by pregnancy form prefill).
   - `GET /events/birth-prefill?cattleTag=TAG`: latest pregnancy event for an animal, falling back to latest breeding event (used by birth form prefill).
@@ -87,6 +88,15 @@ Most resource routes support:
 - `POST /`: create a record.
 - `PATCH /:id`: update a record.
 - `DELETE /:id`: delete a record.
+
+## Project layout
+
+- `src/routes/` — one file per resource (thin wiring)
+- `src/lib/createCrudRouter.ts` — shared factory for standard list/get/create/update/delete
+- `src/controllers/` — HTTP handlers for non-CRUD endpoints (farm system-config, event prefills)
+- `src/services/` — domain logic (milk-sale sync, birth/pregnancy rules, farm defaults)
+- `src/schemas/` — Zod request validation
+- `src/utils/` — shared helpers (inbreeding, lifecycle)
 
 ## Notes
 

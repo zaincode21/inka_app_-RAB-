@@ -26,15 +26,32 @@ export const farmSchema = z.object({
     .trim()
     .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Time must be HH:mm (24-hour)')
     .default('08:00'),
+  milkPricePerLiter: money,
+  defaultMilkBuyer: optionalString,
+  defaultMilkDestination: optionalString,
 });
 
-export const systemConfigSchema = z.object({
-  returnHeatDays: z.coerce.number().int().min(0).max(45),
-  returnHeatTime: z
-    .string()
-    .trim()
-    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Time must be HH:mm (24-hour)'),
-});
+export const systemConfigSchema = z
+  .object({
+    returnHeatDays: z.coerce.number().int().min(0).max(45).optional(),
+    returnHeatTime: z
+      .string()
+      .trim()
+      .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Time must be HH:mm (24-hour)')
+      .optional(),
+    milkPricePerLiter: z.coerce.number().nonnegative().optional(),
+    defaultMilkBuyer: optionalString,
+    defaultMilkDestination: optionalString,
+  })
+  .refine(
+    (value) =>
+      value.returnHeatDays !== undefined ||
+      value.returnHeatTime !== undefined ||
+      value.milkPricePerLiter !== undefined ||
+      value.defaultMilkBuyer !== undefined ||
+      value.defaultMilkDestination !== undefined,
+    { message: 'Provide at least one system configuration field to update.' },
+  );
 
 export const categorySchema = z.object({
   farmId: z.string().optional(),
@@ -103,6 +120,8 @@ export const milkRecordSchema = z.object({
   proteinPercent: money,
   somaticCellCount: money,
   notes: optionalString,
+  createMilkSale: z.boolean().optional(),
+  paymentMethod: optionalString,
 });
 
 export const healthEventSchema = z.object({

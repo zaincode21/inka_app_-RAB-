@@ -64,6 +64,9 @@ model Farm {
   milkUnit        String   @default("L")
   returnHeatDays  Int      @default(21)
   returnHeatTime  String   @default("08:00")
+  milkPricePerLiter Decimal @default(0) @db.Decimal(12, 2)
+  defaultMilkBuyer String?
+  defaultMilkDestination String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

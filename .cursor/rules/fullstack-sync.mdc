@@ -46,4 +46,4 @@ router.delete('/:id', ...)
 - `/api/v1/events/latest-breeding?cattleTag=...` for pregnancy prefill from breeding records
 - `/api/v1/events/birth-prefill?cattleTag=...` for birth prefill from pregnancy and breeding records
 - `/api/v1/reports/dashboard`, `/api/v1/reports/summaries`
-- CRUD resources use `backend/src/routes/crudRouter.ts` (includes DELETE)
+- CRUD resources use `backend/src/lib/createCrudRouter.ts` (includes DELETE)

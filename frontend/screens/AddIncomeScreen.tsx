@@ -1,10 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SelectDropdown } from '../components/SelectDropdown';
-import { createTransaction, getCategories, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
+import { createTransaction, getCategories, getSystemConfig, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddIncome'>;
@@ -28,6 +28,48 @@ export function AddIncomeScreen({ navigation }: Props) {
   const [linkedCattleTag, setLinkedCattleTag] = useState('');
   const [notes, setNotes] = useState('');
   const calculatedAmount = parseNumber(milkQuantity) * parseNumber(sellingPrice);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const config = await getSystemConfig();
+        if (cancelled) {
+          return;
+        }
+        if (config.milkPricePerLiter > 0) {
+          setSellingPrice((current) => current || `${config.milkPricePerLiter}`);
+        }
+        if (config.defaultMilkBuyer) {
+          setBuyer((current) => current || config.defaultMilkBuyer);
+        }
+      } catch {
+        // Ignore settings load failures for manual income entry.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (incomeType !== 'Milk Sale') {
+      return;
+    }
+    void (async () => {
+      try {
+        const config = await getSystemConfig();
+        if (config.milkPricePerLiter > 0 && !sellingPrice.trim()) {
+          setSellingPrice(`${config.milkPricePerLiter}`);
+        }
+        if (config.defaultMilkBuyer && !buyer.trim()) {
+          setBuyer(config.defaultMilkBuyer);
+        }
+      } catch {
+        // Keep current fields.
+      }
+    })();
+  }, [incomeType]);
 
   const saveIncome = async () => {
     const finalAmount = parseNumber(amount) || calculatedAmount;

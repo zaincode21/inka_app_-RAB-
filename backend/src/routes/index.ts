@@ -1,13 +1,11 @@
 import { Router } from 'express';
 import { authRouter } from './auth.js';
-import {
-  categoryRouter,
-  cattleRouter,
-  farmRouter,
-  healthEventRouter,
-  milkRecordRouter,
-  transactionRouter,
-} from './resources.js';
+import { farmRouter } from './farms.js';
+import { categoryRouter } from './categories.js';
+import { cattleRouter } from './cattle.js';
+import { milkRecordRouter } from './milkRecords.js';
+import { healthEventRouter } from './events.js';
+import { transactionRouter } from './transactions.js';
 import { reportRouter } from './reports.js';
 
 export const apiRouter = Router();

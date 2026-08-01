@@ -9,8 +9,11 @@ import {
   type Cattle,
   type MilkWithdrawalStatus,
   createMilkRecord,
+  formatMoney,
+  formatNumber,
   getCattle,
   getMilkWithdrawalStatus,
+  getSystemConfig,
   parseNumber,
   todayIsoDate,
   useDatabaseQuery,
@@ -32,11 +35,21 @@ export function AddMilkRecordScreen({ navigation }: Props) {
   const [pmTotal, setPmTotal] = useState('');
   const [totalUsed, setTotalUsed] = useState('');
   const [rejectedMilk, setRejectedMilk] = useState('');
+  const [buyer, setBuyer] = useState('');
+  const [destination, setDestination] = useState('');
+  const [milkPricePerLiter, setMilkPricePerLiter] = useState(0);
   const [withdrawal, setWithdrawal] = useState<MilkWithdrawalStatus | null>(null);
   const [notes, setNotes] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   const totalProduced = parseNumber(amTotal) + parseNumber(pmTotal);
   const underWithdrawal = Boolean(milkType === 'Individual Cow Milk' && withdrawal?.underWithdrawal);
+  const usedLiters = parseNumber(totalUsed);
+  const rejectedLiters = underWithdrawal && totalProduced > 0 ? totalProduced : parseNumber(rejectedMilk);
+  const soldLiters = Math.max(0, Number((totalProduced - usedLiters - rejectedLiters).toFixed(2)));
+  const estimatedSale = Number((soldLiters * milkPricePerLiter).toFixed(2));
+
   const cowOptions = cattle.filter((animal) => {
     const query = cowSearch.trim().toLowerCase();
     const isFemaleCow = animal.gender.toLowerCase() === 'female' || ['Cow', 'Heifer'].includes(animal.stage);
@@ -51,6 +64,26 @@ export function AddMilkRecordScreen({ navigation }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    void (async () => {
+      try {
+        const config = await getSystemConfig();
+        if (!cancelled) {
+          setMilkPricePerLiter(config.milkPricePerLiter);
+          const shared = config.defaultMilkBuyer.trim() || config.defaultMilkDestination.trim();
+          setBuyer((current) => current || shared);
+          setDestination((current) => current || shared);
+        }
+      } catch {
+        // Keep defaults when settings cannot load.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     if (milkType !== 'Individual Cow Milk' || !selectedCow?.tagNumber || !date.trim()) {
       setWithdrawal(null);
       return () => {
@@ -61,18 +94,8 @@ export function AddMilkRecordScreen({ navigation }: Props) {
     void (async () => {
       try {
         const status = await getMilkWithdrawalStatus(selectedCow.tagNumber, date.trim());
-        if (cancelled) {
-          return;
-        }
-        setWithdrawal(status);
-        if (status.underWithdrawal) {
-          setRejectedMilk((current) => {
-            const produced = parseNumber(amTotal) + parseNumber(pmTotal);
-            if (produced > 0) {
-              return produced.toFixed(1);
-            }
-            return current;
-          });
+        if (!cancelled) {
+          setWithdrawal(status);
         }
       } catch {
         if (!cancelled) {
@@ -84,16 +107,51 @@ export function AddMilkRecordScreen({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [milkType, selectedCow?.tagNumber, date, amTotal, pmTotal]);
+  }, [milkType, selectedCow?.tagNumber, date]);
 
   useEffect(() => {
-    if (!underWithdrawal) {
-      return;
-    }
-    if (totalProduced > 0) {
+    if (underWithdrawal && totalProduced > 0) {
       setRejectedMilk(totalProduced.toFixed(1));
     }
   }, [underWithdrawal, totalProduced]);
+
+  const persistRecord = async (createMilkSale: boolean) => {
+    const withdrawalNote =
+      underWithdrawal && withdrawal?.active
+        ? `Milk withheld: ${withdrawal.active.medicine} until ${withdrawal.active.withdrawalEndsOn} (${withdrawal.active.eventType}).`
+        : '';
+
+    setSaving(true);
+    try {
+      await createMilkRecord({
+        cattleId: milkType === 'Individual Cow Milk' ? selectedCow?.id ?? '' : '',
+        cattleTag: milkType === 'Individual Cow Milk' ? selectedCow?.tagNumber ?? '' : '',
+        cattleName: milkType === 'Individual Cow Milk' ? selectedCow?.name ?? '' : '',
+        date: date.trim(),
+        milkType,
+        amTotal: parseNumber(amTotal),
+        noonTotal: 0,
+        pmTotal: parseNumber(pmTotal),
+        totalProduced,
+        totalUsed: usedLiters,
+        rejectedMilk: rejectedLiters,
+        destination: destination.trim(),
+        buyer: buyer.trim(),
+        pricePerLiter: milkPricePerLiter,
+        fatPercent: 0,
+        proteinPercent: 0,
+        somaticCellCount: 0,
+        notes: [notes.trim(), withdrawalNote].filter(Boolean).join(' '),
+        createMilkSale,
+        paymentMethod: 'Cash',
+      });
+      navigation.replace('MilkRecords');
+    } catch (error) {
+      Alert.alert('Could not save milk record', error instanceof Error ? error.message : 'Please check the details and try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const saveRecord = async () => {
     if (!date.trim() || !milkType) {
@@ -111,43 +169,25 @@ export function AddMilkRecordScreen({ navigation }: Props) {
       return;
     }
 
-    const used = parseNumber(totalUsed);
-    const rejected = underWithdrawal && totalProduced > 0 ? totalProduced : parseNumber(rejectedMilk);
-    if (used + rejected > totalProduced + 0.0001) {
+    if (usedLiters + rejectedLiters > totalProduced + 0.0001) {
       Alert.alert('Invalid milk split', 'Used + rejected cannot exceed total produced.');
       return;
     }
 
-    const withdrawalNote =
-      underWithdrawal && withdrawal?.active
-        ? `Milk withheld: ${withdrawal.active.medicine} until ${withdrawal.active.withdrawalEndsOn} (${withdrawal.active.eventType}).`
-        : '';
-
-    try {
-      await createMilkRecord({
-        cattleId: milkType === 'Individual Cow Milk' ? selectedCow?.id ?? '' : '',
-        cattleTag: milkType === 'Individual Cow Milk' ? selectedCow?.tagNumber ?? '' : '',
-        cattleName: milkType === 'Individual Cow Milk' ? selectedCow?.name ?? '' : '',
-        date: date.trim(),
-        milkType,
-        amTotal: parseNumber(amTotal),
-        noonTotal: 0,
-        pmTotal: parseNumber(pmTotal),
-        totalProduced,
-        totalUsed: used,
-        rejectedMilk: rejected,
-        destination: '',
-        buyer: '',
-        pricePerLiter: 0,
-        fatPercent: 0,
-        proteinPercent: 0,
-        somaticCellCount: 0,
-        notes: [notes.trim(), withdrawalNote].filter(Boolean).join(' '),
-      });
-      navigation.replace('MilkRecords');
-    } catch (error) {
-      Alert.alert('Could not save milk record', error instanceof Error ? error.message : 'Please check the details and try again.');
+    const canOfferSale = milkType === 'Whole Farm' && soldLiters > 0 && milkPricePerLiter > 0;
+    if (!canOfferSale) {
+      await persistRecord(false);
+      return;
     }
+
+    Alert.alert(
+      'Create Milk Sale?',
+      `Sold liters: ${formatNumber(soldLiters)} L\nPrice: ${formatMoney(milkPricePerLiter)} / L\nEstimated income: ${formatMoney(estimatedSale)}\n\nRejected liters are not included in the sale.`,
+      [
+        { text: 'Save without income', style: 'cancel', onPress: () => void persistRecord(false) },
+        { text: 'Create Milk Sale', onPress: () => void persistRecord(true) },
+      ],
+    );
   };
 
   const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -208,7 +248,7 @@ export function AddMilkRecordScreen({ navigation }: Props) {
             <Text className="text-[14px] font-bold text-[#DC2626]">Milk under withdrawal</Text>
             <Text className="mt-1 text-[13px] leading-5 text-[#7F1D1D]">
               {selectedCow?.tagNumber}: {withdrawal.active.medicine} from {withdrawal.active.eventDate}. Withhold until{' '}
-              {withdrawal.active.withdrawalEndsOn}. Today&apos;s produced milk is auto-marked as rejected (not for sale).
+              {withdrawal.active.withdrawalEndsOn}. Produced milk is auto-marked rejected (not for sale).
             </Text>
           </View>
         ) : null}
@@ -233,11 +273,33 @@ export function AddMilkRecordScreen({ navigation }: Props) {
           onChangeText={setRejectedMilk}
           editable={!underWithdrawal}
         />
-        {underWithdrawal ? (
-          <Text className="mb-3 -mt-1 text-[12px] text-[#DC2626]">Locked while cow is under medicine/vaccine milk withdrawal.</Text>
+        {rejectedLiters > 0 ? (
+          <Text className="mb-3 -mt-1 text-[12px] text-[#DC2626]">Rejected milk is not included in Milk Sale.</Text>
         ) : (
-          <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Mastitis discard, spill, or other non-sale milk.</Text>
+          <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Mastitis discard, spill, or withheld milk.</Text>
         )}
+
+        {milkType === 'Whole Farm' ? (
+          <>
+            <Label text="Buyer" />
+            <Input placeholder="Cooperative / buyer" value={buyer} onChangeText={setBuyer} />
+            <Label text="Destination" />
+            <Input placeholder="Processor / market" value={destination} onChangeText={setDestination} />
+            <View className="mb-4 rounded-[14px] border border-[#D9E4E4] bg-[#F0FDFA] px-4 py-3">
+              <Text className="text-[13px] font-semibold text-[#0F766E]">Sale preview (Whole Farm)</Text>
+              <Text className="mt-1 text-[14px] text-[#134E4A]">
+                Sold liters: {formatNumber(soldLiters)} L (produced − used − rejected)
+              </Text>
+              <Text className="mt-1 text-[14px] text-[#134E4A]">
+                Price: {formatMoney(milkPricePerLiter)} / L (from Settings)
+              </Text>
+              <Text className="mt-1 text-[15px] font-bold text-[#008B8B]">Estimated Milk Sale: {formatMoney(estimatedSale)}</Text>
+              {milkPricePerLiter <= 0 ? (
+                <Text className="mt-2 text-[12px] text-[#DC2626]">Set milk price in Settings → System Configuration to enable income posting.</Text>
+              ) : null}
+            </View>
+          </>
+        ) : null}
 
         <Label text="Notes" />
         <Input placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
@@ -247,8 +309,14 @@ export function AddMilkRecordScreen({ navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
           <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
         </Pressable>
-        <Pressable onPress={saveRecord} className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
-          <Text className="text-[16px] font-bold text-white">Save</Text>
+        <Pressable
+          onPress={() => {
+            void saveRecord();
+          }}
+          disabled={saving}
+          className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
+        >
+          <Text className="text-[16px] font-bold text-white">{saving ? 'Saving...' : 'Save'}</Text>
         </Pressable>
       </View>
 

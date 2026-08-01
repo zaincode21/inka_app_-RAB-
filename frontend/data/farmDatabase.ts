@@ -145,10 +145,14 @@ export type SystemConfig = {
   milkUnit: string;
   returnHeatDays: number;
   returnHeatTime: string;
+  milkPricePerLiter: number;
+  defaultMilkBuyer: string;
+  defaultMilkDestination: string;
 };
 
 export const DEFAULT_RETURN_HEAT_DAYS = 21;
 export const DEFAULT_RETURN_HEAT_TIME = '08:00';
+export const DEFAULT_MILK_PRICE_PER_LITER = 0;
 
 type UseDatabaseQueryResult<T> = {
   data: T;
@@ -213,8 +217,8 @@ export async function updateCategory(
   input: { name?: string; defaultWithdrawalDays?: number },
 ): Promise<void> {
   await apiRequest<BackendCategory>(`/categories/${id}`, {
-    method: 'PATCH',
     ...toJsonBody(input),
+    method: 'PATCH',
   });
 }
 
@@ -257,8 +261,19 @@ export async function getCattle(): Promise<Cattle[]> {
   return rows.map(mapBackendCattle);
 }
 
-export async function createMilkRecord(input: Omit<MilkRecord, 'id' | 'createdAt'>): Promise<void> {
-  await apiRequest<BackendMilkRecord>('/milk-records', toJsonBody(toBackendMilkRecord(input)));
+export async function createMilkRecord(
+  input: Omit<MilkRecord, 'id' | 'createdAt'> & { createMilkSale?: boolean; paymentMethod?: string },
+): Promise<MilkRecord> {
+  const { createMilkSale, paymentMethod, ...milk } = input;
+  const row = await apiRequest<BackendMilkRecord>(
+    '/milk-records',
+    toJsonBody({
+      ...toBackendMilkRecord(milk),
+      ...(createMilkSale ? { createMilkSale: true } : {}),
+      ...(paymentMethod ? { paymentMethod } : {}),
+    }),
+  );
+  return mapBackendMilkRecord(row);
 }
 
 export async function getMilkRecords(): Promise<MilkRecord[]> {
@@ -317,8 +332,8 @@ export async function getBirthPrefillEvent(cattleTag: string): Promise<HealthEve
 
 export async function updateHealthEvent(id: string, input: Omit<HealthEvent, 'id' | 'createdAt'>): Promise<void> {
   await apiRequest<BackendHealthEvent>(`/events/${id}`, {
-    method: 'PATCH',
     ...toJsonBody(await toBackendHealthEvent(input)),
+    method: 'PATCH',
   });
 }
 
@@ -352,18 +367,41 @@ export async function getSystemConfig(): Promise<SystemConfig> {
     currency: row.currency,
     weightUnit: row.weightUnit,
     milkUnit: row.milkUnit,
-    returnHeatDays: Number(row.returnHeatDays) > 0 ? Number(row.returnHeatDays) : DEFAULT_RETURN_HEAT_DAYS,
+    returnHeatDays: Number(row.returnHeatDays) >= 0 ? Number(row.returnHeatDays) : DEFAULT_RETURN_HEAT_DAYS,
     returnHeatTime: normalizeReturnHeatTime(row.returnHeatTime),
+    milkPricePerLiter: Number(row.milkPricePerLiter) >= 0 ? Number(row.milkPricePerLiter) : DEFAULT_MILK_PRICE_PER_LITER,
+    defaultMilkBuyer: row.defaultMilkBuyer?.trim() || '',
+    defaultMilkDestination: row.defaultMilkDestination?.trim() || '',
   };
 }
 
-export async function updateSystemConfig(input: { returnHeatDays: number; returnHeatTime: string }): Promise<SystemConfig> {
+export async function updateSystemConfig(input: {
+  returnHeatDays?: number;
+  returnHeatTime?: string;
+  milkPricePerLiter?: number;
+  defaultMilkBuyer?: string;
+  defaultMilkDestination?: string;
+}): Promise<SystemConfig> {
+  const payload: Record<string, unknown> = {};
+  if (input.returnHeatDays !== undefined) {
+    payload.returnHeatDays = input.returnHeatDays;
+  }
+  if (input.returnHeatTime !== undefined) {
+    payload.returnHeatTime = normalizeReturnHeatTime(input.returnHeatTime);
+  }
+  if (input.milkPricePerLiter !== undefined) {
+    payload.milkPricePerLiter = input.milkPricePerLiter;
+  }
+  if (input.defaultMilkBuyer !== undefined) {
+    payload.defaultMilkBuyer = input.defaultMilkBuyer.trim();
+  }
+  if (input.defaultMilkDestination !== undefined) {
+    payload.defaultMilkDestination = input.defaultMilkDestination.trim();
+  }
+
   const row = await apiRequest<SystemConfig>('/farms/system-config', {
+    ...toJsonBody(payload),
     method: 'PATCH',
-    ...toJsonBody({
-      returnHeatDays: input.returnHeatDays,
-      returnHeatTime: normalizeReturnHeatTime(input.returnHeatTime),
-    }),
   });
   return {
     farmId: row.farmId,
@@ -371,8 +409,11 @@ export async function updateSystemConfig(input: { returnHeatDays: number; return
     currency: row.currency,
     weightUnit: row.weightUnit,
     milkUnit: row.milkUnit,
-    returnHeatDays: Number(row.returnHeatDays) > 0 ? Number(row.returnHeatDays) : DEFAULT_RETURN_HEAT_DAYS,
+    returnHeatDays: Number(row.returnHeatDays) >= 0 ? Number(row.returnHeatDays) : DEFAULT_RETURN_HEAT_DAYS,
     returnHeatTime: normalizeReturnHeatTime(row.returnHeatTime),
+    milkPricePerLiter: Number(row.milkPricePerLiter) >= 0 ? Number(row.milkPricePerLiter) : DEFAULT_MILK_PRICE_PER_LITER,
+    defaultMilkBuyer: row.defaultMilkBuyer?.trim() || '',
+    defaultMilkDestination: row.defaultMilkDestination?.trim() || '',
   };
 }
 
