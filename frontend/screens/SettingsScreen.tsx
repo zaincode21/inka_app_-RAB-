@@ -17,7 +17,7 @@ const settingsItems = [
   {
     id: 'farm-setup',
     title: 'Farm Setup',
-    subtitle: 'Categories, breeds, groups, medicines',
+    subtitle: 'Categories, breeds, medicines + milk withdrawal days',
     icon: 'grid' as const,
     route: 'FarmSetup' as const,
   },

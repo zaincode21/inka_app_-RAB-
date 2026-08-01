@@ -41,6 +41,7 @@ export const categorySchema = z.object({
   kind: z.string().min(1),
   name: z.string().min(1),
   isDefault: z.boolean().default(false),
+  defaultWithdrawalDays: money,
 });
 
 export const registerSchema = z.object({

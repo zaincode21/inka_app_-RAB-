@@ -1,6 +1,6 @@
 import { prisma } from '../src/config/prisma.js';
 
-const defaultCategories = [
+const defaultCategories: Array<[string, string, number?]> = [
   ['income', 'Milk Sale'],
   ['income', 'Cattle Sale'],
   ['income', 'Breeding Service'],
@@ -18,9 +18,9 @@ const defaultCategories = [
   ['group', 'Breeding'],
   ['group', 'Calving'],
   ['group', 'Young stock'],
-  ['medicine', 'Oxytetracycline'],
-  ['medicine', 'Ivermectin'],
-  ['medicine', 'Multivitamin'],
+  ['medicine', 'Oxytetracycline', 7],
+  ['medicine', 'Ivermectin', 28],
+  ['medicine', 'Multivitamin', 0],
   ['event', 'Treated'],
   ['event', 'Vaccinated'],
   ['event', 'Deworming'],
@@ -39,7 +39,7 @@ const defaultCategories = [
   ['milkDestination', 'Home Use'],
   ['milkDestination', 'Processor'],
   ['milkDestination', 'Direct Customer'],
-] as const;
+];
 
 async function main() {
   const farm = await prisma.farm.upsert({
@@ -58,7 +58,7 @@ async function main() {
     },
   });
 
-  for (const [kind, name] of defaultCategories) {
+  for (const [kind, name, withdrawalDays] of defaultCategories) {
     await prisma.category.upsert({
       where: {
         farmId_kind_name: {
@@ -67,12 +67,17 @@ async function main() {
           name,
         },
       },
-      update: {},
+      update: {
+        ...(kind === 'medicine' && withdrawalDays !== undefined
+          ? { defaultWithdrawalDays: withdrawalDays }
+          : {}),
+      },
       create: {
         farmId: farm.id,
         kind,
         name,
         isDefault: true,
+        defaultWithdrawalDays: kind === 'medicine' ? (withdrawalDays ?? 0) : 0,
       },
     });
   }

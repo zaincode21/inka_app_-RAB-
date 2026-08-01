@@ -291,6 +291,79 @@ healthEventRouter.get(
   }),
 );
 
+healthEventRouter.get(
+  '/milk-withdrawal',
+  asyncHandler(async (request, response) => {
+    const cattleTag = typeof request.query.cattleTag === 'string' ? request.query.cattleTag.trim() : '';
+    if (!cattleTag) {
+      throw new ApiError(400, 'cattleTag query parameter is required.');
+    }
+
+    const onDateRaw = typeof request.query.onDate === 'string' ? request.query.onDate.trim() : '';
+    const onDate = onDateRaw ? new Date(`${onDateRaw}T00:00:00`) : new Date();
+    if (Number.isNaN(onDate.getTime())) {
+      throw new ApiError(400, 'onDate must be a valid YYYY-MM-DD date.');
+    }
+    onDate.setHours(0, 0, 0, 0);
+
+    const events = await prisma.healthEvent.findMany({
+      where: {
+        scope: 'INDIVIDUAL',
+        cattle: { tagNumber: cattleTag },
+        withdrawalDays: { gt: 0 },
+      },
+      orderBy: { eventDate: 'desc' },
+      take: 40,
+      select: {
+        id: true,
+        eventDate: true,
+        eventType: true,
+        medicine: true,
+        withdrawalDays: true,
+      },
+    });
+
+    let active: {
+      eventId: string;
+      eventType: string;
+      medicine: string;
+      eventDate: string;
+      withdrawalDays: number;
+      withdrawalEndsOn: string;
+    } | null = null;
+
+    for (const event of events) {
+      const days = Number(event.withdrawalDays ?? 0);
+      if (!Number.isFinite(days) || days <= 0) {
+        continue;
+      }
+      const start = new Date(event.eventDate);
+      start.setHours(0, 0, 0, 0);
+      const ends = new Date(start);
+      ends.setDate(ends.getDate() + Math.ceil(days));
+      if (onDate.getTime() <= ends.getTime()) {
+        const iso = (value: Date) => value.toISOString().slice(0, 10);
+        active = {
+          eventId: event.id,
+          eventType: event.eventType,
+          medicine: event.medicine?.trim() || 'Medicine',
+          eventDate: iso(start),
+          withdrawalDays: days,
+          withdrawalEndsOn: iso(ends),
+        };
+        break;
+      }
+    }
+
+    response.json({
+      cattleTag,
+      onDate: onDate.toISOString().slice(0, 10),
+      underWithdrawal: Boolean(active),
+      active,
+    });
+  }),
+);
+
 healthEventRouter.use(healthEventCrud);
 
 export const transactionRouter = createCrudRouter({

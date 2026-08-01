@@ -3,7 +3,7 @@ import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import { addCategory, getCategories, useDatabaseQuery } from '../data/farmDatabase';
+import { addCategory, getCategories, parseNumber, updateCategory, useDatabaseQuery } from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FarmSetup'>;
@@ -15,6 +15,9 @@ export function FarmSetupScreen({ navigation }: Props) {
   const { data: categories, reload } = useDatabaseQuery(() => getCategories(), []);
   const [selectedKind, setSelectedKind] = useState<SetupKind>('income');
   const [newCategory, setNewCategory] = useState('');
+  const [newWithdrawalDays, setNewWithdrawalDays] = useState('0');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingWithdrawal, setEditingWithdrawal] = useState('');
   const cards = [
     { id: 'income', title: 'Income Categories', icon: 'dollar-sign' },
     { id: 'expense', title: 'Expense Categories', icon: 'trending-down' },
@@ -27,14 +30,33 @@ export function FarmSetupScreen({ navigation }: Props) {
     () => categories.filter((category) => category.kind === selectedKind),
     [categories, selectedKind],
   );
+  const isMedicine = selectedKind === 'medicine';
 
   const saveCategory = async () => {
     try {
-      await addCategory(selectedKind, newCategory);
+      const withdrawal = isMedicine ? parseNumber(newWithdrawalDays) : 0;
+      await addCategory(selectedKind, newCategory, withdrawal);
       setNewCategory('');
+      setNewWithdrawalDays('0');
       await reload();
     } catch (error) {
       Alert.alert('Could not save category', error instanceof Error ? error.message : 'Please enter a category name.');
+    }
+  };
+
+  const saveWithdrawal = async (id: string) => {
+    const days = parseNumber(editingWithdrawal);
+    if (days < 0) {
+      Alert.alert('Invalid value', 'Withdrawal days cannot be negative.');
+      return;
+    }
+    try {
+      await updateCategory(id, { defaultWithdrawalDays: days });
+      setEditingId(null);
+      setEditingWithdrawal('');
+      await reload();
+    } catch (error) {
+      Alert.alert('Could not update', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
@@ -53,7 +75,10 @@ export function FarmSetupScreen({ navigation }: Props) {
           {cards.map((card) => (
             <Pressable
               key={card.id}
-              onPress={() => setSelectedKind(card.id)}
+              onPress={() => {
+                setSelectedKind(card.id);
+                setEditingId(null);
+              }}
               className={`items-center rounded-[20px] p-4 shadow-sm ${selectedKind === card.id ? 'bg-[#008B8B]' : 'bg-[#E0F7F7]'}`}
               style={{ width: isNarrow ? '100%' : '47%' }}
             >
@@ -65,20 +90,71 @@ export function FarmSetupScreen({ navigation }: Props) {
 
         <View className="mt-8 rounded-[20px] bg-[#F5FBFB] p-4">
           <Text className="text-[18px] font-bold text-[#1F2937]">Manage {cards.find((card) => card.id === selectedKind)?.title}</Text>
-          <Text className="mt-2 text-[13px] text-[#6B7280]">These values feed the professional forms, reports, and dashboards.</Text>
+          <Text className="mt-2 text-[13px] text-[#6B7280]">
+            {isMedicine
+              ? 'Set default milk withdrawal days for each medicine. Treatment events use this when you select the medicine.'
+              : 'These values feed the professional forms, reports, and dashboards.'}
+          </Text>
 
-          <View className="mt-4 flex-row items-center rounded-[14px] border border-[#D9E4E4] bg-white px-4">
-            <TextInput value={newCategory} onChangeText={setNewCategory} placeholder="Add new category" placeholderTextColor="#6B7280" className="h-12 flex-1 text-[16px] text-[#1F2937]" />
-            <Pressable onPress={saveCategory} className="rounded-[10px] bg-[#E6B86F] px-4 py-2">
+          <View className="mt-4 rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-2">
+            <TextInput value={newCategory} onChangeText={setNewCategory} placeholder={isMedicine ? 'Medicine name' : 'Add new category'} placeholderTextColor="#6B7280" className="h-11 text-[16px] text-[#1F2937]" />
+            {isMedicine ? (
+              <View className="mb-2 mt-1 flex-row items-center border-t border-[#F3F4F6] pt-2">
+                <Text className="mr-2 text-[13px] text-[#6B7280]">Milk withdrawal</Text>
+                <TextInput
+                  value={newWithdrawalDays}
+                  onChangeText={setNewWithdrawalDays}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                  placeholderTextColor="#6B7280"
+                  className="h-10 flex-1 text-[16px] font-bold text-[#1F2937]"
+                />
+                <Text className="mr-3 text-[13px] font-semibold text-[#008B8B]">days</Text>
+              </View>
+            ) : null}
+            <Pressable onPress={saveCategory} className="mb-2 items-center rounded-[10px] bg-[#E6B86F] py-2.5">
               <Text className="font-bold text-white">Add</Text>
             </Pressable>
           </View>
 
           <View className="mt-4">
             {selectedCategories.map((category) => (
-              <View key={category.id} className="mb-2 flex-row items-center rounded-[12px] bg-white px-4 py-3">
-                <Text className="flex-1 text-[15px] text-[#1F2937]">{category.name}</Text>
-                {category.isDefault ? <Text className="text-[12px] font-bold text-[#008B8B]">Default</Text> : <Text className="text-[12px] text-[#6B7280]">Custom</Text>}
+              <View key={category.id} className="mb-2 rounded-[12px] bg-white px-4 py-3">
+                <View className="flex-row items-center">
+                  <Text className="flex-1 text-[15px] text-[#1F2937]">{category.name}</Text>
+                  {category.isDefault ? <Text className="text-[12px] font-bold text-[#008B8B]">Default</Text> : <Text className="text-[12px] text-[#6B7280]">Custom</Text>}
+                </View>
+                {isMedicine ? (
+                  editingId === category.id ? (
+                    <View className="mt-2 flex-row items-center">
+                      <TextInput
+                        value={editingWithdrawal}
+                        onChangeText={setEditingWithdrawal}
+                        keyboardType="decimal-pad"
+                        className="mr-2 h-10 flex-1 rounded-[10px] border border-[#D9E4E4] px-3 text-[15px] text-[#1F2937]"
+                      />
+                      <Pressable onPress={() => void saveWithdrawal(category.id)} className="mr-2 rounded-[8px] bg-[#008B8B] px-3 py-2">
+                        <Text className="text-[12px] font-bold text-white">Save</Text>
+                      </Pressable>
+                      <Pressable onPress={() => setEditingId(null)}>
+                        <Text className="text-[12px] font-bold text-[#6B7280]">Cancel</Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => {
+                        setEditingId(category.id);
+                        setEditingWithdrawal(`${category.defaultWithdrawalDays}`);
+                      }}
+                      className="mt-2 flex-row items-center"
+                    >
+                      <Text className="flex-1 text-[13px] text-[#DC2626]">
+                        Milk withdrawal: {category.defaultWithdrawalDays} day{category.defaultWithdrawalDays === 1 ? '' : 's'}
+                      </Text>
+                      <Feather name="edit-2" size={14} color="#008B8B" />
+                    </Pressable>
+                  )
+                ) : null}
               </View>
             ))}
           </View>

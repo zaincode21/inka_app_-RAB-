@@ -19,12 +19,13 @@ export type MedicationFormValues = {
 
 type Props = {
   medicineOptions: string[];
+  withdrawalByMedicine?: Record<string, number>;
   values: MedicationFormValues;
   onChange: (patch: Partial<MedicationFormValues>) => void;
   showTreatmentCost?: boolean;
 };
 
-export function MedicationFields({ medicineOptions, values, onChange, showTreatmentCost = true }: Props) {
+export function MedicationFields({ medicineOptions, withdrawalByMedicine, values, onChange, showTreatmentCost = true }: Props) {
   const [showFollowUpPicker, setShowFollowUpPicker] = useState(false);
 
   const handleFollowUpChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -42,13 +43,26 @@ export function MedicationFields({ medicineOptions, values, onChange, showTreatm
     }
   };
 
+  const selectMedicine = (medicine: string) => {
+    const defaultDays = withdrawalByMedicine?.[medicine];
+    onChange({
+      medicine,
+      ...(defaultDays !== undefined ? { withdrawalDays: `${defaultDays}` } : {}),
+    });
+  };
+
   return (
     <>
-      <SelectDropdown label="Medicine" value={values.medicine} placeholder="Select medicine" options={medicineOptions} onSelect={(medicine) => onChange({ medicine })} />
+      <SelectDropdown label="Medicine" value={values.medicine} placeholder="Select medicine" options={medicineOptions} onSelect={selectMedicine} />
       <Field label="Dosage" placeholder="e.g. 10 ml" value={values.dosage} onChangeText={(dosage) => onChange({ dosage })} />
       <SelectDropdown label="Route" value={values.route} placeholder="Select route" options={[...MEDICATION_ROUTES]} onSelect={(route) => onChange({ route })} />
       <Field label="Frequency" placeholder="e.g. Once daily for 3 days" value={values.frequency} onChangeText={(frequency) => onChange({ frequency })} />
       <Field label="Withdrawal Days" placeholder="Milk/meat withholding days" keyboardType="decimal-pad" value={values.withdrawalDays} onChangeText={(withdrawalDays) => onChange({ withdrawalDays })} />
+      {withdrawalByMedicine && values.medicine ? (
+        <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">
+          Default from Settings/Farm Setup: {withdrawalByMedicine[values.medicine] ?? 0} days (you can override).
+        </Text>
+      ) : null}
       <Field label="Batch / Lot Number" placeholder="Medicine batch number" value={values.batchNumber} onChangeText={(batchNumber) => onChange({ batchNumber })} />
       <Field label="Vet Contact" placeholder="Phone or clinic name" value={values.vetContact} onChangeText={(vetContact) => onChange({ vetContact })} />
       <Label text="Follow-up Date" />

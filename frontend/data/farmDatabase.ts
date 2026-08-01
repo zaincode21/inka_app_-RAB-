@@ -115,6 +115,7 @@ export type Category = {
   kind: string;
   name: string;
   isDefault: number;
+  defaultWithdrawalDays: number;
   createdAt: string;
 };
 
@@ -190,13 +191,54 @@ export async function getCategories(kind?: string): Promise<Category[]> {
   return rows.map(mapBackendCategory);
 }
 
-export async function addCategory(kind: string, name: string): Promise<void> {
+export async function addCategory(kind: string, name: string, defaultWithdrawalDays = 0): Promise<void> {
   const trimmedName = name.trim();
   if (!trimmedName) {
     throw new Error('Category name is required.');
   }
 
-  await apiRequest<BackendCategory>('/categories', toJsonBody({ kind, name: trimmedName, isDefault: false }));
+  await apiRequest<BackendCategory>(
+    '/categories',
+    toJsonBody({
+      kind,
+      name: trimmedName,
+      isDefault: false,
+      defaultWithdrawalDays: kind === 'medicine' ? Math.max(0, defaultWithdrawalDays) : 0,
+    }),
+  );
+}
+
+export async function updateCategory(
+  id: string,
+  input: { name?: string; defaultWithdrawalDays?: number },
+): Promise<void> {
+  await apiRequest<BackendCategory>(`/categories/${id}`, {
+    method: 'PATCH',
+    ...toJsonBody(input),
+  });
+}
+
+export type MilkWithdrawalStatus = {
+  cattleTag: string;
+  onDate: string;
+  underWithdrawal: boolean;
+  active: {
+    eventId: string;
+    eventType: string;
+    medicine: string;
+    eventDate: string;
+    withdrawalDays: number;
+    withdrawalEndsOn: string;
+  } | null;
+};
+
+export async function getMilkWithdrawalStatus(cattleTag: string, onDate: string): Promise<MilkWithdrawalStatus> {
+  const tag = cattleTag.trim();
+  if (!tag) {
+    return { cattleTag: '', onDate, underWithdrawal: false, active: null };
+  }
+  const params = new URLSearchParams({ cattleTag: tag, onDate: onDate.trim() || todayIsoDate() });
+  return apiRequest<MilkWithdrawalStatus>(`/events/milk-withdrawal?${params.toString()}`);
 }
 
 export async function createCattle(input: Omit<Cattle, 'id' | 'createdAt'>): Promise<void> {
@@ -387,6 +429,7 @@ type BackendCategory = {
   kind: string;
   name: string;
   isDefault: boolean;
+  defaultWithdrawalDays?: number | string;
   createdAt: string;
 };
 
@@ -624,6 +667,7 @@ function mapBackendCategory(row: BackendCategory): Category {
     kind: row.kind,
     name: row.name,
     isDefault: row.isDefault ? 1 : 0,
+    defaultWithdrawalDays: toNumber(row.defaultWithdrawalDays ?? 0),
     createdAt: row.createdAt,
   };
 }

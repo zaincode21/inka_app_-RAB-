@@ -17,6 +17,10 @@ export function AddMassEventScreen({ navigation, route }: Props) {
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
   const { data: groups } = useDatabaseQuery(() => getCategories('group'), []);
   const medicineOptions = useMemo(() => medicines.map((category) => category.name), [medicines]);
+  const withdrawalByMedicine = useMemo(
+    () => Object.fromEntries(medicines.map((category) => [category.name, category.defaultWithdrawalDays])),
+    [medicines],
+  );
   const groupOptions = useMemo(() => groups.map((category) => category.name), [groups]);
   const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? todayIsoDate());
   const [eventType, setEventType] = useState(editingEvent ? normalizeMassEventType(editingEvent.eventType) : '');
@@ -127,7 +131,7 @@ export function AddMassEventScreen({ navigation, route }: Props) {
         <Input placeholder="Optional supervising vet" value={vetName} onChangeText={setVetName} />
 
         {requiresMedicine(eventType) || eventType === 'Herd Spraying' ? (
-          <MedicationFields medicineOptions={medicineOptions} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
+          <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
         ) : null}
 
         <Label text="Notes" />

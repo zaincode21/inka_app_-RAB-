@@ -93,7 +93,6 @@ export function DashboardScreen({ navigation }: Props) {
             <QuickLink icon="calendar" label="Events" onPress={() => navigation.navigate('Events')} />
             <QuickLink icon="dollar-sign" label="Transactions" onPress={() => navigation.navigate('Transactions')} />
             <QuickLink icon="settings" label="Settings" onPress={() => navigation.navigate('Settings')} />
-            <QuickLink icon="grid" label="Farm Setup" onPress={() => navigation.navigate('FarmSetup')} />
           </View>
         </View>
       </ScrollView>

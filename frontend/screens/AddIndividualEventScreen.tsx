@@ -24,6 +24,10 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
   const medicineOptions = useMemo(() => medicines.map((category) => category.name), [medicines]);
+  const withdrawalByMedicine = useMemo(
+    () => Object.fromEntries(medicines.map((category) => [category.name, category.defaultWithdrawalDays])),
+    [medicines],
+  );
   const [latestBreedingEvent, setLatestBreedingEvent] = useState<HealthEvent | null>(null);
   const [birthPrefillEvent, setBirthPrefillEvent] = useState<HealthEvent | null>(null);
   const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? '');
@@ -332,7 +336,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
             <ConditionalInput placeholder="Symptoms" value={symptoms} onChangeText={setSymptoms} />
             <ConditionalInput placeholder="Diagnosis" value={diagnosis} onChangeText={setDiagnosis} />
             <ConditionalInput placeholder="Technician Name" value={technician} onChangeText={setTechnician} />
-            <MedicationFields medicineOptions={medicineOptions} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
+            <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
           </>
         ) : null}
 
@@ -345,7 +349,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
               </>
             ) : null}
             {eventType === 'Hoof Trimming' ? <ConditionalInput placeholder="Technician Name" value={technician} onChangeText={setTechnician} /> : null}
-            <MedicationFields medicineOptions={medicineOptions} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
+            <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
           </>
         ) : null}
 
@@ -376,12 +380,12 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
             <Input placeholder="Enter name" value={vetName} onChangeText={setVetName} />
             <Label text="Bull / Semen" />
             <Input placeholder="Enter bull or semen ID" value={bullResponsible} onChangeText={setBullResponsible} />
-            <MedicationFields medicineOptions={medicineOptions} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} showTreatmentCost={false} />
+            <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} showTreatmentCost={false} />
           </>
         ) : null}
 
         {eventType === 'Dry Off' || eventType === 'Mastitis' ? (
-          <MedicationFields medicineOptions={medicineOptions} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} showTreatmentCost={eventType === 'Mastitis'} />
+          <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} showTreatmentCost={eventType === 'Mastitis'} />
         ) : null}
 
         {eventType === 'Death' || eventType === 'Euthanasia' ? (

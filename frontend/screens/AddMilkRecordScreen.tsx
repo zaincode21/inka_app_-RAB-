@@ -2,10 +2,19 @@ import { Feather } from '@expo/vector-icons';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SelectDropdown } from '../components/SelectDropdown';
-import { type Cattle, createMilkRecord, getCattle, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
+import {
+  type Cattle,
+  type MilkWithdrawalStatus,
+  createMilkRecord,
+  getCattle,
+  getMilkWithdrawalStatus,
+  parseNumber,
+  todayIsoDate,
+  useDatabaseQuery,
+} from '../data/farmDatabase';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddMilkRecord'>;
@@ -22,9 +31,12 @@ export function AddMilkRecordScreen({ navigation }: Props) {
   const [amTotal, setAmTotal] = useState('');
   const [pmTotal, setPmTotal] = useState('');
   const [totalUsed, setTotalUsed] = useState('');
+  const [rejectedMilk, setRejectedMilk] = useState('');
+  const [withdrawal, setWithdrawal] = useState<MilkWithdrawalStatus | null>(null);
   const [notes, setNotes] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const totalProduced = parseNumber(amTotal) + parseNumber(pmTotal);
+  const underWithdrawal = Boolean(milkType === 'Individual Cow Milk' && withdrawal?.underWithdrawal);
   const cowOptions = cattle.filter((animal) => {
     const query = cowSearch.trim().toLowerCase();
     const isFemaleCow = animal.gender.toLowerCase() === 'female' || ['Cow', 'Heifer'].includes(animal.stage);
@@ -36,6 +48,52 @@ export function AddMilkRecordScreen({ navigation }: Props) {
     }
     return `${animal.tagNumber} ${animal.name} ${animal.breed}`.toLowerCase().includes(query);
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    if (milkType !== 'Individual Cow Milk' || !selectedCow?.tagNumber || !date.trim()) {
+      setWithdrawal(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const status = await getMilkWithdrawalStatus(selectedCow.tagNumber, date.trim());
+        if (cancelled) {
+          return;
+        }
+        setWithdrawal(status);
+        if (status.underWithdrawal) {
+          setRejectedMilk((current) => {
+            const produced = parseNumber(amTotal) + parseNumber(pmTotal);
+            if (produced > 0) {
+              return produced.toFixed(1);
+            }
+            return current;
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setWithdrawal(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [milkType, selectedCow?.tagNumber, date, amTotal, pmTotal]);
+
+  useEffect(() => {
+    if (!underWithdrawal) {
+      return;
+    }
+    if (totalProduced > 0) {
+      setRejectedMilk(totalProduced.toFixed(1));
+    }
+  }, [underWithdrawal, totalProduced]);
 
   const saveRecord = async () => {
     if (!date.trim() || !milkType) {
@@ -53,6 +111,18 @@ export function AddMilkRecordScreen({ navigation }: Props) {
       return;
     }
 
+    const used = parseNumber(totalUsed);
+    const rejected = underWithdrawal && totalProduced > 0 ? totalProduced : parseNumber(rejectedMilk);
+    if (used + rejected > totalProduced + 0.0001) {
+      Alert.alert('Invalid milk split', 'Used + rejected cannot exceed total produced.');
+      return;
+    }
+
+    const withdrawalNote =
+      underWithdrawal && withdrawal?.active
+        ? `Milk withheld: ${withdrawal.active.medicine} until ${withdrawal.active.withdrawalEndsOn} (${withdrawal.active.eventType}).`
+        : '';
+
     try {
       await createMilkRecord({
         cattleId: milkType === 'Individual Cow Milk' ? selectedCow?.id ?? '' : '',
@@ -64,15 +134,15 @@ export function AddMilkRecordScreen({ navigation }: Props) {
         noonTotal: 0,
         pmTotal: parseNumber(pmTotal),
         totalProduced,
-        totalUsed: parseNumber(totalUsed),
-        rejectedMilk: 0,
+        totalUsed: used,
+        rejectedMilk: rejected,
         destination: '',
         buyer: '',
         pricePerLiter: 0,
         fatPercent: 0,
         proteinPercent: 0,
         somaticCellCount: 0,
-        notes: notes.trim(),
+        notes: [notes.trim(), withdrawalNote].filter(Boolean).join(' '),
       });
       navigation.replace('MilkRecords');
     } catch (error) {
@@ -121,6 +191,7 @@ export function AddMilkRecordScreen({ navigation }: Props) {
             if (value !== 'Individual Cow Milk') {
               setSelectedCow(null);
               setCowSearch('');
+              setWithdrawal(null);
             }
           }}
         />
@@ -130,6 +201,16 @@ export function AddMilkRecordScreen({ navigation }: Props) {
             <Label text="Select Cow" />
             <CowField cow={selectedCow} onPress={() => setShowCowPicker(true)} />
           </>
+        ) : null}
+
+        {underWithdrawal && withdrawal?.active ? (
+          <View className="mb-4 rounded-[14px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3">
+            <Text className="text-[14px] font-bold text-[#DC2626]">Milk under withdrawal</Text>
+            <Text className="mt-1 text-[13px] leading-5 text-[#7F1D1D]">
+              {selectedCow?.tagNumber}: {withdrawal.active.medicine} from {withdrawal.active.eventDate}. Withhold until{' '}
+              {withdrawal.active.withdrawalEndsOn}. Today&apos;s produced milk is auto-marked as rejected (not for sale).
+            </Text>
+          </View>
         ) : null}
 
         <Label text="AM Total" />
@@ -143,6 +224,20 @@ export function AddMilkRecordScreen({ navigation }: Props) {
 
         <Label text="Total Used" />
         <Input placeholder="0.0" keyboardType="decimal-pad" value={totalUsed} onChangeText={setTotalUsed} />
+
+        <Label text="Rejected / Withheld Milk" />
+        <Input
+          placeholder="0.0"
+          keyboardType="decimal-pad"
+          value={underWithdrawal && totalProduced > 0 ? totalProduced.toFixed(1) : rejectedMilk}
+          onChangeText={setRejectedMilk}
+          editable={!underWithdrawal}
+        />
+        {underWithdrawal ? (
+          <Text className="mb-3 -mt-1 text-[12px] text-[#DC2626]">Locked while cow is under medicine/vaccine milk withdrawal.</Text>
+        ) : (
+          <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Mastitis discard, spill, or other non-sale milk.</Text>
+        )}
 
         <Label text="Notes" />
         <Input placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
@@ -229,12 +324,42 @@ export function AddMilkRecordScreen({ navigation }: Props) {
 }
 
 function Label({ text }: { text: string }) {
-  return <Text className="mb-2 mt-4 text-[14px] font-bold text-[#1F2937]">{text}</Text>;
+  return <Text className="mb-2 mt-1 text-[14px] font-semibold text-[#6B7280]">{text}</Text>;
+}
+
+function Input({
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType,
+  editable = true,
+  multiline = false,
+}: {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  keyboardType?: 'default' | 'decimal-pad';
+  editable?: boolean;
+  multiline?: boolean;
+}) {
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor="#6B7280"
+      keyboardType={keyboardType}
+      editable={editable}
+      multiline={multiline}
+      className={`mb-3 rounded-[14px] border border-[#D9E4E4] bg-white px-4 text-[16px] text-[#1F2937] ${multiline ? 'min-h-[90px] py-3' : 'h-12'} ${editable ? '' : 'bg-[#F3F4F6]'}`}
+      textAlignVertical={multiline ? 'top' : 'center'}
+    />
+  );
 }
 
 function DateField({ value, placeholder, onPress }: { value: string; placeholder: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className="h-[48px] flex-row items-center justify-between rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3">
+    <Pressable onPress={onPress} className="mb-3 h-12 flex-row items-center justify-between rounded-[14px] border border-[#D9E4E4] bg-white px-4">
       <Text className={value ? 'text-[16px] text-[#1F2937]' : 'text-[16px] text-[#6B7280]'}>{value || placeholder}</Text>
       <Feather name="calendar" size={18} color="#6B7280" />
     </Pressable>
@@ -243,46 +368,30 @@ function DateField({ value, placeholder, onPress }: { value: string; placeholder
 
 function CowField({ cow, onPress }: { cow: Cattle | null; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className="h-[48px] flex-row items-center justify-between rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3">
-      <Text className={cow ? 'text-[16px] text-[#1F2937]' : 'text-[16px] text-[#6B7280]'}>
-        {cow ? `${cow.tagNumber} - ${cow.name}` : 'Search and select cow'}
-      </Text>
-      <Feather name="search" size={18} color="#6B7280" />
+    <Pressable onPress={onPress} className="mb-3 min-h-12 justify-center rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3">
+      {cow ? (
+        <>
+          <Text className="text-[16px] font-bold text-[#1F2937]">{cow.tagNumber}</Text>
+          <Text className="mt-1 text-[13px] text-[#6B7280]">{cow.name} • {cow.breed}</Text>
+        </>
+      ) : (
+        <Text className="text-[16px] text-[#6B7280]">Select cow</Text>
+      )}
     </Pressable>
   );
 }
 
-function Input({
-  placeholder,
-  value,
-  onChangeText,
-  keyboardType = 'default',
-  multiline = false,
-  editable = true,
-}: {
-  placeholder: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  keyboardType?: 'default' | 'decimal-pad';
-  multiline?: boolean;
-  editable?: boolean;
-}) {
-  return (
-    <View className={`${multiline ? 'min-h-[100px]' : 'h-[48px]'} justify-center rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3`}>
-      <TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor="#6B7280" keyboardType={keyboardType} multiline={multiline} editable={editable} className="text-[16px] text-[#1F2937]" />
-    </View>
-  );
-}
-
-function parseDateForPicker(value: string): Date {
+function parseDateForPicker(value: string) {
+  if (!value) {
+    return new Date();
+  }
   const parsed = new Date(`${value}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
-function formatPickerDate(date: Date): string {
+function formatPickerDate(date: Date) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
   const day = `${date.getDate()}`.padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
-

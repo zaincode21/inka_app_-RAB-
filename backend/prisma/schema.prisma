@@ -247,13 +247,14 @@ model Transaction {
 }
 
 model Category {
-  id        String   @id @default(cuid())
-  farmId    String?
-  kind      String
-  name      String
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  farmId                 String?
+  kind                   String
+  name                   String
+  isDefault              Boolean  @default(false)
+  defaultWithdrawalDays  Decimal  @default(0) @db.Decimal(6, 2)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   farm Farm? @relation(fields: [farmId], references: [id], onDelete: Cascade)
 

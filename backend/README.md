@@ -69,6 +69,8 @@ All business routes are under `/api/v1`.
   - `GET /events/latest-breeding?cattleTag=TAG`: latest breeding event for an animal (used by pregnancy form prefill).
   - `GET /events/birth-prefill?cattleTag=TAG`: latest pregnancy event for an animal, falling back to latest breeding event (used by birth form prefill).
   - Query filters on `GET /events`: `eventType`, `cattleTag`, `cattleId`, `scope`, `farmId`, `followUpDue=true`.
+  - `GET /events/milk-withdrawal?cattleTag=TAG&onDate=YYYY-MM-DD`: active medicine/vaccine milk withdrawal for an animal on a date (used by Individual Cow milk form to auto-reject withheld milk).
+  - Categories of kind `medicine` store `defaultWithdrawalDays` (set in Farm Setup). Selecting a medicine on treatment/vaccine forms prefills withdrawal days.
   - Saving events can auto-update linked cattle weight, body condition score, reproductive status, parity, and lactation number.
   - Treatment events with `treatmentCost` create a linked veterinary expense transaction.
   - `Giving Birth` events require a bull name in `bullResponsible`, plus calf name (`calfTag`) and calf gender. Saving a new Giving Birth event also auto-creates a calf cattle record with mother and bull lineage filled in.
