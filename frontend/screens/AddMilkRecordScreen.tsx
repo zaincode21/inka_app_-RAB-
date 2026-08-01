@@ -11,7 +11,6 @@ import { getCurrentSession } from '../data/authApi';
 import {
   type Cattle,
   type MilkWithdrawalStatus,
-  createMilkRecord,
   formatMoney,
   formatNumber,
   getCattle,
@@ -22,6 +21,7 @@ import {
   updateMilkRecord,
   useDatabaseQuery,
 } from '../data/farmDatabase';
+import { createMilkRecordOrQueue } from '../data/offlineQueue';
 import { canWriteMilk } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -185,7 +185,15 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
       if (editing) {
         await updateMilkRecord(editing.id, payload);
       } else {
-        await createMilkRecord(payload);
+        const result = await createMilkRecordOrQueue(payload);
+        if (result.status === 'queued') {
+          Alert.alert(
+            'Saved offline',
+            'No connection right now. This milk record will sync automatically when you are back online.',
+          );
+          navigation.replace('MilkRecords');
+          return;
+        }
       }
       navigation.replace('MilkRecords');
     } catch (error) {

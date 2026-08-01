@@ -36,6 +36,8 @@ import {
   DetailScreen,
 } from './screens';
 import { hydrateSession } from './data/authApi';
+import { flushOfflineQueue, subscribeOfflineQueueFlush } from './data/offlineQueue';
+import { syncFarmReminders } from './data/reminderService';
 import type { RootStackParamList } from './navigation/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -48,8 +50,16 @@ export default function App() {
     void (async () => {
       const session = await hydrateSession();
       setInitialRoute(session ? 'Dashboard' : 'Home');
+      if (session) {
+        void syncFarmReminders().catch(() => undefined);
+        void flushOfflineQueue().catch(() => undefined);
+      }
       setReady(true);
     })();
+  }, []);
+
+  useEffect(() => {
+    return subscribeOfflineQueueFlush();
   }, []);
 
   if (!ready) {

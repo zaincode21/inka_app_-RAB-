@@ -23,16 +23,37 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
     headers.Authorization = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch {
+    throw new Error('Network request failed. Check your connection and try again.');
+  }
 
   const text = await response.text();
-  const payload = text ? JSON.parse(text) : null;
+  let payload: unknown = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}.`);
+      }
+      throw new Error('Unexpected end of JSON input from server.');
+    }
+  }
 
   if (!response.ok) {
-    const message = typeof payload?.message === 'string' ? payload.message : `API request failed with status ${response.status}.`;
+    const message =
+      typeof payload === 'object' &&
+      payload &&
+      'message' in payload &&
+      typeof (payload as { message: unknown }).message === 'string'
+        ? (payload as { message: string }).message
+        : `API request failed with status ${response.status}.`;
     throw new Error(message);
   }
 

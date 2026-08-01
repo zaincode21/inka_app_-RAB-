@@ -54,4 +54,5 @@ router.delete('/:id', ...)
 - `POST /auth/forgot-password` `{ email }` and `POST /auth/reset-password` `{ token, newPassword }` (unauthenticated)
 - `GET /audit-logs` (Owner/Super Admin) activity trail for create/update/soft-delete and auth events
 - `POST /attachments` multipart + `GET /attachments` for cattle/event/receipt photos (served from `/uploads`)
+- Offline queue (frontend): milk + individual event creates retry via AsyncStorage when offline; see `frontend/data/offlineQueue.ts`
 - CRUD resources use `backend/src/lib/createCrudRouter.ts` (includes DELETE; create/update/delete gated by role; `trackActor` stamps createdBy/updatedBy; `softDelete` archives instead of removing rows; `GET ?archived=true` + `POST /:id/restore`; `auditEntityType` writes AuditLog)

@@ -1,5 +1,7 @@
 import type { ComponentProps, ComponentType } from 'react';
+import { useCallback, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -10,6 +12,8 @@ import {
   roleLabel,
 } from '../data/permissions';
 import { formatMoney, formatNumber, getDashboardMetrics, useDatabaseQuery } from '../data/farmDatabase';
+import { flushOfflineQueue, getOfflineQueueCount } from '../data/offlineQueue';
+import { syncFarmReminders, type FarmAlert } from '../data/reminderService';
 import type { RootStackParamList } from '../navigation/types';
 
 type MetricIconProps = {
@@ -25,6 +29,9 @@ export function DashboardScreen({ navigation }: Props) {
   const session = getCurrentSession();
   const user = session?.user;
   const showFinance = canViewFinance(user);
+  const [alerts, setAlerts] = useState<FarmAlert[]>([]);
+  const [pendingSync, setPendingSync] = useState(0);
+  const [syncing, setSyncing] = useState(false);
   const { data: metrics } = useDatabaseQuery(getDashboardMetrics, {
     calves: 0,
     cows: 0,
@@ -34,6 +41,41 @@ export function DashboardScreen({ navigation }: Props) {
     incomeThisMonth: 0,
     expensesThisMonth: 0,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void (async () => {
+        try {
+          const [nextAlerts, queueCount] = await Promise.all([syncFarmReminders(), getOfflineQueueCount()]);
+          if (!active) {
+            return;
+          }
+          setAlerts(nextAlerts);
+          setPendingSync(queueCount);
+          if (queueCount > 0) {
+            setSyncing(true);
+            const result = await flushOfflineQueue();
+            if (active) {
+              setPendingSync(result.remaining);
+            }
+          }
+        } catch {
+          if (active) {
+            setAlerts([]);
+          }
+        } finally {
+          if (active) {
+            setSyncing(false);
+          }
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
   const handleLogout = () => {
     void logout();
     navigation.replace('Login');
@@ -46,6 +88,17 @@ export function DashboardScreen({ navigation }: Props) {
     }
     navigation.navigate('ManageExpenses');
   };
+
+  const openAlert = (alert: FarmAlert) => {
+    if (alert.cattleTag?.trim()) {
+      navigation.navigate('CattleProfile', { cattleTag: alert.cattleTag.trim() });
+      return;
+    }
+    navigation.navigate('Events');
+  };
+
+  const visibleAlerts = alerts.slice(0, 5);
+  const alertCount = Math.max(alerts.length, metrics.healthAlerts);
 
   return (
     <View className="flex-1 bg-white">
@@ -74,6 +127,33 @@ export function DashboardScreen({ navigation }: Props) {
         <View className="px-6 pt-5">
           <Text className="text-[18px] font-extrabold text-[#008B8B]">Dashboard</Text>
 
+          {pendingSync > 0 ? (
+            <Pressable
+              onPress={() => {
+                void (async () => {
+                  setSyncing(true);
+                  try {
+                    const result = await flushOfflineQueue();
+                    setPendingSync(result.remaining);
+                  } finally {
+                    setSyncing(false);
+                  }
+                })();
+              }}
+              className="mt-4 flex-row items-center rounded-[16px] border border-[#93C5FD] bg-[#EFF6FF] px-4 py-3"
+            >
+              <Feather name="cloud-off" size={18} color="#1D4ED8" />
+              <View className="ml-3 flex-1">
+                <Text className="text-[14px] font-bold text-[#1E3A8A]">
+                  {syncing
+                    ? 'Syncing offline records…'
+                    : `${pendingSync} record${pendingSync === 1 ? '' : 's'} waiting to sync`}
+                </Text>
+                <Text className="mt-1 text-[12px] text-[#1D4ED8]">Tap to retry now</Text>
+              </View>
+            </Pressable>
+          ) : null}
+
           <View className="mt-4 flex-row justify-between gap-3">
             <MetricCard title="Calves" value={`${metrics.calves}`} icon={CalvesIcon} />
             <MetricCard title="Cows" value={`${metrics.cows}`} icon={CowsIcon} />
@@ -85,11 +165,50 @@ export function DashboardScreen({ navigation }: Props) {
               <Text className="text-center text-[16px] font-extrabold text-black/50">{formatNumber(metrics.totalMilkToday)} L</Text>
               <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Total Milk Productions</Text>
             </View>
-            <View className="flex-1 rounded-[20px] bg-[#E0F7F7] px-4 py-4">
-              <Text className="text-center text-[16px] font-extrabold text-black/50">{metrics.healthAlerts}</Text>
+            <Pressable
+              onPress={() => navigation.navigate('Events')}
+              className="flex-1 rounded-[20px] bg-[#E0F7F7] px-4 py-4"
+            >
+              <Text className="text-center text-[16px] font-extrabold text-black/50">{alertCount}</Text>
               <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Health Alerts</Text>
-            </View>
+            </Pressable>
           </View>
+
+          {visibleAlerts.length > 0 ? (
+            <View className="mt-5">
+              <View className="mb-3 flex-row items-center justify-between">
+                <Text className="text-[18px] font-extrabold text-[#008B8B]">Alerts</Text>
+                <Pressable onPress={() => navigation.navigate('Events')}>
+                  <Text className="text-[13px] font-semibold text-[#008B8B]">View events</Text>
+                </Pressable>
+              </View>
+              {visibleAlerts.map((alert) => (
+                <Pressable
+                  key={alert.id}
+                  onPress={() => openAlert(alert)}
+                  className="mb-3 rounded-[16px] border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3"
+                >
+                  <View className="flex-row items-start justify-between">
+                    <View className="mr-3 flex-1">
+                      <Text className="text-[14px] font-bold text-[#92400E]">{alert.title}</Text>
+                      <Text className="mt-1 text-[13px] text-[#78350F]">{alert.detail}</Text>
+                      <Text className="mt-1 text-[12px] text-[#A16207]">{alert.dueLabel}</Text>
+                    </View>
+                    <Feather
+                      name={alert.kind === 'withdrawal' ? 'droplet' : 'bell'}
+                      size={18}
+                      color="#B45309"
+                    />
+                  </View>
+                </Pressable>
+              ))}
+              {alerts.length > visibleAlerts.length ? (
+                <Text className="text-[12px] text-[#6B7280]">
+                  +{alerts.length - visibleAlerts.length} more — open Events to review
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
 
           {showFinance ? (
             <View className={`mt-4 gap-4 ${isNarrow ? '' : 'flex-row'}`}>
@@ -142,7 +261,6 @@ function MetricCard({ title, value, icon: Icon }: { title: string; value: string
     </View>
   );
 }
-
 
 function QuickLink({ icon, label, onPress }: { icon: ComponentProps<typeof Feather>['name']; label: string; onPress?: () => void }) {
   return (

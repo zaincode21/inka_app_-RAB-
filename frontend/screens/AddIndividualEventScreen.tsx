@@ -10,7 +10,8 @@ import { SelectDropdown } from '../components/SelectDropdown';
 import { emptyMedicationValues, MedicationFields } from '../components/MedicationFields';
 import { useRequireAccess } from '../data/accessGuard';
 import { getCurrentSession } from '../data/authApi';
-import { addDays, combineDateAndTime, createHealthEvent, DEFAULT_RETURN_HEAT_DAYS, DEFAULT_RETURN_HEAT_TIME, getBirthPrefillEvent, getCattle, getCategories, getLatestBreedingEvent, getSystemConfig, parseNumber, updateHealthEvent, useDatabaseQuery, type HealthEvent } from '../data/farmDatabase';
+import { addDays, combineDateAndTime, DEFAULT_RETURN_HEAT_DAYS, DEFAULT_RETURN_HEAT_TIME, getBirthPrefillEvent, getCattle, getCategories, getLatestBreedingEvent, getSystemConfig, parseNumber, updateHealthEvent, useDatabaseQuery, type HealthEvent } from '../data/farmDatabase';
+import { createHealthEventOrQueue } from '../data/offlineQueue';
 import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { FEMALE_ONLY_EVENT_TYPES, INDIVIDUAL_EVENT_TYPES, requiresClinicalNotes, requiresMedicationDetails, requiresMedicine } from '../utils/eventConstants';
@@ -291,7 +292,15 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       if (isEditing && editingEvent) {
         await updateHealthEvent(editingEvent.id, payload);
       } else {
-        await createHealthEvent(payload);
+        const result = await createHealthEventOrQueue(payload);
+        if (result.status === 'queued') {
+          Alert.alert(
+            'Saved offline',
+            'No connection right now. This event will sync automatically when you are back online.',
+          );
+          navigation.replace('Events');
+          return;
+        }
       }
       navigation.replace('Events');
     } catch (error) {

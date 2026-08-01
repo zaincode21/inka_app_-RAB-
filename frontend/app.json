@@ -41,6 +41,13 @@
         {
           "photosPermission": "Allow Inka to attach cattle, event, and receipt photos."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#008B8B",
+          "defaultChannel": "inka-reminders"
+        }
       ]
     ]
   }

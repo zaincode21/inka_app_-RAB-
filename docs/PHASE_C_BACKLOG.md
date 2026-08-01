@@ -1,9 +1,8 @@
-# Phase C Backlog — Insights, alerts & rural resilience
+# Phase C Backlog — Insights, alerts & rural resilience ✅ COMPLETE
 
 Goal: make Inka useful for decisions and unreliable connectivity — real reports/exports, reminders, and offline entry.
 
-**Suggested build order:** C1 → C2 → C3  
-(C1 unlocks accountant/coop sharing; C2 uses existing follow-up dates; C3 is largest.)
+**Shipped order:** C1 (reports/CSV) → C2 (reminders) → C3 (offline queue).
 
 Carry-over: **A3b** restore UI ✅ DONE.
 
@@ -23,34 +22,35 @@ Carry-over: **A3b** restore UI ✅ DONE.
 
 ---
 
-## C2 — Follow-up / withdrawal reminders (M · ~3–4 days)
+## C2 — Follow-up / withdrawal reminders (M · ~3–4 days) ✅ DONE
 
 **Problem:** Return-heat and treatment follow-ups exist in data but staff are not nudged.
 
 **Shipped baseline already:** Events UI follow-up cards; milk withdrawal auto-reject.
 
-**Build**
+**Shipped**
 
-- Local notifications (Expo Notifications) for:
-  - Follow-up due today / overdue
-  - Milk withdrawal ending soon (optional)
-- In-app “Alerts” strip on Dashboard (reuse `/events?followUpDue=true` + withdrawal helpers)
-- Settings toggle: reminders on/off
+- Dashboard **Alerts** strip (due follow-ups + milk withdrawal ending within 2 days); Health Alerts card opens Events
+- Settings → **Follow-up reminders** toggle (AsyncStorage; default on)
+- `expo-notifications` local schedules at 08:00 on follow-up / withdrawal-end dates (already-due items stay Dashboard-only to avoid spam)
+- Sync on app hydrate + Dashboard focus
 
 **Acceptance:** With reminders enabled, due follow-ups surface on Dashboard and as a local notification when the app can schedule them.
 
 ---
 
-## C3 — Offline queue for milk & events (L · ~1–2 weeks)
+## C3 — Offline queue for milk & events (L · ~1–2 weeks) ✅ DONE
 
 **Problem:** Rural farms lose connectivity; milk/event entry must not depend on live API.
 
-**Build**
+**Shipped**
 
-- Persist pending creates (AsyncStorage / SQLite) when API fails or offline
-- Retry on reconnect with idempotency key or client-generated id
-- Badge / banner: “N records waiting to sync”
-- Scope v1: milk create + individual event create only (not edits/deletes)
+- AsyncStorage queue (`frontend/data/offlineQueue.ts`) for **milk create** and **individual event create** only
+- Auto-queue when device is offline or the request fails with a network error; edits still require online
+- Flush on app start, Dashboard focus, NetInfo reconnect, and banner tap
+- Dashboard banner: “N records waiting to sync”
+- Event local photos upload after the queued event syncs
+- Milk sale flag (`createMilkSale`) is preserved in the queued payload (single create on flush)
 
 **Acceptance:** Airplane-mode milk save queues locally and syncs when back online without duplicate sales if possible.
 
