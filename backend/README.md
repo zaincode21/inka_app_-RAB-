@@ -43,6 +43,8 @@ npm run dev
 
 The API runs on `http://localhost:4000` by default.
 
+**OpenAPI / Swagger UI:** interactive docs at [http://localhost:4000/api/v1/docs](http://localhost:4000/api/v1/docs) (machine-readable JSON at `/api/v1/openapi.json`). Spec source: `src/openapi/document.ts`. Try `POST /auth/login` then **Authorize** with the JWT and call `GET /cattle`.
+
 ## Scripts
 
 - `npm run dev`: run the backend in watch mode.

@@ -1,12 +1,14 @@
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { ImageBackground, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { RootStackParamList } from '../navigation/types';
 import Logo from '../components/Logo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export function HomeScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { height, width } = useWindowDimensions();
   const isCompact = height < 700 || width < 360;
   const logoFrameSize = isCompact ? 150 : 190;
@@ -27,8 +29,8 @@ export function HomeScreen({ navigation }: Props) {
             Inka <Text className="text-[#E6B86F]">App</Text>
           </Text>
           <View className="mt-[18px] items-center gap-0.5">
-            <Text className="text-center text-[16px] font-bold leading-6 text-[#F6F3ED]">Your Smart Dairy & Beef</Text>
-            <Text className="text-center text-[16px] font-bold leading-6 text-[#F6F3ED]">Farming Companion.</Text>
+            <Text className="text-center text-[16px] font-bold leading-6 text-[#F6F3ED]">{t('home.tagline1')}</Text>
+            <Text className="text-center text-[16px] font-bold leading-6 text-[#F6F3ED]">{t('home.tagline2')}</Text>
           </View>
         </View>
 
@@ -39,7 +41,7 @@ export function HomeScreen({ navigation }: Props) {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             className="h-[54px] items-center justify-center rounded-[18px] bg-[#0D8A8D] pressed:opacity-90 pressed:scale-[0.99]"
           >
-            <Text className="text-[16px] font-bold text-white">Sign in</Text>
+            <Text className="text-[16px] font-bold text-white">{t('home.signIn')}</Text>
           </Pressable>
 
           <Pressable
@@ -48,7 +50,7 @@ export function HomeScreen({ navigation }: Props) {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             className="h-[54px] items-center justify-center rounded-[18px] bg-[#E6B86F] pressed:opacity-90 pressed:scale-[0.99]"
           >
-            <Text className="text-[16px] font-bold text-white">Create farm</Text>
+            <Text className="text-[16px] font-bold text-white">{t('home.createFarm')}</Text>
           </Pressable>
         </View>
       </View>

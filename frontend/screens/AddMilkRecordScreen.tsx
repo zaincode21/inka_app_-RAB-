@@ -2,8 +2,9 @@ import { Feather } from '@expo/vector-icons';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { KeyboardSafeScroll, KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
 import { useRequireAccess } from '../data/accessGuard';
@@ -27,11 +28,17 @@ import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddMilkRecord'>;
 
-const milkTypes = ['Whole Farm', 'Individual Cow Milk'];
-
 export function AddMilkRecordScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   useRequireAccess(canWriteMilk(getCurrentSession()?.user), navigation);
   const editing = route.params?.milkRecord;
+  const milkTypeOptions = useMemo(
+    () => [
+      { label: t('milk.wholeFarm'), value: 'Whole Farm' },
+      { label: t('milk.individualCow'), value: 'Individual Cow Milk' },
+    ],
+    [t],
+  );
   const isEditing = Boolean(editing);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const [date, setDate] = useState(editing?.date || todayIsoDate());
@@ -271,7 +278,9 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="arrow-left" size={26} color="#FFFFFF" />
         </Pressable>
-        <Text className="flex-1 pl-4 text-[20px] font-bold text-white">{isEditing ? 'Edit Milk Record' : 'New Milk Record'}</Text>
+        <Text className="flex-1 pl-4 text-[20px] font-bold text-white">
+          {isEditing ? t('milk.editTitle') : t('milk.newTitle')}
+        </Text>
         <View className="w-[30px]" />
       </View>
 
@@ -280,7 +289,7 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
         footer={
           <View className="flex-row bg-white px-6 py-4">
             <Pressable onPress={() => navigation.goBack()} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
-              <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
+              <Text className="text-[16px] font-bold text-[#008B8B]">{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -289,19 +298,21 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
               disabled={saving}
               className="ml-2 flex-1 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
             >
-              <Text className="text-[16px] font-bold text-white">{saving ? 'Saving...' : isEditing ? 'Update' : 'Save'}</Text>
+              <Text className="text-[16px] font-bold text-white">
+                {saving ? t('common.saving') : isEditing ? t('common.update') : t('common.save')}
+              </Text>
             </Pressable>
           </View>
         }
       >
-        <Label text="Milking Date" />
-        <DateField value={date} placeholder="Select milking date" onPress={() => setShowDatePicker(true)} />
+        <Label text={t('milk.milkingDate')} />
+        <DateField value={date} placeholder={t('milk.selectDate')} onPress={() => setShowDatePicker(true)} />
 
         <SelectDropdown
-          label="Milk Type"
+          label={t('milk.milkType')}
           value={milkType}
-          placeholder="Select"
-          options={milkTypes}
+          placeholder={t('milk.select')}
+          options={milkTypeOptions}
           onSelect={(value) => {
             setMilkType(value);
             if (value !== 'Individual Cow Milk') {
@@ -314,7 +325,7 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
 
         {milkType === 'Individual Cow Milk' ? (
           <>
-            <Label text="Select Cow" />
+            <Label text={t('milk.selectCow')} />
             <CowField cow={selectedCow} onPress={() => setShowCowPicker(true)} />
           </>
         ) : null}
@@ -329,19 +340,19 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        <Label text="AM Total" />
+        <Label text={t('milk.amTotal')} />
         <Input placeholder="0.0" keyboardType="decimal-pad" value={amTotal} onChangeText={setAmTotal} />
 
-        <Label text="PM Total" />
+        <Label text={t('milk.pmTotal')} />
         <Input placeholder="0.0" keyboardType="decimal-pad" value={pmTotal} onChangeText={setPmTotal} />
 
         <Label text="Total Milk Produced" />
         <Input placeholder="0.0" value={totalProduced.toFixed(1)} onChangeText={() => {}} editable={false} />
 
-        <Label text="Total Used" />
+        <Label text={t('milk.used')} />
         <Input placeholder="0.0" keyboardType="decimal-pad" value={totalUsed} onChangeText={setTotalUsed} />
 
-        <Label text="Rejected / Withheld Milk" />
+        <Label text={t('milk.rejected')} />
         <Input
           placeholder="0.0"
           keyboardType="decimal-pad"
@@ -355,16 +366,18 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
           <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Mastitis discard, spill, or withheld milk.</Text>
         )}
 
-        <Text className="mb-2 mt-2 text-[15px] font-bold text-[#1F2937]">Milk quality (optional)</Text>
+        <Text className="mb-2 mt-2 text-[15px] font-bold text-[#1F2937]">
+          Milk quality ({t('milk.optional')})
+        </Text>
         <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Leave blank when lab results are not available.</Text>
 
-        <Label text="Fat %" />
+        <Label text={t('milk.fat')} />
         <Input placeholder="e.g. 3.8" keyboardType="decimal-pad" value={fatPercent} onChangeText={setFatPercent} />
 
-        <Label text="Protein %" />
+        <Label text={t('milk.protein')} />
         <Input placeholder="e.g. 3.2" keyboardType="decimal-pad" value={proteinPercent} onChangeText={setProteinPercent} />
 
-        <Label text="Somatic cell count (SCC)" />
+        <Label text={t('milk.scc')} />
         <Input
           placeholder="e.g. 200000"
           keyboardType="decimal-pad"
@@ -374,9 +387,9 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
 
         {milkType === 'Whole Farm' ? (
           <>
-            <Label text="Buyer" />
+            <Label text={t('milk.buyer')} />
             <Input placeholder="Cooperative / buyer" value={buyer} onChangeText={setBuyer} />
-            <Label text="Destination" />
+            <Label text={t('milk.destination')} />
             <Input placeholder="Processor / market" value={destination} onChangeText={setDestination} />
             <View className="mb-4 rounded-[14px] border border-[#D9E4E4] bg-[#F0FDFA] px-4 py-3">
               <Text className="text-[13px] font-semibold text-[#0F766E]">Sale preview (Whole Farm)</Text>
@@ -394,7 +407,7 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
           </>
         ) : null}
 
-        <Label text="Notes" />
+        <Label text={t('milk.notes')} />
         <Input placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
       </KeyboardSafeScroll>
 
@@ -406,7 +419,7 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowDatePicker(false)}>
           <Pressable className="rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="text-[18px] font-bold text-[#1F2937]">Milking Date</Text>
+              <Text className="text-[18px] font-bold text-[#1F2937]">{t('milk.milkingDate')}</Text>
               <Pressable onPress={() => setShowDatePicker(false)} hitSlop={8}>
                 <Feather name="x" size={22} color="#6B7280" />
               </Pressable>

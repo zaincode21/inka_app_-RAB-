@@ -41,6 +41,7 @@ import {
 import { hydrateSession } from './data/authApi';
 import { flushOfflineQueue, subscribeOfflineQueueFlush } from './data/offlineQueue';
 import { syncFarmReminders } from './data/reminderService';
+import { initI18n } from './i18n';
 import type { RootStackParamList } from './navigation/types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -51,6 +52,7 @@ export default function App() {
 
   useEffect(() => {
     void (async () => {
+      await initI18n();
       const session = await hydrateSession();
       setInitialRoute(session ? 'Dashboard' : 'Home');
       if (session) {

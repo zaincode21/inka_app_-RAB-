@@ -3,10 +3,12 @@ import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AppBottomNav } from '../components/AppBottomNav';
 import { buildEventCardRows, EventRecordCard, isEventFollowUpDue } from '../components/EventRecordCard';
 import { KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
-import { logout, getCurrentSession } from '../data/authApi';
+import { getCurrentSession } from '../data/authApi';
 import {
   type HealthEvent,
   addDays,
@@ -18,7 +20,7 @@ import {
   updateHealthEvent,
   useDatabaseQuery,
 } from '../data/farmDatabase';
-import { canViewFinance, canWriteEvents } from '../data/permissions';
+import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { allEventTypeFilterOptions, normalizeMassEventType } from '../utils/eventConstants';
 import { isActiveEvent, isEventArchived } from '../utils/eventArchive';
@@ -28,6 +30,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Events'>;
 type EventFilter = 'all' | 'archive' | 'followUpDue';
 
 export function EventsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const sessionUser = getCurrentSession()?.user;
   const canMutateEvents = canWriteEvents(sessionUser);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
@@ -106,16 +109,16 @@ export function EventsScreen({ navigation }: Props) {
 
   const emptyMessage = useMemo(() => {
     if (loading) {
-      return 'Loading events...';
+      return t('events.loading');
     }
     if (listFilter === 'archive') {
-      return 'No archived events';
+      return t('events.emptyArchive');
     }
     if (listFilter === 'followUpDue') {
-      return 'No follow-up due';
+      return t('events.emptyFollowUp');
     }
-    return 'No events yet';
-  }, [loading, listFilter]);
+    return t('events.empty');
+  }, [loading, listFilter, t]);
 
   const clearSourceFollowUp = async (source: HealthEvent) => {
     if (!source.followUpDate?.trim()) {
@@ -231,18 +234,6 @@ export function EventsScreen({ navigation }: Props) {
     });
   };
 
-  const handleLogout = () => {
-    logout();
-    navigation.replace('Login');
-  };
-  const openManage = () => {
-    if (!canViewFinance(sessionUser)) {
-      navigation.navigate('MilkRecords');
-      return;
-    }
-    navigation.navigate('ManageExpenses');
-  };
-
   const handleAddEvent = () => {
     if (selectedScope === 'mass') {
       navigation.navigate('AddMassEvent');
@@ -321,7 +312,7 @@ export function EventsScreen({ navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="arrow-left" size={26} color="#FFFFFF" />
         </Pressable>
-        <Text className="flex-1 text-center text-[24px] font-extrabold text-white">Events</Text>
+        <Text className="flex-1 text-center text-[24px] font-extrabold text-white">{t('events.title')}</Text>
         <View className="flex-row items-center gap-4">
           <Pressable onPress={() => setShowSearchBar((current) => !current)} hitSlop={8}>
             <Feather name="search" size={20} color="#FFFFFF" />
@@ -335,25 +326,25 @@ export function EventsScreen({ navigation }: Props) {
       {showSearchBar ? (
         <View className="mx-6 mt-4 h-12 flex-row items-center rounded-[14px] border border-[#D9E4E4] bg-white px-4">
           <Feather name="search" size={18} color="#6B7280" />
-          <TextInput value={searchQuery} onChangeText={setSearchQuery} placeholder="Search events, tags, medicine..." placeholderTextColor="#6B7280" className="ml-3 flex-1 text-[16px] text-[#1F2937]" />
+          <TextInput value={searchQuery} onChangeText={setSearchQuery} placeholder={t('events.searchPlaceholder')} placeholderTextColor="#6B7280" className="ml-3 flex-1 text-[16px] text-[#1F2937]" />
         </View>
       ) : null}
 
       <View className="flex-row px-6 py-4">
         <Pressable onPress={() => setSelectedScope('individual')} className={`mr-2 h-12 flex-1 flex-row items-center justify-center rounded-[12px] px-4 ${selectedScope === 'individual' ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'}`}>
           <Feather name="calendar" size={20} color={selectedScope === 'individual' ? '#FFFFFF' : '#008B8B'} />
-          <Text className={`ml-2 text-[16px] font-bold ${selectedScope === 'individual' ? 'text-white' : 'text-[#008B8B]'}`}>Individual</Text>
+          <Text className={`ml-2 text-[16px] font-bold ${selectedScope === 'individual' ? 'text-white' : 'text-[#008B8B]'}`}>{t('events.individual')}</Text>
         </Pressable>
         <Pressable onPress={() => setSelectedScope('mass')} className={`ml-2 h-12 flex-1 flex-row items-center justify-center rounded-[12px] px-4 ${selectedScope === 'mass' ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'}`}>
           <Feather name="users" size={20} color={selectedScope === 'mass' ? '#FFFFFF' : '#008B8B'} />
-          <Text className={`ml-2 text-[16px] font-bold ${selectedScope === 'mass' ? 'text-white' : 'text-[#008B8B]'}`}>Mass</Text>
+          <Text className={`ml-2 text-[16px] font-bold ${selectedScope === 'mass' ? 'text-white' : 'text-[#008B8B]'}`}>{t('events.mass')}</Text>
         </Pressable>
       </View>
 
       <View className="mx-6 mb-3 rounded-[16px] bg-white p-1.5 shadow-sm">
         <View className="flex-row items-stretch">
           <EventFilterTab
-            label="All"
+            label={t('events.all')}
             count={scopeEvents.filter((item) => isActiveEvent(item)).length}
             icon="layers"
             active={listFilter === 'all'}
@@ -363,7 +354,7 @@ export function EventsScreen({ navigation }: Props) {
             onPress={() => setListFilter('all')}
           />
           <EventFilterTab
-            label="Archive"
+            label={t('events.archive')}
             count={archiveCount}
             icon="archive"
             active={listFilter === 'archive'}
@@ -373,7 +364,7 @@ export function EventsScreen({ navigation }: Props) {
             onPress={() => setListFilter('archive')}
           />
           <EventFilterTab
-            label="Follow-up"
+            label={t('events.followUp')}
             count={followUpCount}
             icon="bell"
             active={listFilter === 'followUpDue'}
@@ -436,13 +427,7 @@ export function EventsScreen({ navigation }: Props) {
         </Pressable>
       ) : null}
 
-      <View className="absolute bottom-0 left-0 right-0 flex-row justify-between rounded-t-[20px] bg-[#008B8B] px-2 py-2">
-        <BottomNavItem icon="home" label="Home" onPress={() => navigation.navigate('Dashboard')} />
-        <BottomNavItem icon="briefcase" label="Manage" onPress={openManage} />
-        <BottomNavItem icon="compass" label="Explore" onPress={() => navigation.navigate('Events')} />
-        <BottomNavItem icon="archive" label="Reports" onPress={() => navigation.navigate('Reports')} />
-        <BottomNavItem icon="log-out" label="Logout" onPress={handleLogout} />
-      </View>
+      <AppBottomNav navigation={navigation} active="explore" />
 
       <Modal visible={Boolean(abortSource)} transparent animationType="fade" onRequestClose={() => setAbortSource(null)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setAbortSource(null)}>
@@ -575,15 +560,6 @@ function EventFilterTab({
           {count}
         </Text>
       </View>
-    </Pressable>
-  );
-}
-
-function BottomNavItem({ icon, label, onPress }: { icon: keyof typeof Feather.glyphMap; label: string; onPress?: () => void }) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" className="flex-1 items-center py-1">
-      <Feather name={icon} size={30} color="#FFFFFF" />
-      <Text className="mt-1 text-[10px] text-white">{label}</Text>
     </Pressable>
   );
 }

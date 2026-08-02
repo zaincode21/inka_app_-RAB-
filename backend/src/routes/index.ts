@@ -11,6 +11,7 @@ import { userRouter } from './users.js';
 import { auditLogRouter } from './auditLogs.js';
 import { attachmentRouter } from './attachments.js';
 import { inventoryRouter } from './inventory.js';
+import { docsRouter } from './docs.js';
 import { authenticate } from '../middleware/auth.js';
 
 export const apiRouter = Router();
@@ -20,6 +21,8 @@ apiRouter.get('/health', (_request, response) => {
 });
 
 apiRouter.use('/auth', authRouter);
+/** OpenAPI JSON + Swagger UI (public; mount before JWT). */
+apiRouter.use(docsRouter);
 
 apiRouter.use(authenticate);
 

@@ -54,29 +54,30 @@ Phases A–C are complete (trust, data-model UI, reports/reminders/offline).
 
 ---
 
-## D4 — i18n EN / Kinyarwanda (L · ~2 weeks)
+## D4 — i18n EN / Kinyarwanda (L · ~2 weeks) ✅ DONE
 
 **Problem:** Mixed EN + local terms; no systematic translation.
 
-**Build**
+**Shipped**
 
-- `i18next` (or Expo-localization + JSON catalogs)
-- Cover auth, Dashboard, milk, events, settings first
-- Language toggle in Settings (persist AsyncStorage)
+- `i18next` + `react-i18next` + `expo-localization`; catalogs in `frontend/i18n/locales/{en,rw}.json`
+- Persist language in AsyncStorage (`languagePrefs`); init before UI in `App.tsx`
+- Settings toggle English / Kinyarwanda (no restart)
+- Wired: Home, Login, Dashboard, Settings, Add Milk Record (main labels), Events (filters/tabs), shared `AppBottomNav`
 
 **Acceptance:** Switching language updates primary navigation and milk/event forms without restart.
 
 ---
 
-## D5 — OpenAPI / API docs (M · ~3–5 days)
+## D5 — OpenAPI / API docs (M · ~3–5 days) ✅ DONE
 
 **Problem:** Partner/coop integrations and QA lack a machine-readable contract.
 
-**Build**
+**Shipped**
 
-- Generate or hand-maintain OpenAPI 3 for `/api/v1` (auth + CRUD + reports)
-- Serve `/api/v1/docs` (Swagger UI) in non-prod or always behind auth
-- Link from `backend/README.md`
+- OpenAPI 3.0.3 document in `backend/src/openapi/document.ts` (auth, CRUD resources, inventory, reports, audit, attachments)
+- Swagger UI at `/api/v1/docs` + JSON at `/api/v1/openapi.json` (public, mounted before JWT)
+- Linked from `backend/README.md`
 
 **Acceptance:** New contributor can call login + list cattle from the OpenAPI page alone.
 

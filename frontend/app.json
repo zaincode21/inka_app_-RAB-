@@ -48,7 +48,8 @@
           "color": "#008B8B",
           "defaultChannel": "inka-reminders"
         }
-      ]
+      ],
+      "expo-localization"
     ]
   }
 }

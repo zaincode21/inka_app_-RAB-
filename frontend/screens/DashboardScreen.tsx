@@ -5,6 +5,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
+import { AppBottomNav } from '../components/AppBottomNav';
 import { CalvesIcon, CowsIcon, BullsIcon } from '../components/MetricIcons';
 import { getCurrentSession, logout } from '../data/authApi';
 import {
@@ -25,6 +27,7 @@ type MetricIconProps = {
 type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
 export function DashboardScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isNarrow = width < 380;
   const session = getCurrentSession();
@@ -83,19 +86,6 @@ export function DashboardScreen({ navigation }: Props) {
     }, []),
   );
 
-  const handleLogout = () => {
-    void logout();
-    navigation.replace('Login');
-  };
-
-  const openManage = () => {
-    if (!canViewFinance(user)) {
-      navigation.navigate('MilkRecords');
-      return;
-    }
-    navigation.navigate('ManageExpenses');
-  };
-
   const openAlert = (alert: FarmAlert) => {
     if (alert.cattleTag?.trim()) {
       navigation.navigate('CattleProfile', { cattleTag: alert.cattleTag.trim() });
@@ -116,8 +106,10 @@ export function DashboardScreen({ navigation }: Props) {
               <Feather name="user" size={24} color="#FFFFFF" />
             </View>
             <View>
-              <Text className="text-[24px] font-extrabold leading-[28px] text-white">Good Morning,</Text>
-              <Text className="text-[24px] font-extrabold leading-[28px] text-white">{session?.user.firstName ?? 'Farmer'}</Text>
+              <Text className="text-[24px] font-extrabold leading-[28px] text-white">{t('dashboard.greeting')}</Text>
+              <Text className="text-[24px] font-extrabold leading-[28px] text-white">
+                {session?.user.firstName ?? t('dashboard.farmer')}
+              </Text>
               {session?.user.farmName ? (
                 <Text className="mt-1 text-[12px] font-semibold text-white/90">{session.user.farmName}</Text>
               ) : null}
@@ -126,16 +118,24 @@ export function DashboardScreen({ navigation }: Props) {
               ) : null}
             </View>
           </View>
-          <Pressable onPress={handleLogout} accessibilityRole="button" className="items-center" hitSlop={8}>
+          <Pressable
+            onPress={() => {
+              void logout();
+              navigation.replace('Login');
+            }}
+            accessibilityRole="button"
+            className="items-center"
+            hitSlop={8}
+          >
             <Feather name="log-out" size={24} color="#FFFFFF" />
-            <Text className="mt-1 text-[10px] font-bold text-white">Logout</Text>
+            <Text className="mt-1 text-[10px] font-bold text-white">{t('common.logout')}</Text>
           </Pressable>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
         <View className="px-6 pt-5">
-          <Text className="text-[18px] font-extrabold text-[#008B8B]">Dashboard</Text>
+          <Text className="text-[18px] font-extrabold text-[#008B8B]">{t('dashboard.title')}</Text>
 
           <View className="mt-3">
             <FarmSwitcher
@@ -166,9 +166,9 @@ export function DashboardScreen({ navigation }: Props) {
               <Feather name="package" size={18} color="#B45309" />
               <View className="ml-3 flex-1">
                 <Text className="text-[14px] font-bold text-[#92400E]">
-                  {lowStockCount} inventory item{lowStockCount === 1 ? '' : 's'} low on stock
+                  {t('dashboard.lowStock', { count: lowStockCount })}
                 </Text>
-                <Text className="mt-1 text-[12px] text-[#A16207]">Tap to review feed inventory</Text>
+                <Text className="mt-1 text-[12px] text-[#A16207]">{t('dashboard.lowStockHint')}</Text>
               </View>
             </Pressable>
           ) : null}
@@ -191,41 +191,39 @@ export function DashboardScreen({ navigation }: Props) {
               <Feather name="cloud-off" size={18} color="#1D4ED8" />
               <View className="ml-3 flex-1">
                 <Text className="text-[14px] font-bold text-[#1E3A8A]">
-                  {syncing
-                    ? 'Syncing offline records…'
-                    : `${pendingSync} record${pendingSync === 1 ? '' : 's'} waiting to sync`}
+                  {syncing ? t('dashboard.syncing') : t('dashboard.syncWaiting', { count: pendingSync })}
                 </Text>
-                <Text className="mt-1 text-[12px] text-[#1D4ED8]">Tap to retry now</Text>
+                <Text className="mt-1 text-[12px] text-[#1D4ED8]">{t('dashboard.syncRetry')}</Text>
               </View>
             </Pressable>
           ) : null}
 
           <View className="mt-4 flex-row justify-between gap-3">
-            <MetricCard title="Calves" value={`${metrics.calves}`} icon={CalvesIcon} />
-            <MetricCard title="Cows" value={`${metrics.cows}`} icon={CowsIcon} />
-            <MetricCard title="Bulls" value={`${metrics.bulls}`} icon={BullsIcon} />
+            <MetricCard title={t('dashboard.calves')} value={`${metrics.calves}`} icon={CalvesIcon} />
+            <MetricCard title={t('dashboard.cows')} value={`${metrics.cows}`} icon={CowsIcon} />
+            <MetricCard title={t('dashboard.bulls')} value={`${metrics.bulls}`} icon={BullsIcon} />
           </View>
 
           <View className={`mt-4 gap-4 ${isNarrow ? '' : 'flex-row'}`}>
             <View className="flex-1 rounded-[20px] bg-[#E0F7F7] px-4 py-4">
               <Text className="text-center text-[16px] font-extrabold text-black/50">{formatNumber(metrics.totalMilkToday)} L</Text>
-              <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Total Milk Productions</Text>
+              <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">{t('dashboard.milkToday')}</Text>
             </View>
             <Pressable
               onPress={() => navigation.navigate('Events')}
               className="flex-1 rounded-[20px] bg-[#E0F7F7] px-4 py-4"
             >
               <Text className="text-center text-[16px] font-extrabold text-black/50">{alertCount}</Text>
-              <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Health Alerts</Text>
+              <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">{t('dashboard.healthAlerts')}</Text>
             </Pressable>
           </View>
 
           {visibleAlerts.length > 0 ? (
             <View className="mt-5">
               <View className="mb-3 flex-row items-center justify-between">
-                <Text className="text-[18px] font-extrabold text-[#008B8B]">Alerts</Text>
+                <Text className="text-[18px] font-extrabold text-[#008B8B]">{t('dashboard.alerts')}</Text>
                 <Pressable onPress={() => navigation.navigate('Events')}>
-                  <Text className="text-[13px] font-semibold text-[#008B8B]">View events</Text>
+                  <Text className="text-[13px] font-semibold text-[#008B8B]">{t('dashboard.viewEvents')}</Text>
                 </Pressable>
               </View>
               {visibleAlerts.map((alert) => (
@@ -260,37 +258,31 @@ export function DashboardScreen({ navigation }: Props) {
             <View className={`mt-4 gap-4 ${isNarrow ? '' : 'flex-row'}`}>
               <View className="flex-1 rounded-[20px] bg-[#F0FDF4] px-4 py-4">
                 <Text className="text-center text-[16px] font-extrabold text-[#16A34A]">{formatMoney(metrics.incomeThisMonth)}</Text>
-                <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Income This Month</Text>
+                <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">{t('dashboard.incomeMonth')}</Text>
               </View>
               <View className="flex-1 rounded-[20px] bg-[#FEF2F2] px-4 py-4">
                 <Text className="text-center text-[16px] font-extrabold text-[#DC2626]">{formatMoney(metrics.expensesThisMonth)}</Text>
-                <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">Expenses This Month</Text>
+                <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">{t('dashboard.expenseMonth')}</Text>
               </View>
             </View>
           ) : null}
 
-          <Text className="mt-8 text-[18px] font-extrabold text-[#008B8B]">Quick Links</Text>
+          <Text className="mt-8 text-[18px] font-extrabold text-[#008B8B]">{t('dashboard.quickLinks')}</Text>
           <View className="mt-4 flex-row flex-wrap justify-between gap-y-6">
-            <QuickLink icon="truck" label="Cattle" onPress={() => navigation.navigate('CattleList')} />
-            <QuickLink icon="repeat" label="Life Cycle" onPress={() => navigation.navigate('CowLifeCycle')} />
-            <QuickLink icon="coffee" label="Milk Records" onPress={() => navigation.navigate('MilkRecords')} />
-            <QuickLink icon="calendar" label="Events" onPress={() => navigation.navigate('Events')} />
-            <QuickLink icon="package" label="Inventory" onPress={() => navigation.navigate('Inventory')} />
+            <QuickLink icon="truck" label={t('dashboard.cattle')} onPress={() => navigation.navigate('CattleList')} />
+            <QuickLink icon="repeat" label={t('dashboard.lifeCycle')} onPress={() => navigation.navigate('CowLifeCycle')} />
+            <QuickLink icon="coffee" label={t('dashboard.milkRecords')} onPress={() => navigation.navigate('MilkRecords')} />
+            <QuickLink icon="calendar" label={t('dashboard.events')} onPress={() => navigation.navigate('Events')} />
+            <QuickLink icon="package" label={t('dashboard.inventory')} onPress={() => navigation.navigate('Inventory')} />
             {showFinance ? (
-              <QuickLink icon="dollar-sign" label="Transactions" onPress={() => navigation.navigate('Transactions')} />
+              <QuickLink icon="dollar-sign" label={t('dashboard.transactions')} onPress={() => navigation.navigate('Transactions')} />
             ) : null}
-            <QuickLink icon="settings" label="Settings" onPress={() => navigation.navigate('Settings')} />
+            <QuickLink icon="settings" label={t('common.settings')} onPress={() => navigation.navigate('Settings')} />
           </View>
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-0 left-0 right-0 flex-row justify-between rounded-t-[20px] bg-[#008B8B] px-2 py-2">
-        <BottomNavItem icon="home" label="Home" onPress={() => navigation.navigate('Dashboard')} />
-        <BottomNavItem icon="briefcase" label="Manage" onPress={openManage} />
-        <BottomNavItem icon="compass" label="Explore" onPress={() => navigation.navigate('Events')} />
-        <BottomNavItem icon="archive" label="Reports" onPress={() => navigation.navigate('Reports')} />
-        <BottomNavItem icon="log-out" label="Logout" onPress={handleLogout} />
-      </View>
+      <AppBottomNav navigation={navigation} active="home" />
 
       <StatusBar style="light" />
     </View>
@@ -321,15 +313,6 @@ function QuickLink({ icon, label, onPress }: { icon: ComponentProps<typeof Feath
         <Feather name={icon} size={26} color="#008B8B" />
       </View>
       <Text className="mt-2 text-center text-[15px] font-semibold text-[#23292B]">{label}</Text>
-    </Pressable>
-  );
-}
-
-function BottomNavItem({ icon, label, onPress }: { icon: ComponentProps<typeof Feather>['name']; label: string; onPress?: () => void }) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" className="flex-1 items-center py-1" android_ripple={{ color: 'rgba(255,255,255,0.08)' }}>
-      <Feather name={icon} size={30} color="#FFFFFF" />
-      <Text className="mt-1 text-[10px] text-white">{label}</Text>
     </Pressable>
   );
 }
