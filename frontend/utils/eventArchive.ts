@@ -11,7 +11,9 @@ export function daysSinceEventDate(eventDate: string, reference = new Date()): n
     return null;
   }
 
-  const eventDay = new Date(`${eventDate.trim()}T00:00:00`);
+  // Accept YYYY-MM-DD or full datetime (e.g. returnHeatDate with time).
+  const dateOnly = eventDate.trim().slice(0, 10);
+  const eventDay = new Date(`${dateOnly}T00:00:00`);
   if (Number.isNaN(eventDay.getTime())) {
     return null;
   }

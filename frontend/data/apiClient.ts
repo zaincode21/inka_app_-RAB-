@@ -97,6 +97,46 @@ export async function apiRequestText(path: string, options: RequestInit = {}): P
   return text;
 }
 
+/** Fetch a binary body (e.g. PDF export) as base64 for Expo FileSystem. */
+export async function apiRequestBase64(path: string, options: RequestInit = {}): Promise<string> {
+  const headers: Record<string, string> = {
+    Accept: 'application/pdf, application/octet-stream, */*',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    let message = `API request failed with status ${response.status}.`;
+    try {
+      const payload = text ? JSON.parse(text) : null;
+      if (typeof payload?.message === 'string') {
+        message = payload.message;
+      }
+    } catch {
+      // keep default message
+    }
+    throw new Error(message);
+  }
+
+  const buffer = await response.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
 /** Absolute URL for media stored as /uploads/... or already absolute. */
 export function resolveMediaUrl(uri?: string | null): string {
   if (!uri?.trim()) {

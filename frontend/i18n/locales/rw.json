@@ -64,6 +64,19 @@
     "syncing": "Biroherezwa…",
     "syncRetry": "Kanda ugerageze nanone"
   },
+  "alerts": {
+    "title": "Amamenyesha",
+    "empty": "Nta menyesha ubu",
+    "emptyHint": "Amamenyesha y'amahera y'amata n'iyo gukurikirana ubuvuzi azagaragara hano igihe ageze."
+  },
+  "profile": {
+    "title": "Umwirondoro",
+    "email": "Imeri",
+    "phone": "Telefone",
+    "farm": "Ururi",
+    "role": "Uruhare",
+    "logoutConfirm": "Urashaka gusohoka kuri iyi konti kuri iyi mudasobwa?"
+  },
   "settings": {
     "title": "Igenamiterere",
     "intro": "Gucunga uburyo bw'ururi n'uburenganzira bw'ikipe.",

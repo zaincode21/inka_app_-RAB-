@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { logout, getCurrentSession } from '../data/authApi';
+import { getCurrentSession } from '../data/authApi';
 import { canViewFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -15,11 +15,6 @@ type Props = {
 export function AppBottomNav({ navigation, active }: Props) {
   const { t } = useTranslation();
   const user = getCurrentSession()?.user;
-
-  const handleLogout = () => {
-    void logout();
-    navigation.replace('Login');
-  };
 
   const openManage = () => {
     if (!canViewFinance(user)) {
@@ -50,7 +45,11 @@ export function AppBottomNav({ navigation, active }: Props) {
         active={active === 'reports'}
         onPress={() => navigation.navigate('Reports')}
       />
-      <NavItem icon="log-out" label={t('common.logout')} onPress={handleLogout} />
+      <NavItem
+        icon="settings"
+        label={t('common.settings')}
+        onPress={() => navigation.navigate('Settings')}
+      />
     </View>
   );
 }

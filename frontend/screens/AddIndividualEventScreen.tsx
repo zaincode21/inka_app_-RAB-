@@ -503,7 +503,21 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       <Modal visible={showEventDatePicker && Platform.OS === 'ios'} transparent animationType="fade" onRequestClose={() => setShowEventDatePicker(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowEventDatePicker(false)}>
           <Pressable className="rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
-            <DateTimePicker value={parseDateForPicker(eventDate)} mode="date" display="inline" onChange={handleEventDateChange} style={{ height: 330, width: '100%' }} />
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-[18px] font-bold text-[#1F2937]">Event Date</Text>
+              <Pressable onPress={() => setShowEventDatePicker(false)} hitSlop={8}>
+                <Feather name="x" size={22} color="#6B7280" />
+              </Pressable>
+            </View>
+            {/* spinner keeps day + month + year visible; inline calendar often collapses to month/year only on iPhone */}
+            <DateTimePicker
+              value={parseDateForPicker(eventDate)}
+              mode="date"
+              display="spinner"
+              themeVariant="light"
+              onChange={handleEventDateChange}
+              style={{ height: 216, width: '100%' }}
+            />
             <Pressable onPress={() => setShowEventDatePicker(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
               <Text className="text-[16px] font-bold text-white">Done</Text>
             </Pressable>

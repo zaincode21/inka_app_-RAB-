@@ -1501,6 +1501,52 @@ export const openApiDocument = {
         },
       },
     },
+    '/reports/details': {
+      get: {
+        tags: ['Reports'],
+        summary: 'JSON rows for the selected report dataset and date range',
+        parameters: [
+          { $ref: '#/components/parameters/FarmIdQuery' },
+          {
+            name: 'from',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', format: 'date' },
+          },
+          {
+            name: 'to',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', format: 'date' },
+          },
+          {
+            name: 'dataset',
+            in: 'query',
+            required: true,
+            schema: {
+              type: 'string',
+              enum: ['milk', 'transactions', 'events', 'cattle'],
+            },
+          },
+          {
+            name: 'kind',
+            in: 'query',
+            required: false,
+            description: 'Optional filter when dataset=transactions (INCOME or EXPENSE)',
+            schema: {
+              type: 'string',
+              enum: ['INCOME', 'EXPENSE'],
+            },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Report details with farm info, summary, and rows',
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+        },
+      },
+    },
     '/reports/export.csv': {
       get: {
         tags: ['Reports'],
@@ -1528,12 +1574,73 @@ export const openApiDocument = {
               enum: ['milk', 'transactions', 'events', 'cattle'],
             },
           },
+          {
+            name: 'kind',
+            in: 'query',
+            required: false,
+            description: 'Optional filter when dataset=transactions (INCOME or EXPENSE)',
+            schema: {
+              type: 'string',
+              enum: ['INCOME', 'EXPENSE'],
+            },
+          },
         ],
         responses: {
           '200': {
-            description: 'CSV download',
+            description: 'CSV download with farm header block',
             content: {
               'text/csv': {
+                schema: { type: 'string', format: 'binary' },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+        },
+      },
+    },
+    '/reports/export.pdf': {
+      get: {
+        tags: ['Reports'],
+        summary: 'PDF export via jsreport (includes farm information)',
+        parameters: [
+          { $ref: '#/components/parameters/FarmIdQuery' },
+          {
+            name: 'from',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', format: 'date' },
+          },
+          {
+            name: 'to',
+            in: 'query',
+            required: true,
+            schema: { type: 'string', format: 'date' },
+          },
+          {
+            name: 'dataset',
+            in: 'query',
+            required: true,
+            schema: {
+              type: 'string',
+              enum: ['milk', 'transactions', 'events', 'cattle'],
+            },
+          },
+          {
+            name: 'kind',
+            in: 'query',
+            required: false,
+            description: 'Optional filter when dataset=transactions (INCOME or EXPENSE)',
+            schema: {
+              type: 'string',
+              enum: ['INCOME', 'EXPENSE'],
+            },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'PDF download',
+            content: {
+              'application/pdf': {
                 schema: { type: 'string', format: 'binary' },
               },
             },

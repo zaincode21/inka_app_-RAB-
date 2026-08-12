@@ -51,7 +51,7 @@ router.delete('/:id', ...)
 - Role capabilities: Worker = milk write; Vet = events write; Manager = cattle/milk/events + finance view; Owner = all including finance write / setup / users
 - `/api/v1/events/latest-breeding?cattleTag=...` for pregnancy prefill from breeding records
 - `/api/v1/events/birth-prefill?cattleTag=...` for birth prefill from pregnancy and breeding records
-- `/api/v1/reports/dashboard`, `/api/v1/reports/summaries`, `/api/v1/reports/period`, `/api/v1/reports/export.csv`
+- `/api/v1/reports/dashboard`, `/api/v1/reports/summaries`, `/api/v1/reports/period`, `/api/v1/reports/details`, `/api/v1/reports/export.csv`, `/api/v1/reports/export.pdf`
 - Authenticated routes require `Authorization: Bearer <token>`
 - `POST /auth/change-password` (authenticated) for self-service password update
 - `POST /auth/forgot-password` `{ email }` and `POST /auth/reset-password` `{ token, newPassword }` (unauthenticated)

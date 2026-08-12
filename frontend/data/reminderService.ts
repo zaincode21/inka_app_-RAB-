@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { isEventFollowUpDue } from '../components/EventRecordCard';
 import { getHealthEvents, type HealthEvent } from './farmDatabase';
 import { isActiveEvent } from '../utils/eventArchive';
+import { isCycleStepEnded } from '../utils/reproductiveCycle';
 import { getRemindersEnabled } from './reminderPrefs';
 
 const CHANNEL_ID = 'inka-reminders';
@@ -88,8 +88,13 @@ export function buildFarmAlerts(events: HealthEvent[]): FarmAlert[] {
   const alerts: FarmAlert[] = [];
 
   for (const event of active) {
-    if (isEventFollowUpDue(event, events)) {
-      const due = parseLocalDate(event.followUpDate);
+    // Alerts = dated follow-ups + milk withdrawal only.
+    // Open Kwimisha / Gusama cycle steps belong on Events → Follow-up, not the bell.
+    const due = parseLocalDate(event.followUpDate);
+    const datedFollowUpDue =
+      Boolean(due) && !isCycleStepEnded(event, events) && due!.getTime() <= Date.now();
+
+    if (datedFollowUpDue) {
       alerts.push({
         id: `followUp:${event.id}`,
         kind: 'followUp',
@@ -97,7 +102,7 @@ export function buildFarmAlerts(events: HealthEvent[]): FarmAlert[] {
         detail: subjectLabel(event),
         eventId: event.id,
         cattleTag: event.cattleTag,
-        dueLabel: due ? `Due ${formatShortDate(due)}` : 'Follow-up due',
+        dueLabel: `Due ${formatShortDate(due!)}`,
       });
     } else if (isWithdrawalEndingSoon(event)) {
       const ends = withdrawalEndsOn(event)!;

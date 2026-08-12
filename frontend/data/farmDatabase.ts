@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useRef, useState } from 'react';
-import { apiRequest, apiRequestText, toJsonBody } from './apiClient';
+import { apiRequest, apiRequestBase64, apiRequestText, toJsonBody } from './apiClient';
 
 export type RecordActor = {
   id: string;
@@ -718,9 +718,63 @@ export async function getPeriodReport(from: string, to: string): Promise<PeriodR
   return apiRequest<PeriodReport>(`/reports/period?${params.toString()}`);
 }
 
-export async function exportReportCsv(dataset: ReportExportDataset, from: string, to: string): Promise<string> {
+export type ReportDetailsColumn = { key: string; label: string };
+
+export type ReportDetailsResponse = {
+  farm: {
+    name: string;
+    ownerName: string;
+    ownerPhone?: string | null;
+    location: string;
+    district: string;
+    sector: string;
+    currency: string;
+  };
+  reportTitle: string;
+  from: string;
+  to: string;
+  columns: ReportDetailsColumn[];
+  rows: Array<Record<string, string | number>>;
+  summaryLines: Array<{ label: string; value: string }>;
+};
+
+export async function getReportDetails(
+  dataset: ReportExportDataset,
+  from: string,
+  to: string,
+  options?: { kind?: 'INCOME' | 'EXPENSE' },
+): Promise<ReportDetailsResponse> {
   const params = new URLSearchParams({ dataset, from, to });
+  if (options?.kind) {
+    params.set('kind', options.kind);
+  }
+  return apiRequest<ReportDetailsResponse>(`/reports/details?${params.toString()}`);
+}
+
+export async function exportReportCsv(
+  dataset: ReportExportDataset,
+  from: string,
+  to: string,
+  options?: { kind?: 'INCOME' | 'EXPENSE' },
+): Promise<string> {
+  const params = new URLSearchParams({ dataset, from, to });
+  if (options?.kind) {
+    params.set('kind', options.kind);
+  }
   return apiRequestText(`/reports/export.csv?${params.toString()}`);
+}
+
+export async function exportReportPdf(
+  dataset: ReportExportDataset,
+  from: string,
+  to: string,
+  options?: { kind?: 'INCOME' | 'EXPENSE' },
+): Promise<string> {
+  const params = new URLSearchParams({ dataset, from, to });
+  if (options?.kind) {
+    params.set('kind', options.kind);
+  }
+  return apiRequestBase64(`/reports/export.pdf?${params.toString()}`);
 }
 
 export type AuditLogItem = {

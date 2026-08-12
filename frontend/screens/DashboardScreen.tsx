@@ -3,12 +3,12 @@ import { useCallback, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { AppBottomNav } from '../components/AppBottomNav';
 import { CalvesIcon, CowsIcon, BullsIcon } from '../components/MetricIcons';
-import { getCurrentSession, logout } from '../data/authApi';
+import { getCurrentSession } from '../data/authApi';
 import {
   canViewFinance,
   roleLabel,
@@ -28,8 +28,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
 export function DashboardScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
-  const isNarrow = width < 380;
   const session = getCurrentSession();
   const user = session?.user;
   const showFinance = canViewFinance(user);
@@ -102,9 +100,14 @@ export function DashboardScreen({ navigation }: Props) {
       <View className="rounded-b-[50px] bg-[#008B8B] px-6 pb-8 pt-12">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-white/30">
+            <Pressable
+              onPress={() => navigation.navigate('Profile')}
+              accessibilityRole="button"
+              className="h-14 w-14 items-center justify-center rounded-full bg-white/30"
+              hitSlop={4}
+            >
               <Feather name="user" size={24} color="#FFFFFF" />
-            </View>
+            </Pressable>
             <View>
               <Text className="text-[24px] font-extrabold leading-[28px] text-white">{t('dashboard.greeting')}</Text>
               <Text className="text-[24px] font-extrabold leading-[28px] text-white">
@@ -119,16 +122,18 @@ export function DashboardScreen({ navigation }: Props) {
             </View>
           </View>
           <Pressable
-            onPress={() => {
-              void logout();
-              navigation.replace('Login');
-            }}
+            onPress={() => navigation.navigate('Alerts')}
             accessibilityRole="button"
-            className="items-center"
+            accessibilityLabel={t('alerts.title')}
+            className="relative h-12 w-12 items-center justify-center rounded-full bg-white/20"
             hitSlop={8}
           >
-            <Feather name="log-out" size={24} color="#FFFFFF" />
-            <Text className="mt-1 text-[10px] font-bold text-white">{t('common.logout')}</Text>
+            <Feather name="bell" size={24} color="#FFFFFF" />
+            {alerts.length > 0 ? (
+              <View className="absolute -right-0.5 -top-0.5 min-w-[18px] items-center rounded-full bg-[#DC2626] px-1 py-0.5">
+                <Text className="text-[10px] font-bold text-white">{alerts.length > 99 ? '99+' : alerts.length}</Text>
+              </View>
+            ) : null}
           </Pressable>
         </View>
       </View>
@@ -204,17 +209,17 @@ export function DashboardScreen({ navigation }: Props) {
             <MetricCard title={t('dashboard.bulls')} value={`${metrics.bulls}`} icon={BullsIcon} />
           </View>
 
-          <View className={`mt-4 gap-4 ${isNarrow ? '' : 'flex-row'}`}>
-            <View className="flex-1 rounded-[20px] bg-[#E0F7F7] px-4 py-4">
+          <View className="mt-4 flex-row gap-3">
+            <View className="min-w-0 flex-1 rounded-[20px] bg-[#E0F7F7] px-3 py-4">
               <Text className="text-center text-[16px] font-extrabold text-black/50">{formatNumber(metrics.totalMilkToday)} L</Text>
-              <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">{t('dashboard.milkToday')}</Text>
+              <Text className="mt-1 text-center text-[13px] font-semibold text-black/50">{t('dashboard.milkToday')}</Text>
             </View>
             <Pressable
-              onPress={() => navigation.navigate('Events')}
-              className="flex-1 rounded-[20px] bg-[#E0F7F7] px-4 py-4"
+              onPress={() => navigation.navigate('Alerts')}
+              className="min-w-0 flex-1 rounded-[20px] bg-[#E0F7F7] px-3 py-4"
             >
               <Text className="text-center text-[16px] font-extrabold text-black/50">{alertCount}</Text>
-              <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">{t('dashboard.healthAlerts')}</Text>
+              <Text className="mt-1 text-center text-[13px] font-semibold text-black/50">{t('dashboard.healthAlerts')}</Text>
             </Pressable>
           </View>
 
@@ -255,14 +260,14 @@ export function DashboardScreen({ navigation }: Props) {
           ) : null}
 
           {showFinance ? (
-            <View className={`mt-4 gap-4 ${isNarrow ? '' : 'flex-row'}`}>
-              <View className="flex-1 rounded-[20px] bg-[#F0FDF4] px-4 py-4">
+            <View className="mt-4 flex-row gap-3">
+              <View className="min-w-0 flex-1 rounded-[20px] bg-[#F0FDF4] px-3 py-4">
                 <Text className="text-center text-[16px] font-extrabold text-[#16A34A]">{formatMoney(metrics.incomeThisMonth)}</Text>
-                <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">{t('dashboard.incomeMonth')}</Text>
+                <Text className="mt-1 text-center text-[13px] font-semibold text-black/50">{t('dashboard.incomeMonth')}</Text>
               </View>
-              <View className="flex-1 rounded-[20px] bg-[#FEF2F2] px-4 py-4">
+              <View className="min-w-0 flex-1 rounded-[20px] bg-[#FEF2F2] px-3 py-4">
                 <Text className="text-center text-[16px] font-extrabold text-[#DC2626]">{formatMoney(metrics.expensesThisMonth)}</Text>
-                <Text className="mt-1 text-center text-[14px] font-semibold text-black/50">{t('dashboard.expenseMonth')}</Text>
+                <Text className="mt-1 text-center text-[13px] font-semibold text-black/50">{t('dashboard.expenseMonth')}</Text>
               </View>
             </View>
           ) : null}

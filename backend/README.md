@@ -120,7 +120,9 @@ All business routes are under `/api/v1`.
 - `/api/v1/reports/dashboard`: dashboard metrics.
 - `/api/v1/reports/summaries`: report summary cards.
 - `/api/v1/reports/period?from=YYYY-MM-DD&to=YYYY-MM-DD`: milk, herd, events, and (when allowed) finance totals for a date range.
-- `/api/v1/reports/export.csv?from=...&to=...&dataset=milk|transactions|events|cattle`: CSV download for the range (`transactions` requires finance view).
+- `/api/v1/reports/export.csv?from=...&to=...&dataset=milk|transactions|events|cattle`: CSV download for the range with a farm information header (`transactions` requires finance view; optional `kind=INCOME|EXPENSE` filters transaction exports).
+- `/api/v1/reports/details?...`: same dataset as JSON rows for the Reports screen table.
+- `/api/v1/reports/export.pdf?...`: same datasets rendered as PDF via jsreport (farm header + data table).
 
 Seeded demo accounts (from `npm run seed`):
 

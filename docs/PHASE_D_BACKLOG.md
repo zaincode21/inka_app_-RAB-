@@ -85,7 +85,7 @@ Phases A–C are complete (trust, data-model UI, reports/reminders/offline).
 
 ## Out of scope for Phase D
 
-- MFA / refresh-token rotation (security hardening track)
+- MFA / refresh-token rotation → **[PHASE_E_BACKLOG.md](./PHASE_E_BACKLOG.md)**
 - IoT milk meters / AI heat detection
 - Cooperative buyer portals / MoMo settlement
 - Full PDF report suite (CSV remains primary export)

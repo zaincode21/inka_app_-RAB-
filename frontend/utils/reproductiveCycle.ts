@@ -16,23 +16,16 @@ function isAfterOrSameDay(later: string, earlier: string): boolean {
   if (!later?.trim() || !earlier?.trim()) {
     return false;
   }
-  return later.trim() >= earlier.trim();
+  return later.trim().slice(0, 10) >= earlier.trim().slice(0, 10);
 }
 
-/** Return-heat window starts ~3 days before estimated return heat. */
+/**
+ * Heat / Gusama actions are available from the breeding day onward.
+ * Cows can return to heat before the estimated ~21-day return date.
+ */
 export function isReturnHeatWindowOpen(breeding: Pick<HealthEvent, 'returnHeatDate' | 'eventDate'>, reference = new Date()): boolean {
-  const anchor = breeding.returnHeatDate?.trim() || '';
-  if (!anchor) {
-    const days = daysSinceEventDate(breeding.eventDate, reference);
-    return days !== null && days >= 18;
-  }
-
-  const daysSinceReturn = daysSinceEventDate(anchor, reference);
-  if (daysSinceReturn === null) {
-    return false;
-  }
-  // Open from 3 days before return heat onward until resolved.
-  return daysSinceReturn >= -3;
+  const days = daysSinceEventDate(breeding.eventDate, reference);
+  return days !== null && days >= 0;
 }
 
 export function findsCycleChild(parent: HealthEvent, allEvents: HealthEvent[], childTypes: Set<string>): HealthEvent | undefined {
@@ -67,8 +60,52 @@ export function isOpenPregnancy(pregnant: HealthEvent, allEvents: HealthEvent[])
   return !findsCycleChild(pregnant, allEvents, PREGNANCY_CLOSERS);
 }
 
+/** Breeding that already moved on (Heat / Gusama / Abort / Birth). */
+export function getBreedingResolution(breeding: HealthEvent, allEvents: HealthEvent[]): HealthEvent | undefined {
+  if (normalizeType(breeding.eventType) !== 'breeding' || breeding.scope !== 'individual') {
+    return undefined;
+  }
+  return findsCycleChild(breeding, allEvents, CYCLE_RESOLVERS);
+}
+
+export function isEndedBreeding(breeding: HealthEvent, allEvents: HealthEvent[]): boolean {
+  return Boolean(getBreedingResolution(breeding, allEvents));
+}
+
+/** Pregnant that already moved on (Abort / Birth). */
+export function getPregnancyResolution(pregnant: HealthEvent, allEvents: HealthEvent[]): HealthEvent | undefined {
+  if (normalizeType(pregnant.eventType) !== 'pregnant' || pregnant.scope !== 'individual') {
+    return undefined;
+  }
+  return findsCycleChild(pregnant, allEvents, PREGNANCY_CLOSERS);
+}
+
+export function isEndedPregnancy(pregnant: HealthEvent, allEvents: HealthEvent[]): boolean {
+  return Boolean(getPregnancyResolution(pregnant, allEvents));
+}
+
+/** Card should use muted “ended” styling when the cycle step is finished. */
+export function isCycleStepEnded(event: HealthEvent, allEvents: HealthEvent[]): boolean {
+  return isEndedBreeding(event, allEvents) || isEndedPregnancy(event, allEvents);
+}
+
+export function cycleResolutionLabel(eventType: string): string {
+  switch (normalizeType(eventType)) {
+    case 'pregnant':
+      return 'Gusama';
+    case 'heat observed':
+      return 'Heat Observed';
+    case 'aborted':
+      return 'Kuramburura';
+    case 'giving birth':
+      return 'Kubyara';
+    default:
+      return eventType;
+  }
+}
+
 export function isReproductiveCycleFollowUpDue(event: HealthEvent, allEvents: HealthEvent[], reference = new Date()): boolean {
-  return isBreedingAwaitingHeatDecision(event, allEvents, reference);
+  return isBreedingAwaitingHeatDecision(event, allEvents, reference) || isOpenPregnancy(event, allEvents);
 }
 
 export function emptyEventFields(overrides: Partial<Omit<HealthEvent, 'id' | 'createdAt' | 'recordedBy'>> = {}): Omit<HealthEvent, 'id' | 'createdAt' | 'recordedBy'> {

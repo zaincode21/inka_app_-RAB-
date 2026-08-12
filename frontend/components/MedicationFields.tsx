@@ -81,7 +81,20 @@ export function MedicationFields({ medicineOptions, withdrawalByMedicine, values
       <Modal visible={showFollowUpPicker && Platform.OS === 'ios'} transparent animationType="fade" onRequestClose={() => setShowFollowUpPicker(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowFollowUpPicker(false)}>
           <Pressable className="rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
-            <DateTimePicker value={parseDateForPicker(values.followUpDate)} mode="date" display="inline" onChange={handleFollowUpChange} style={{ height: 330, width: '100%' }} />
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-[18px] font-bold text-[#1F2937]">Follow-up Date</Text>
+              <Pressable onPress={() => setShowFollowUpPicker(false)} hitSlop={8}>
+                <Feather name="x" size={22} color="#6B7280" />
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={parseDateForPicker(values.followUpDate)}
+              mode="date"
+              display="spinner"
+              themeVariant="light"
+              onChange={handleFollowUpChange}
+              style={{ height: 216, width: '100%' }}
+            />
             <Pressable onPress={() => setShowFollowUpPicker(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
               <Text className="text-[16px] font-bold text-white">Done</Text>
             </Pressable>

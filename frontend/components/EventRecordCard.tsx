@@ -1,8 +1,16 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 import { type HealthEvent, formatNumber } from '../data/farmDatabase';
-import { normalizeMassEventType } from '../utils/eventConstants';
-import { isBreedingAwaitingHeatDecision, isOpenPregnancy, isReproductiveCycleFollowUpDue } from '../utils/reproductiveCycle';
+import { INDIVIDUAL_EVENT_TYPES, normalizeMassEventType } from '../utils/eventConstants';
+import {
+  cycleResolutionLabel,
+  getBreedingResolution,
+  getPregnancyResolution,
+  isBreedingAwaitingHeatDecision,
+  isCycleStepEnded,
+  isOpenPregnancy,
+  isReproductiveCycleFollowUpDue,
+} from '../utils/reproductiveCycle';
 
 type EventCardRow = {
   label: string;
@@ -27,6 +35,11 @@ type Props = {
   onConfirmKubyara?: () => void;
 };
 
+const ACTIVE_HEADER = '#E6B86F';
+const ENDED_HEADER = '#94A3B8';
+const ACTIVE_VALUE = '#008B8B';
+const ENDED_VALUE = '#64748B';
+
 export function EventRecordCard({
   item,
   allEvents = [],
@@ -44,7 +57,11 @@ export function EventRecordCard({
 }: Props) {
   const rows = buildEventCardRows(item, cattleByTag);
   const showViewCattle = Boolean(item.cattleTag && onViewCattle);
-  const displayType = item.scope === 'mass' ? normalizeMassEventType(item.eventType) : item.eventType;
+  const displayType = formatEventTypeLabel(item);
+  const ended = isCycleStepEnded(item, allEvents);
+  const nextStepLabel = getEndedNextStepLabel(item, allEvents);
+  const headerBg = ended ? ENDED_HEADER : ACTIVE_HEADER;
+  const valueColor = ended ? ENDED_VALUE : ACTIVE_VALUE;
   const showBreedingActions = Boolean(onConfirmHeatReturned && onConfirmGusama && isBreedingAwaitingHeatDecision(item, allEvents));
   const showPregnancyActions = Boolean(onConfirmKuramburura && onConfirmKubyara && isOpenPregnancy(item, allEvents));
 
@@ -58,10 +75,15 @@ export function EventRecordCard({
         </View>
       ) : null}
 
-      <View className="overflow-hidden rounded-[16px] bg-white shadow-sm">
-        <View className="flex-row items-center bg-[#E6B86F] px-4 py-3">
+      <View className={`overflow-hidden rounded-[16px] shadow-sm ${ended ? 'bg-[#F8FAFC]' : 'bg-white'}`}>
+        <View className="flex-row items-center px-4 py-3" style={{ backgroundColor: headerBg }}>
           <Feather name="calendar" size={18} color="#FFFFFF" />
           <Text className="ml-2 flex-1 text-[16px] font-bold text-white">{displayType}</Text>
+          {ended && nextStepLabel ? (
+            <View className="mr-2 rounded-full bg-white/25 px-2.5 py-1">
+              <Text className="text-[11px] font-bold text-white">→ {nextStepLabel}</Text>
+            </View>
+          ) : null}
           {onMenuPress ? (
             <Pressable onPress={onMenuPress} hitSlop={8}>
               <Feather name="more-vertical" size={18} color="#FFFFFF" />
@@ -74,8 +96,10 @@ export function EventRecordCard({
             <View key={`${item.id}-${row.label}`} className="mb-3 flex-row items-start">
               <Text className="w-[110px] text-[13px] font-semibold text-[#6B7280]">{row.label}</Text>
               <View className="flex-1 flex-row items-center">
-                <Text className={`flex-1 text-[14px] font-bold ${row.highlight ? 'text-[#DC2626]' : 'text-[#008B8B]'}`}>{row.value}</Text>
-                {row.showSearch ? <Feather name="search" size={16} color="#E6B86F" /> : null}
+                <Text className={`flex-1 text-[14px] font-bold ${row.highlight ? 'text-[#DC2626]' : ''}`} style={row.highlight ? undefined : { color: valueColor }}>
+                  {row.value}
+                </Text>
+                {row.showSearch ? <Feather name="search" size={16} color={ended ? '#94A3B8' : '#E6B86F'} /> : null}
               </View>
             </View>
           ))}
@@ -84,7 +108,8 @@ export function EventRecordCard({
         {showBreedingActions ? (
           <View className="border-t border-[#E5E7EB] bg-[#F8FAFA] px-4 py-3">
             <Text className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[#64748B]">Return heat follow-up</Text>
-            <CycleActionRow label="Heat returned" hint="Record heat — may re-breed" onPress={onConfirmHeatReturned!} />
+            <Text className="mb-2 text-[12px] text-[#6B7280]">Available anytime — heat can return before the estimated ~21 days.</Text>
+            <CycleActionRow label="Heat returned" hint="Record heat early or on time — may re-breed" onPress={onConfirmHeatReturned!} />
             <CycleActionRow label="No heat — confirm Gusama" hint="Create Pregnant from this Kwimisha" onPress={onConfirmGusama!} accent />
           </View>
         ) : null}
@@ -92,13 +117,35 @@ export function EventRecordCard({
         {showPregnancyActions ? (
           <View className="border-t border-[#E5E7EB] bg-[#FFF7F7] px-4 py-3">
             <Text className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[#64748B]">Pregnancy next step</Text>
-            <CycleActionRow label="Kuramburura (Abort)" hint="Write reason, then save abort event" onPress={onConfirmKuramburura!} danger />
-            <CycleActionRow label="Kubyara (Birth)" hint="Open birth form (prefilled)" onPress={onConfirmKubyara!} accent />
+            <View className="flex-row">
+              <CycleActionColumn className="mr-1.5" label="Abort" onPress={onConfirmKuramburura!} danger />
+              <CycleActionColumn className="ml-1.5" label="Birth" onPress={onConfirmKubyara!} accent />
+            </View>
           </View>
         ) : null}
       </View>
     </View>
   );
+}
+
+function formatEventTypeLabel(item: HealthEvent): string {
+  if (item.scope === 'mass') {
+    return normalizeMassEventType(item.eventType);
+  }
+  const match = INDIVIDUAL_EVENT_TYPES.find((option) => option.value === item.eventType);
+  return match?.label ?? item.eventType;
+}
+
+function getEndedNextStepLabel(item: HealthEvent, allEvents: HealthEvent[]): string | null {
+  const breedingNext = getBreedingResolution(item, allEvents);
+  if (breedingNext) {
+    return cycleResolutionLabel(breedingNext.eventType);
+  }
+  const pregnancyNext = getPregnancyResolution(item, allEvents);
+  if (pregnancyNext) {
+    return cycleResolutionLabel(pregnancyNext.eventType);
+  }
+  return null;
 }
 
 function CycleActionRow({
@@ -127,6 +174,35 @@ function CycleActionRow({
         <Text className="mt-0.5 text-[12px] text-[#6B7280]">{hint}</Text>
       </View>
       <Feather name="chevron-right" size={18} color="#9CA3AF" />
+    </Pressable>
+  );
+}
+
+function CycleActionColumn({
+  label,
+  hint,
+  onPress,
+  className = '',
+  accent = false,
+  danger = false,
+}: {
+  label: string;
+  hint?: string;
+  onPress: () => void;
+  className?: string;
+  accent?: boolean;
+  danger?: boolean;
+}) {
+  const color = danger ? '#DC2626' : accent ? '#008B8B' : '#1F2937';
+  return (
+    <Pressable
+      onPress={onPress}
+      className={`flex-1 items-center justify-center rounded-[12px] border border-[#E5E7EB] bg-white px-3 py-3 active:bg-[#F3F4F6] ${className}`}
+    >
+      <Text className="text-center text-[14px] font-bold" style={{ color }}>
+        {label}
+      </Text>
+      {hint ? <Text className="mt-1 text-center text-[11px] leading-[15px] text-[#6B7280]">{hint}</Text> : null}
     </Pressable>
   );
 }
@@ -314,6 +390,10 @@ function formatDisplayDate(value: string) {
 }
 
 export function isEventFollowUpDue(item: HealthEvent, allEvents: HealthEvent[] = []): boolean {
+  // Ended Kwimisha / Gusama must leave Follow-up even if an old follow-up date remains.
+  if (isCycleStepEnded(item, allEvents)) {
+    return false;
+  }
   if (isFollowUpOverdue(item.followUpDate)) {
     return true;
   }

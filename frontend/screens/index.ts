@@ -1,4 +1,6 @@
 export { DashboardScreen } from './DashboardScreen';
+export { AlertsScreen } from './AlertsScreen';
+export { ProfileScreen } from './ProfileScreen';
 export { HomeScreen } from './HomeScreen';
 export { LoginScreen } from './LoginScreen';
 export { CattleListScreen } from './CattleListScreen';

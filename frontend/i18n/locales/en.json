@@ -64,6 +64,19 @@
     "syncing": "Syncing offline records…",
     "syncRetry": "Tap to retry now"
   },
+  "alerts": {
+    "title": "Alerts",
+    "empty": "No alerts right now",
+    "emptyHint": "Milk withdrawal reminders and dated treatment follow-ups will show here when due."
+  },
+  "profile": {
+    "title": "Profile",
+    "email": "Email",
+    "phone": "Phone",
+    "farm": "Farm",
+    "role": "Role",
+    "logoutConfirm": "Sign out of your account on this device?"
+  },
   "settings": {
     "title": "Settings",
     "intro": "Manage farm preferences and team access used across events and reports.",
