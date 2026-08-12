@@ -1,21 +1,20 @@
-export const INDIVIDUAL_EVENT_TYPES = [
-  { label: 'Kuvurwa', value: 'Treated' },
-  { label: 'Kwimisha', value: 'Breeding' },
-  { label: 'Gupimwa Ibiro', value: 'Weighed' },
-  { label: 'Kubyara', value: 'Giving Birth' },
-  { label: 'Gukingirwa', value: 'Vaccinated' },
-  { label: 'Gusama', value: 'Pregnant' },
-  { label: 'Kuramburura', value: 'Aborted' },
-  { label: 'Deworming', value: 'Deworming' },
-  { label: 'Hoof Trimming', value: 'Hoof Trimming' },
-  { label: 'Pregnancy Diagnosis', value: 'Pregnancy Diagnosis' },
-  { label: 'Dry Off', value: 'Dry Off' },
-  { label: 'Mastitis', value: 'Mastitis' },
-  { label: 'Lameness', value: 'Lameness' },
-  { label: 'Heat Observed', value: 'Heat Observed' },
-  { label: 'Death', value: 'Death' },
-  { label: 'Euthanasia', value: 'Euthanasia' },
+export const INDIVIDUAL_EVENT_TYPE_VALUES = [
+  'Treated',
+  'Breeding',
+  'Giving Birth',
+  'Vaccinated',
+  'Pregnant',
+  'Aborted',
+  'Deworming',
+  'Hoof Trimming',
+  'Death',
 ] as const;
+
+/** @deprecated Prefer INDIVIDUAL_EVENT_TYPE_VALUES + i18n labels */
+export const INDIVIDUAL_EVENT_TYPES = INDIVIDUAL_EVENT_TYPE_VALUES.map((value) => ({
+  label: value,
+  value,
+}));
 
 export const MASS_EVENT_TYPES = ['Vaccinated', 'Herd Spraying', 'Deworming', 'Treated', 'Hoof Trimming'] as const;
 
@@ -26,14 +25,62 @@ export const FEMALE_ONLY_EVENT_TYPES = new Set([
   'Pregnant',
   'Aborted',
   'Giving Birth',
-  'Pregnancy Diagnosis',
-  'Dry Off',
-  'Mastitis',
-  'Heat Observed',
 ]);
 
+const EVENT_TYPE_I18N_KEY: Record<string, string> = {
+  Treated: 'eventTypes.treated',
+  Breeding: 'eventTypes.breeding',
+  'Giving Birth': 'eventTypes.givingBirth',
+  Vaccinated: 'eventTypes.vaccinated',
+  Pregnant: 'eventTypes.pregnant',
+  Aborted: 'eventTypes.aborted',
+  Deworming: 'eventTypes.deworming',
+  'Hoof Trimming': 'eventTypes.hoofTrimming',
+  Death: 'eventTypes.death',
+  'Heat Observed': 'eventTypes.heatObserved',
+  'Herd Spraying': 'eventTypes.herdSpraying',
+  'Pregnancy Diagnosis': 'eventTypes.pregnancyDiagnosis',
+  Weighed: 'eventTypes.weighed',
+  'Dry Off': 'eventTypes.dryOff',
+  Mastitis: 'eventTypes.mastitis',
+  Lameness: 'eventTypes.lameness',
+  Euthanasia: 'eventTypes.euthanasia',
+};
+
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
+export function eventTypeLabel(eventType: string, t: TranslateFn): string {
+  const normalized = normalizeMassEventType(eventType);
+  const key = EVENT_TYPE_I18N_KEY[normalized] ?? EVENT_TYPE_I18N_KEY[eventType];
+  if (!key) {
+    return eventType;
+  }
+  const translated = t(key);
+  return translated === key ? eventType : translated;
+}
+
+export function eventTypeOptionsFromNames(
+  names: string[],
+  t: TranslateFn,
+  extraValue?: string,
+): Array<{ label: string; value: string }> {
+  const values = [...new Set([...names.map((name) => name.trim()).filter(Boolean), ...(extraValue?.trim() ? [extraValue.trim()] : [])])];
+  return values.map((value) => ({
+    label: eventTypeLabel(value, t),
+    value,
+  }));
+}
+
+export function individualEventTypeOptions(t: TranslateFn): Array<{ label: string; value: string }> {
+  return eventTypeOptionsFromNames([...INDIVIDUAL_EVENT_TYPE_VALUES], t);
+}
+
+export function massEventTypeOptions(t: TranslateFn): Array<{ label: string; value: string }> {
+  return eventTypeOptionsFromNames([...MASS_EVENT_TYPES], t);
+}
+
 export function requiresMedicine(eventType: string): boolean {
-  return ['Treated', 'Vaccinated', 'Deworming', 'Mastitis', 'Hoof Trimming', 'Lameness'].includes(eventType);
+  return ['Treated', 'Vaccinated', 'Deworming', 'Hoof Trimming'].includes(eventType);
 }
 
 export function requiresMedicationDetails(eventType: string): boolean {
@@ -41,7 +88,7 @@ export function requiresMedicationDetails(eventType: string): boolean {
 }
 
 export function requiresClinicalNotes(eventType: string): boolean {
-  return ['Mastitis', 'Lameness'].includes(eventType);
+  return false;
 }
 
 export function isReproductiveEvent(eventType: string): boolean {
@@ -61,8 +108,18 @@ export function normalizeMassEventType(eventType: string): string {
   return eventType;
 }
 
-export function allEventTypeFilterOptions(): string[] {
-  const individual = INDIVIDUAL_EVENT_TYPES.map((item) => item.value);
+export function allEventTypeFilterOptions(
+  t?: TranslateFn,
+  managedNames?: string[],
+): Array<{ label: string; value: string }> {
+  const individual = [...INDIVIDUAL_EVENT_TYPE_VALUES];
   const mass = [...MASS_EVENT_TYPES];
-  return [...new Set([...individual, ...mass])].sort();
+  const managed = managedNames?.map((name) => name.trim()).filter(Boolean) ?? [];
+  const values = [...new Set(managed.length > 0 ? managed : [...individual, ...mass])].sort((a, b) =>
+    a.localeCompare(b),
+  );
+  if (!t) {
+    return values.map((value) => ({ label: value, value }));
+  }
+  return values.map((value) => ({ label: eventTypeLabel(value, t), value }));
 }

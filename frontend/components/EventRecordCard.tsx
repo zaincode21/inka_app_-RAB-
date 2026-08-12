@@ -1,9 +1,9 @@
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { type HealthEvent, formatNumber } from '../data/farmDatabase';
-import { INDIVIDUAL_EVENT_TYPES, normalizeMassEventType } from '../utils/eventConstants';
+import { eventTypeLabel } from '../utils/eventConstants';
 import {
-  cycleResolutionLabel,
   getBreedingResolution,
   getPregnancyResolution,
   isBreedingAwaitingHeatDecision,
@@ -55,11 +55,12 @@ export function EventRecordCard({
   onConfirmKuramburura,
   onConfirmKubyara,
 }: Props) {
+  const { t } = useTranslation();
   const rows = buildEventCardRows(item, cattleByTag);
   const showViewCattle = Boolean(item.cattleTag && onViewCattle);
-  const displayType = formatEventTypeLabel(item);
+  const displayType = eventTypeLabel(item.eventType, t);
   const ended = isCycleStepEnded(item, allEvents);
-  const nextStepLabel = getEndedNextStepLabel(item, allEvents);
+  const nextStepLabel = getEndedNextStepLabel(item, allEvents, t);
   const headerBg = ended ? ENDED_HEADER : ACTIVE_HEADER;
   const valueColor = ended ? ENDED_VALUE : ACTIVE_VALUE;
   const showBreedingActions = Boolean(onConfirmHeatReturned && onConfirmGusama && isBreedingAwaitingHeatDecision(item, allEvents));
@@ -107,19 +108,19 @@ export function EventRecordCard({
 
         {showBreedingActions ? (
           <View className="border-t border-[#E5E7EB] bg-[#F8FAFA] px-4 py-3">
-            <Text className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[#64748B]">Return heat follow-up</Text>
-            <Text className="mb-2 text-[12px] text-[#6B7280]">Available anytime — heat can return before the estimated ~21 days.</Text>
-            <CycleActionRow label="Heat returned" hint="Record heat early or on time — may re-breed" onPress={onConfirmHeatReturned!} />
-            <CycleActionRow label="No heat — confirm Gusama" hint="Create Pregnant from this Kwimisha" onPress={onConfirmGusama!} accent />
+            <Text className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[#64748B]">{t('events.returnHeatFollowUp')}</Text>
+            <Text className="mb-2 text-[12px] text-[#6B7280]">{t('events.returnHeatHint')}</Text>
+            <CycleActionRow label={t('events.heatReturned')} hint={t('events.heatReturnedHint')} onPress={onConfirmHeatReturned!} />
+            <CycleActionRow label={t('events.confirmPregnant')} hint={t('events.confirmPregnantHint')} onPress={onConfirmGusama!} accent />
           </View>
         ) : null}
 
         {showPregnancyActions ? (
           <View className="border-t border-[#E5E7EB] bg-[#FFF7F7] px-4 py-3">
-            <Text className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[#64748B]">Pregnancy next step</Text>
+            <Text className="mb-2 text-[12px] font-bold uppercase tracking-wide text-[#64748B]">{t('events.pregnancyNextStep')}</Text>
             <View className="flex-row">
-              <CycleActionColumn className="mr-1.5" label="Abort" onPress={onConfirmKuramburura!} danger />
-              <CycleActionColumn className="ml-1.5" label="Birth" onPress={onConfirmKubyara!} accent />
+              <CycleActionColumn className="mr-1.5" label={t('events.abort')} onPress={onConfirmKuramburura!} danger />
+              <CycleActionColumn className="ml-1.5" label={t('events.birth')} onPress={onConfirmKubyara!} accent />
             </View>
           </View>
         ) : null}
@@ -128,22 +129,14 @@ export function EventRecordCard({
   );
 }
 
-function formatEventTypeLabel(item: HealthEvent): string {
-  if (item.scope === 'mass') {
-    return normalizeMassEventType(item.eventType);
-  }
-  const match = INDIVIDUAL_EVENT_TYPES.find((option) => option.value === item.eventType);
-  return match?.label ?? item.eventType;
-}
-
-function getEndedNextStepLabel(item: HealthEvent, allEvents: HealthEvent[]): string | null {
+function getEndedNextStepLabel(item: HealthEvent, allEvents: HealthEvent[], t: (key: string) => string): string | null {
   const breedingNext = getBreedingResolution(item, allEvents);
   if (breedingNext) {
-    return cycleResolutionLabel(breedingNext.eventType);
+    return eventTypeLabel(breedingNext.eventType, t);
   }
   const pregnancyNext = getPregnancyResolution(item, allEvents);
   if (pregnancyNext) {
-    return cycleResolutionLabel(pregnancyNext.eventType);
+    return eventTypeLabel(pregnancyNext.eventType, t);
   }
   return null;
 }

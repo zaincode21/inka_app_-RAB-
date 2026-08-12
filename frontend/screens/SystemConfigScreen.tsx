@@ -15,6 +15,7 @@ import {
 import { getCurrentSession } from '../data/authApi';
 import { canEditSystemConfig } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SystemConfig'>;
 type SavingKey = 'returnHeat' | 'milkPrice' | 'buyerDestination' | null;
@@ -90,7 +91,7 @@ export function SystemConfigScreen({ navigation }: Props) {
         returnHeatTime: normalizeReturnHeatTime(returnHeatTime),
       });
       applySaved(saved);
-      Alert.alert('Saved', 'Return heat settings updated.');
+      showSuccessToast('Return heat settings updated.');
     } catch (error) {
       Alert.alert('Could not save', error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -113,7 +114,7 @@ export function SystemConfigScreen({ navigation }: Props) {
     try {
       const saved = await updateSystemConfig({ milkPricePerLiter: price });
       applySaved(saved);
-      Alert.alert('Saved', 'Milk selling price updated.');
+      showSuccessToast('Milk selling price updated.');
     } catch (error) {
       Alert.alert('Could not save', error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -134,7 +135,7 @@ export function SystemConfigScreen({ navigation }: Props) {
         defaultMilkDestination: value,
       });
       applySaved(saved);
-      Alert.alert('Saved', 'Default buyer / destination updated.');
+      showSuccessToast('Default buyer / destination updated.');
     } catch (error) {
       Alert.alert('Could not save', error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -161,7 +162,7 @@ export function SystemConfigScreen({ navigation }: Props) {
             : 'View only — ask a farm owner to change milk price or breeding defaults.'}
         </Text>
 
-        <ConfigCard title="Estimated Return Heat Date" subtitle="Days and time after Kwimisha when the cow is expected to return to heat if not pregnant.">
+        <ConfigCard title="Estimated Return Heat Date" subtitle="Days and time after Breeding when the cow is expected to return to heat if not pregnant.">
           <FieldLabel text="Days after breeding" />
           <RowInput
             value={returnHeatDays}

@@ -9,6 +9,7 @@ import { getCurrentSession } from '../data/authApi';
 import { parseNumber, todayIsoDate, useInventory } from '../data/farmDatabase';
 import { canWriteInventory } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InventoryUse'>;
 
@@ -34,7 +35,8 @@ export function InventoryUseScreen({ navigation, route }: Props) {
         date,
         notes: notes.trim() || undefined,
       });
-      navigation.replace('Inventory');
+      showSuccessToast('Usage recorded.');
+      navigation.goBack();
     } catch (error) {
       Alert.alert('Could not record usage', error instanceof Error ? error.message : 'Please try again.');
     } finally {

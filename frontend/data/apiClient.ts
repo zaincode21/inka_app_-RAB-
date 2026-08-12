@@ -1,8 +1,53 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:4000/api/v1';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(/\/$/, '');
+/** Fallback LAN IP — update if your PC IP changes (`hostname -I`). Prefer hotspot/USB (172.20.x) when phone shares internet. */
+const FALLBACK_LAN_HOST = '172.20.10.3';
+const API_PORT = 4000;
+const API_PREFIX = '/api/v1';
+
+const PLACEHOLDER_API_BASE_URL = 'http://YOUR_COMPUTER_IP:4000/api/v1';
+
+/**
+ * Default API base URL (same approach as asset-audit mobile).
+ * - Web (Expo in browser): localhost
+ * - Device / emulator: Expo debugger host or fallback LAN IP
+ */
+function getDefaultApiBaseUrl(): string {
+  if (Platform.OS === 'web') {
+    return `http://localhost:${API_PORT}${API_PREFIX}`;
+  }
+
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return `http://${host}:${API_PORT}${API_PREFIX}`;
+    }
+  }
+
+  const manifest2 = (Constants as { manifest2?: { extra?: { expoGo?: { debuggerHost?: string } } } }).manifest2;
+  const debuggerHost = manifest2?.extra?.expoGo?.debuggerHost;
+  if (debuggerHost) {
+    const host = debuggerHost.split(':')[0];
+    if (host) {
+      return `http://${host}:${API_PORT}${API_PREFIX}`;
+    }
+  }
+
+  return `http://${FALLBACK_LAN_HOST}:${API_PORT}${API_PREFIX}`;
+}
+
+const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+
+export const API_BASE_URL = (
+  configuredApiBaseUrl && configuredApiBaseUrl !== PLACEHOLDER_API_BASE_URL
+    ? configuredApiBaseUrl
+    : getDefaultApiBaseUrl()
+).replace(/\/$/, '');
 
 let authToken: string | null = null;
+let unauthorizedHandler: (() => void) | null = null;
 
 export function setAuthToken(token: string | null) {
   authToken = token;
@@ -10,6 +55,18 @@ export function setAuthToken(token: string | null) {
 
 export function getAuthToken(): string | null {
   return authToken;
+}
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
+function handleUnauthorizedResponse(status: number) {
+  if (status !== 401) {
+    return;
+  }
+  authToken = null;
+  unauthorizedHandler?.();
 }
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -47,6 +104,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   }
 
   if (!response.ok) {
+    handleUnauthorizedResponse(response.status);
     const message =
       typeof payload === 'object' &&
       payload &&
@@ -82,6 +140,7 @@ export async function apiRequestText(path: string, options: RequestInit = {}): P
 
   const text = await response.text();
   if (!response.ok) {
+    handleUnauthorizedResponse(response.status);
     let message = `API request failed with status ${response.status}.`;
     try {
       const payload = text ? JSON.parse(text) : null;
@@ -114,6 +173,7 @@ export async function apiRequestBase64(path: string, options: RequestInit = {}):
   });
 
   if (!response.ok) {
+    handleUnauthorizedResponse(response.status);
     const text = await response.text();
     let message = `API request failed with status ${response.status}.`;
     try {

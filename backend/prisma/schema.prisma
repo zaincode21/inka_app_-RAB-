@@ -294,6 +294,7 @@ model MilkRecord {
   pmTotal          Decimal  @default(0) @db.Decimal(10, 2)
   totalProduced    Decimal  @default(0) @db.Decimal(10, 2)
   totalUsed        Decimal  @default(0) @db.Decimal(10, 2)
+  calfMilk         Decimal  @default(0) @db.Decimal(10, 2)
   rejectedMilk     Decimal  @default(0) @db.Decimal(10, 2)
   destination      String?
   buyer            String?

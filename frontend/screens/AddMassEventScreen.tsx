@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import { SelectDropdown } from '../components/SelectDropdown';
@@ -11,16 +12,19 @@ import { getCurrentSession } from '../data/authApi';
 import { createHealthEvent, getCategories, parseNumber, todayIsoDate, updateHealthEvent, useDatabaseQuery } from '../data/farmDatabase';
 import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
-import { MASS_EVENT_TYPES, normalizeMassEventType, requiresMedicine } from '../utils/eventConstants';
+import { eventTypeOptionsFromNames, normalizeMassEventType, requiresMedicine } from '../utils/eventConstants';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddMassEvent'>;
 
 export function AddMassEventScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   useRequireAccess(canWriteEvents(getCurrentSession()?.user), navigation);
   const editingEvent = route.params?.event;
   const isEditing = Boolean(editingEvent);
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
   const { data: groups } = useDatabaseQuery(() => getCategories('group'), []);
+  const { data: eventTypes } = useDatabaseQuery(() => getCategories('event'), []);
   const medicineOptions = useMemo(() => medicines.map((category) => category.name), [medicines]);
   const withdrawalByMedicine = useMemo(
     () => Object.fromEntries(medicines.map((category) => [category.name, category.defaultWithdrawalDays])),
@@ -29,6 +33,10 @@ export function AddMassEventScreen({ navigation, route }: Props) {
   const groupOptions = useMemo(() => groups.map((category) => category.name), [groups]);
   const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? todayIsoDate());
   const [eventType, setEventType] = useState(editingEvent ? normalizeMassEventType(editingEvent.eventType) : '');
+  const eventTypeOptions = useMemo(
+    () => eventTypeOptionsFromNames(eventTypes.map((category) => category.name), t, eventType),
+    [eventTypes, t, eventType],
+  );
   const [groupName, setGroupName] = useState(editingEvent?.groupName ?? '');
   const [technician, setTechnician] = useState(editingEvent?.technician ?? '');
   const [vetName, setVetName] = useState(editingEvent?.vetName ?? '');
@@ -103,10 +111,12 @@ export function AddMassEventScreen({ navigation, route }: Props) {
 
       if (isEditing && editingEvent) {
         await updateHealthEvent(editingEvent.id, payload);
+        showSuccessToast('Mass event updated.');
       } else {
         await createHealthEvent(payload);
+        showSuccessToast('Mass event saved.');
       }
-      navigation.replace('Events');
+      navigation.goBack();
     } catch (error) {
       Alert.alert(isEditing ? 'Could not update mass event' : 'Could not save mass event', error instanceof Error ? error.message : 'Please check the details and try again.');
     }
@@ -137,7 +147,7 @@ export function AddMassEventScreen({ navigation, route }: Props) {
         <Label text="Event Date" />
         <Input placeholder="YYYY-MM-DD" value={eventDate} onChangeText={setEventDate} />
 
-        <SelectDropdown label="Event Type" value={eventType} placeholder="Select" options={[...MASS_EVENT_TYPES]} onSelect={setEventType} />
+        <SelectDropdown label="Event Type" value={eventType} placeholder="Select" options={eventTypeOptions} onSelect={setEventType} />
 
         <SelectDropdown label="Cattle Group / Paddock" value={groupName} placeholder="Select group treated" options={groupOptions} onSelect={setGroupName} />
 

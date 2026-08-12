@@ -15,6 +15,7 @@ import {
 } from '../data/farmDatabase';
 import { canViewFinance, canWriteInventory } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Inventory'>;
 
@@ -65,6 +66,7 @@ export function InventoryScreen({ navigation }: Props) {
       });
       setModalOpen(false);
       await reload();
+      showSuccessToast('Inventory item created.');
     } catch (error) {
       Alert.alert('Could not create item', error instanceof Error ? error.message : 'Please try again.');
     } finally {

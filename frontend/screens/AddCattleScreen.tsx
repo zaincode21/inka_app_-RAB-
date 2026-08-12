@@ -12,6 +12,7 @@ import { createCattle, getCategories, parseNumber, todayIsoDate, updateCattle, u
 import { canWriteCattle } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { stageOptionsForGender } from '../utils/lifecycle';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddCattle'>;
 
@@ -115,10 +116,12 @@ export function AddCattleScreen({ navigation, route }: Props) {
 
       if (editingCattle) {
         await updateCattle(editingCattle.id, cattlePayload);
+        showSuccessToast('Cattle updated.');
       } else {
         await createCattle(cattlePayload);
+        showSuccessToast('Cattle saved.');
       }
-      navigation.navigate('CattleList');
+      navigation.goBack();
     } catch (error) {
       Alert.alert(isEditing ? 'Could not update cattle' : 'Could not save cattle', error instanceof Error ? error.message : 'Please check the details and try again.');
     }

@@ -6,6 +6,7 @@ import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import { resetPassword } from '../data/authApi';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
 
@@ -34,9 +35,8 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
     try {
       setSubmitting(true);
       await resetPassword(token.trim(), newPassword);
-      Alert.alert('Password reset', 'You can now log in with your new password.', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') },
-      ]);
+      showSuccessToast('You can now log in with your new password.', 'Password reset');
+      navigation.navigate('Login');
     } catch (error) {
       Alert.alert('Could not reset password', error instanceof Error ? error.message : 'Please try again.');
     } finally {

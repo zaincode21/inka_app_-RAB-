@@ -8,6 +8,7 @@ import { getCurrentSession } from '../data/authApi';
 import { deleteMilkRecord } from '../data/farmDatabase';
 import { canDeleteMilk, canWriteCattle, canWriteMilk } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
@@ -34,7 +35,8 @@ export function DetailScreen({ navigation, route }: Props) {
           onPress: async () => {
             try {
               await deleteMilkRecord(editMilk.id);
-              navigation.navigate('MilkRecords');
+              showSuccessToast('Milk record deleted.');
+              navigation.goBack();
             } catch (deleteError) {
               Alert.alert(
                 'Could not delete milk record',
@@ -69,12 +71,27 @@ export function DetailScreen({ navigation, route }: Props) {
         ) : null}
 
         <View className="rounded-[20px] bg-white p-5 shadow-sm">
-          {details.map((item) => (
-            <View key={item.label} className="mb-4 border-b border-[#E5E7EB] pb-4 last:border-b-0 last:pb-0">
-              <Text className="text-[14px] text-[#6B7280]">{item.label}</Text>
-              <Text className="mt-1 text-[18px] font-bold text-[#1F2937]">{item.value}</Text>
-            </View>
-          ))}
+          {editMilk
+            ? chunkPairs(details).map((pair, rowIndex) => (
+                <View
+                  key={`milk-row-${rowIndex}`}
+                  className={`flex-row ${rowIndex < Math.ceil(details.length / 2) - 1 ? 'mb-4 border-b border-[#E5E7EB] pb-4' : ''}`}
+                >
+                  {pair.map((item, colIndex) => (
+                    <View key={item.label} className={`flex-1 ${colIndex === 0 && pair.length === 2 ? 'mr-3' : ''}`}>
+                      <Text className="text-[13px] text-[#6B7280]">{item.label}</Text>
+                      <Text className="mt-1 text-[16px] font-bold leading-5 text-[#1F2937]">{item.value}</Text>
+                    </View>
+                  ))}
+                  {pair.length === 1 ? <View className="flex-1" /> : null}
+                </View>
+              ))
+            : details.map((item) => (
+                <View key={item.label} className="mb-4 border-b border-[#E5E7EB] pb-4 last:border-b-0 last:pb-0">
+                  <Text className="text-[14px] text-[#6B7280]">{item.label}</Text>
+                  <Text className="mt-1 text-[18px] font-bold text-[#1F2937]">{item.value}</Text>
+                </View>
+              ))}
         </View>
 
         {canEditCattle && editCattle ? (
@@ -112,4 +129,12 @@ export function DetailScreen({ navigation, route }: Props) {
       <StatusBar style="light" />
     </View>
   );
+}
+
+function chunkPairs<T>(items: T[]): T[][] {
+  const rows: T[][] = [];
+  for (let index = 0; index < items.length; index += 2) {
+    rows.push(items.slice(index, index + 2));
+  }
+  return rows;
 }

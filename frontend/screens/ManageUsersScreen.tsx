@@ -15,6 +15,7 @@ import {
 import { canManageUsers, roleLabel } from '../data/permissions';
 import { useRequireAccess } from '../data/accessGuard';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ManageUsers'>;
 
@@ -94,6 +95,7 @@ export function ManageUsersScreen({ navigation }: Props) {
       setPassword('');
       setRole('FARM_MANAGER');
       await loadUsers();
+      showSuccessToast('User created.');
     } catch (error) {
       Alert.alert('Could not create user', error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -109,6 +111,7 @@ export function ManageUsersScreen({ navigation }: Props) {
     try {
       await updateUser(user.id, { isActive: !user.isActive });
       await loadUsers();
+      showSuccessToast(user.isActive ? 'User deactivated.' : 'User activated.');
     } catch (error) {
       Alert.alert('Update failed', error instanceof Error ? error.message : 'Please try again.');
     }
@@ -121,12 +124,10 @@ export function ManageUsersScreen({ navigation }: Props) {
           <Feather name="arrow-left" size={26} color="#FFFFFF" />
         </Pressable>
         <Text className="flex-1 text-center text-[24px] font-extrabold text-white">Users</Text>
-        <Pressable onPress={() => setModalOpen(true)} hitSlop={8}>
-          <Feather name="user-plus" size={24} color="#FFFFFF" />
-        </Pressable>
+        <View className="w-[30px]" />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 100 }}>
         <Text className="mb-4 text-[14px] text-[#6B7280]">
           Invite farm managers and staff. Farm managers can run daily herd and milk work; owners keep finance and settings control.
         </Text>
@@ -154,6 +155,14 @@ export function ManageUsersScreen({ navigation }: Props) {
           </View>
         ))}
       </ScrollView>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setModalOpen(true)}
+        className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#E6B86F] shadow-lg"
+      >
+        <Feather name="plus" size={28} color="#FFFFFF" />
+      </Pressable>
 
       <Modal visible={modalOpen} animationType="slide" transparent>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setModalOpen(false)}>
@@ -195,7 +204,7 @@ export function ManageUsersScreen({ navigation }: Props) {
               <Pressable onPress={() => setModalOpen(false)} className="flex-1 items-center rounded-[12px] bg-[#E5E7EB] py-3">
                 <Text className="font-bold text-[#374151]">Cancel</Text>
               </Pressable>
-              <Pressable onPress={() => void handleCreate()} disabled={saving} className="flex-1 items-center rounded-[12px] bg-[#008B8B] py-3">
+              <Pressable onPress={() => void handleCreate()} disabled={saving} className="flex-1 items-center rounded-[12px] bg-[#E6B86F] py-3">
                 <Text className="font-bold text-white">{saving ? 'Saving…' : 'Create'}</Text>
               </Pressable>
             </View>

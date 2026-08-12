@@ -3,6 +3,7 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import { PhotoPickerField } from '../components/PhotoPickerField';
@@ -14,22 +15,27 @@ import { addDays, combineDateAndTime, DEFAULT_RETURN_HEAT_DAYS, DEFAULT_RETURN_H
 import { createHealthEventOrQueue } from '../data/offlineQueue';
 import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
-import { FEMALE_ONLY_EVENT_TYPES, INDIVIDUAL_EVENT_TYPES, requiresClinicalNotes, requiresMedicationDetails, requiresMedicine } from '../utils/eventConstants';
+import { FEMALE_ONLY_EVENT_TYPES, eventTypeOptionsFromNames, requiresClinicalNotes, requiresMedicationDetails, requiresMedicine } from '../utils/eventConstants';
 import { getInbreedingViolation, INBREEDING_CHECK_EVENT_TYPES } from '../utils/inbreeding';
+import { showInfoToast, showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddIndividualEvent'>;
 
-const breedingMethods = [
-  { label: 'Gutera intanga', value: 'semen' },
-  { label: 'Ikimasa', value: 'bull' },
-];
-
 export function AddIndividualEventScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   useRequireAccess(canWriteEvents(getCurrentSession()?.user), navigation);
+  const breedingMethods = useMemo(
+    () => [
+      { label: t('events.semenMethod'), value: 'semen' },
+      { label: t('events.bullMethod'), value: 'bull' },
+    ],
+    [t],
+  );
   const editingEvent = route.params?.event;
   const isEditing = Boolean(editingEvent);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
+  const { data: eventTypes } = useDatabaseQuery(() => getCategories('event'), []);
   const medicineOptions = useMemo(() => medicines.map((category) => category.name), [medicines]);
   const withdrawalByMedicine = useMemo(
     () => Object.fromEntries(medicines.map((category) => [category.name, category.defaultWithdrawalDays])),
@@ -41,6 +47,15 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   const [showEventDatePicker, setShowEventDatePicker] = useState(false);
   const [cattleTag, setCattleTag] = useState(editingEvent?.cattleTag ?? route.params?.cattleTag ?? '');
   const [eventType, setEventType] = useState(editingEvent?.eventType ?? route.params?.presetEventType ?? '');
+  const eventTypeOptions = useMemo(
+    () =>
+      eventTypeOptionsFromNames(
+        eventTypes.map((category) => category.name),
+        t,
+        eventType || editingEvent?.eventType || route.params?.presetEventType,
+      ),
+    [eventTypes, t, eventType, editingEvent?.eventType, route.params?.presetEventType],
+  );
   const sourceEventId = editingEvent?.sourceEventId ?? route.params?.sourceEventId ?? '';
   const [breedingMethod, setBreedingMethod] = useState(inferBreedingMethod(editingEvent));
   const [calfName, setCalfName] = useState(editingEvent?.calfTag ?? '');
@@ -74,10 +89,14 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   const cattleTagOptions = useMemo(() => {
     const activeCattle = cattle.filter((animal) => animal.status.trim().toLowerCase() === 'active');
     const eligibleCattle = FEMALE_ONLY_EVENT_TYPES.has(eventType) ? activeCattle.filter(isFemaleCattle) : activeCattle;
-    return eligibleCattle.map((animal) => animal.tagNumber);
+    return eligibleCattle.map((animal) => ({
+      label: animal.name.trim() || animal.tagNumber,
+      value: animal.tagNumber,
+    }));
   }, [cattle, eventType]);
   const activeCattleTag = route.params?.cattleTag ?? cattleTag;
   const selectedCattle = useMemo(() => cattle.find((animal) => animal.tagNumber === activeCattleTag), [cattle, activeCattleTag]);
+  const selectedCattleName = selectedCattle?.name.trim() || activeCattleTag;
   const femaleOnlyEventBlocked = FEMALE_ONLY_EVENT_TYPES.has(eventType) && Boolean(selectedCattle) && !isFemaleCattle(selectedCattle!);
   const returnHeatDate =
     eventType === 'Breeding' && eventDate
@@ -291,18 +310,17 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
 
       if (isEditing && editingEvent) {
         await updateHealthEvent(editingEvent.id, payload);
+        showSuccessToast('Event updated.');
       } else {
         const result = await createHealthEventOrQueue(payload);
         if (result.status === 'queued') {
-          Alert.alert(
-            'Saved offline',
-            'No connection right now. This event will sync automatically when you are back online.',
-          );
-          navigation.replace('Events');
+          showInfoToast('Event will sync when you are back online.', 'Saved offline');
+          navigation.goBack();
           return;
         }
+        showSuccessToast('Event saved.');
       }
-      navigation.replace('Events');
+      navigation.goBack();
     } catch (error) {
       Alert.alert(isEditing ? 'Could not update event' : 'Could not save event', error instanceof Error ? error.message : 'Please check the details and try again.');
     }
@@ -337,19 +355,25 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
           <>
             <Label text="Selected Animal" />
             <View className="h-[48px] justify-center rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3">
-              <Text className="text-[16px] text-[#1F2937]">{route.params.cattleTag}</Text>
+              <Text className="text-[16px] text-[#1F2937]">{selectedCattleName}</Text>
             </View>
             {femaleOnlyEventBlocked ? <Text className="mb-4 mt-2 text-sm text-red-600">This event is only for female cattle.</Text> : null}
           </>
         ) : (
-          <SelectDropdown label="Cattle Tag" value={cattleTag} placeholder={FEMALE_ONLY_EVENT_TYPES.has(eventType) ? 'Select female animal' : 'Select animal'} options={cattleTagOptions} onSelect={setCattleTag} />
+          <SelectDropdown
+            label="Animal"
+            value={cattleTag}
+            placeholder={FEMALE_ONLY_EVENT_TYPES.has(eventType) ? 'Select female animal' : 'Select animal'}
+            options={cattleTagOptions}
+            onSelect={setCattleTag}
+          />
         )}
 
         <SelectDropdown
           label="Event Type"
           value={eventType}
           placeholder="Select"
-          options={[...INDIVIDUAL_EVENT_TYPES]}
+          options={eventTypeOptions}
           onSelect={(value) => {
             setEventType(value);
             if (value !== 'Breeding') {

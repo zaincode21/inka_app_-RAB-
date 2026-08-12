@@ -1,5 +1,5 @@
 import { milkRecordSchema, updateMilkRecordSchema } from '../schemas/resourceSchemas.js';
-import { deleteLinkedMilkSales, restoreLinkedMilkSales, syncMilkSaleIncome, withMilkTotal } from '../services/milkService.js';
+import { deleteLinkedMilkSales, restoreLinkedMilkSales, syncCalfMilkExpense, syncMilkSaleIncome, withMilkTotal } from '../services/milkService.js';
 import { assertCattleIsActive } from '../services/cattleExitService.js';
 import { canDeleteMilk, canWriteMilk } from '../utils/permissions.js';
 import { createCrudRouter, models } from '../lib/createCrudRouter.js';
@@ -29,9 +29,11 @@ export const milkRecordRouter = createCrudRouter({
   },
   afterCreate: async (body, record, auth) => {
     await syncMilkSaleIncome(body, record, true, auth.id);
+    await syncCalfMilkExpense(body, record, auth.id);
   },
   afterUpdate: async (_id, body, record, auth) => {
     await syncMilkSaleIncome(body, record, false, auth.id);
+    await syncCalfMilkExpense(body, record, auth.id);
   },
   beforeDelete: async (id, _existing, auth) => {
     await deleteLinkedMilkSales(id, auth.id);

@@ -6,6 +6,7 @@ import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import {
   type MilkRecord,
   deleteMilkRecord,
+  formatMoney,
   formatNumber,
   getMilkRecords,
   useDatabaseQuery,
@@ -13,6 +14,7 @@ import {
 import { getCurrentSession } from '../data/authApi';
 import { canDeleteMilk, canWriteMilk } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MilkRecords'>;
 
@@ -53,6 +55,7 @@ export function MilkRecordsScreen({ navigation }: Props) {
             try {
               await deleteMilkRecord(item.id);
               await reload();
+              showSuccessToast('Milk record deleted.');
             } catch (deleteError) {
               Alert.alert(
                 'Could not delete milk record',
@@ -148,16 +151,31 @@ export function MilkRecordsScreen({ navigation }: Props) {
                   <MilkTotal label="PM Total" value={`${formatNumber(item.pmTotal)} L`} />
                 </View>
 
-                <View className="flex-row flex-wrap items-center gap-y-1">
+                <View className="mb-2 flex-row flex-wrap items-center gap-y-1">
                   <View className="min-w-[170px] flex-1 flex-row flex-wrap">
-                    <Text className="text-[12px] text-[#6B7280]">Total Milk Produced:</Text>
+                    <Text className="text-[12px] text-[#6B7280]">Produced:</Text>
                     <Text className="pl-2 text-[14px] font-bold text-[#008B8B]">{formatNumber(item.totalProduced)} L</Text>
                   </View>
-                  <View className="flex-row flex-wrap">
-                    <Text className="text-[12px] text-[#6B7280]">Total Used:</Text>
+                  <View className="min-w-[100px] flex-row flex-wrap">
+                    <Text className="text-[12px] text-[#6B7280]">Used:</Text>
                     <Text className="pl-2 text-[14px] font-bold text-[#1F2937]">{formatNumber(item.totalUsed)} L</Text>
                   </View>
+                  <View className="min-w-[100px] flex-row flex-wrap">
+                    <Text className="text-[12px] text-[#6B7280]">Calf:</Text>
+                    <Text className="pl-2 text-[14px] font-bold text-[#1F2937]">{formatNumber(item.calfMilk)} L</Text>
+                  </View>
                 </View>
+
+                {(() => {
+                  const summary = milkFinancialSummary(item);
+                  return (
+                    <View className="mt-1 flex-row rounded-[10px] bg-white/70 px-2 py-2">
+                      <MilkTotal label="Sold" value={`${formatNumber(summary.soldLiters)} L`} accent="#008B8B" />
+                      <MilkTotal label="Income" value={formatMoney(summary.income)} accent="#059669" />
+                      <MilkTotal label="Expense" value={formatMoney(summary.expense)} accent="#DC2626" />
+                    </View>
+                  );
+                })()}
               </Pressable>
             </View>
           );
@@ -168,7 +186,7 @@ export function MilkRecordsScreen({ navigation }: Props) {
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate('AddMilkRecord')}
-          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#008B8B] shadow-lg"
+          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#E6B86F] shadow-lg"
         >
           <Feather name="plus" size={28} color="#FFFFFF" />
         </Pressable>
@@ -179,31 +197,60 @@ export function MilkRecordsScreen({ navigation }: Props) {
   );
 }
 
+function milkFinancialSummary(item: MilkRecord) {
+  const soldLiters = Math.max(
+    0,
+    Number((item.totalProduced - item.totalUsed - item.calfMilk - item.rejectedMilk).toFixed(2)),
+  );
+  const price = Number(item.pricePerLiter || 0);
+  const isWholeFarm = item.milkType.trim().toLowerCase() === 'whole farm';
+  const income = isWholeFarm && soldLiters > 0 && price > 0 ? Number((soldLiters * price).toFixed(2)) : 0;
+  const expense = item.calfMilk > 0 && price > 0 ? Number((item.calfMilk * price).toFixed(2)) : 0;
+  return { soldLiters, income, expense, price };
+}
+
 function buildMilkDetailRows(item: MilkRecord) {
-  return [
+  const { soldLiters, income, expense, price } = milkFinancialSummary(item);
+
+  const rows: Array<{ label: string; value: string }> = [
     { label: 'Date', value: item.date },
     { label: 'Milk Type', value: item.milkType },
-    ...(item.milkType === 'Individual Cow Milk'
-      ? [{ label: 'Cow', value: item.cattleTag ? `${item.cattleTag} - ${item.cattleName}` : 'Not recorded' }]
-      : []),
+  ];
+
+  if (item.milkType === 'Individual Cow Milk') {
+    rows.push({
+      label: 'Cow',
+      value: item.cattleTag ? `${item.cattleTag} - ${item.cattleName}` : 'Not recorded',
+    });
+  }
+
+  rows.push(
     { label: 'AM Total', value: `${formatNumber(item.amTotal)} L` },
     { label: 'PM Total', value: `${formatNumber(item.pmTotal)} L` },
     { label: 'Total Produced', value: `${formatNumber(item.totalProduced)} L` },
-    { label: 'Total Used', value: `${formatNumber(item.totalUsed)} L` },
+    { label: 'Used', value: `${formatNumber(item.totalUsed)} L` },
+    { label: 'Calf milk', value: `${formatNumber(item.calfMilk)} L` },
     { label: 'Rejected', value: `${formatNumber(item.rejectedMilk)} L` },
-    { label: 'Fat %', value: formatQuality(item.fatPercent, '%') },
-    { label: 'Protein %', value: formatQuality(item.proteinPercent, '%') },
-    { label: 'SCC', value: formatQuality(item.somaticCellCount) },
-    { label: 'Notes', value: item.notes || 'None' },
-    ...(item.recordedBy ? [{ label: 'Recorded by', value: item.recordedBy }] : []),
-  ];
-}
+    { label: 'Sold', value: `${formatNumber(soldLiters)} L` },
+    { label: 'Price / L', value: price > 0 ? formatMoney(price) : 'Not set' },
+    { label: 'Income', value: formatMoney(income) },
+    { label: 'Expense', value: formatMoney(expense) },
+  );
 
-function formatQuality(value: number, suffix = '') {
-  if (!value || value <= 0) {
-    return 'Not recorded';
+  if (item.destination?.trim()) {
+    rows.push({ label: 'Destination', value: item.destination.trim() });
   }
-  return `${formatNumber(value)}${suffix}`;
+  if (item.buyer?.trim()) {
+    rows.push({ label: 'Buyer', value: item.buyer.trim() });
+  }
+  if (item.notes?.trim()) {
+    rows.push({ label: 'Notes', value: item.notes.trim() });
+  }
+  if (item.recordedBy?.trim()) {
+    rows.push({ label: 'Recorded by', value: item.recordedBy.trim() });
+  }
+
+  return rows;
 }
 
 function MilkMenuItem({
@@ -231,11 +278,21 @@ function MilkMenuItem({
   );
 }
 
-function MilkTotal({ label, value }: { label: string; value: string }) {
+function MilkTotal({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+}) {
   return (
     <View className="flex-1 items-center">
       <Text className="text-[12px] text-[#6B7280]">{label}</Text>
-      <Text className="mt-1 text-[14px] font-bold text-[#1F2937]">{value}</Text>
+      <Text className="mt-1 text-[14px] font-bold" style={{ color: accent ?? '#1F2937' }}>
+        {value}
+      </Text>
     </View>
   );
 }

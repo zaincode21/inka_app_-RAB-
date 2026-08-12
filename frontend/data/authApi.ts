@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiRequest, setAuthToken, toJsonBody } from './apiClient';
+import { apiRequest, setAuthToken, setUnauthorizedHandler, toJsonBody } from './apiClient';
 
 const SESSION_KEY = 'inka.auth.session';
 
@@ -36,6 +36,17 @@ export type ManagedUser = AuthUser & {
 
 let currentSession: AuthSession | null = null;
 let hydratePromise: Promise<AuthSession | null> | null = null;
+let clearingUnauthorized = false;
+
+setUnauthorizedHandler(() => {
+  if (clearingUnauthorized || !currentSession) {
+    return;
+  }
+  clearingUnauthorized = true;
+  void persistSession(null).finally(() => {
+    clearingUnauthorized = false;
+  });
+});
 
 async function persistSession(session: AuthSession | null) {
   currentSession = session;
@@ -64,7 +75,13 @@ export async function hydrateSession(): Promise<AuthSession | null> {
         }
         currentSession = session;
         setAuthToken(session.token);
-        return session;
+        try {
+          await apiRequest('/users/me');
+          return session;
+        } catch {
+          await persistSession(null);
+          return null;
+        }
       } catch {
         currentSession = null;
         setAuthToken(null);

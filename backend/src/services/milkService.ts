@@ -16,8 +16,9 @@ export function withMilkTotal(body: Record<string, unknown>) {
 function soldMilkLiters(record: Record<string, unknown>): number {
   const produced = Number(record.totalProduced ?? 0);
   const used = Number(record.totalUsed ?? 0);
+  const calfMilk = Number(record.calfMilk ?? 0);
   const rejected = Number(record.rejectedMilk ?? 0);
-  return Math.max(0, Number((produced - used - rejected).toFixed(2)));
+  return Math.max(0, Number((produced - used - calfMilk - rejected).toFixed(2)));
 }
 
 export async function syncMilkSaleIncome(
@@ -118,12 +119,127 @@ export async function syncMilkSaleIncome(
   await prisma.transaction.create({ data: payload });
 }
 
+function toMoney(value: unknown): number {
+  if (value == null || value === '') {
+    return 0;
+  }
+  if (typeof value === 'object' && value !== null && 'toNumber' in value) {
+    const decimal = value as { toNumber: () => number };
+    if (typeof decimal.toNumber === 'function') {
+      return Number(decimal.toNumber()) || 0;
+    }
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export async function syncCalfMilkExpense(
+  body: Record<string, unknown>,
+  record: Record<string, unknown>,
+  actorUserId?: string | null,
+): Promise<void> {
+  const milkRecordId = typeof record.id === 'string' ? record.id : null;
+  if (!milkRecordId) {
+    return;
+  }
+
+  const merged = { ...record, ...body };
+  const calfLiters = toMoney(merged.calfMilk);
+
+  const existing = await prisma.transaction.findFirst({
+    where: {
+      milkRecordId,
+      kind: 'EXPENSE',
+      category: { equals: 'Calf Milk', mode: 'insensitive' },
+      ...notDeleted,
+    },
+  });
+
+  const farmId = typeof record.farmId === 'string' ? record.farmId : null;
+  const farm = farmId
+    ? await prisma.farm.findUnique({ where: { id: farmId } })
+    : await ensureDefaultFarm();
+  if (!farm) {
+    return;
+  }
+
+  const recordPrice = toMoney(merged.pricePerLiter);
+  const farmPrice = toMoney(farm.milkPricePerLiter);
+  const unitPrice = recordPrice > 0 ? recordPrice : farmPrice;
+  const amount = Number((calfLiters * unitPrice).toFixed(2));
+
+  if (calfLiters <= 0 || unitPrice <= 0) {
+    if (existing && actorUserId) {
+      await prisma.transaction.update({
+        where: { id: existing.id },
+        data: softDeleteData(actorUserId),
+      });
+    } else if (existing) {
+      await prisma.transaction.update({
+        where: { id: existing.id },
+        data: { deletedAt: new Date() },
+      });
+    }
+    return;
+  }
+
+  if (recordPrice <= 0 && farmPrice > 0) {
+    await prisma.milkRecord.update({
+      where: { id: milkRecordId },
+      data: { pricePerLiter: farmPrice },
+    });
+  }
+
+  const eventDate =
+    body.date instanceof Date ? body.date : record.date instanceof Date ? record.date : new Date();
+  const cattleId =
+    typeof merged.cattleId === 'string' && merged.cattleId.trim() ? merged.cattleId : null;
+
+  const payload = {
+    farmId: farmId ?? farm.id,
+    milkRecordId,
+    cattleId,
+    kind: 'EXPENSE' as const,
+    date: eventDate,
+    category: 'Calf Milk',
+    title: 'Calf Milk',
+    amount,
+    quantity: calfLiters,
+    unitPrice,
+    notes: `Linked calf milk: ${calfLiters} L × ${unitPrice}.`,
+    deletedAt: null,
+    deletedByUserId: null,
+    ...(actorUserId
+      ? {
+          updatedByUserId: actorUserId,
+          ...(!existing ? { createdByUserId: actorUserId } : {}),
+        }
+      : {}),
+  };
+
+  if (existing) {
+    await prisma.transaction.update({ where: { id: existing.id }, data: payload });
+    return;
+  }
+
+  await prisma.transaction.create({ data: payload });
+}
+
 export async function deleteLinkedMilkSales(milkRecordId: string, actorUserId: string): Promise<void> {
   await prisma.transaction.updateMany({
     where: {
       milkRecordId,
       kind: 'INCOME',
       category: { equals: 'Milk Sale', mode: 'insensitive' },
+      ...notDeleted,
+    },
+    data: softDeleteData(actorUserId),
+  });
+  await prisma.transaction.updateMany({
+    where: {
+      milkRecordId,
+      kind: 'EXPENSE',
+      category: { equals: 'Calf Milk', mode: 'insensitive' },
       ...notDeleted,
     },
     data: softDeleteData(actorUserId),
@@ -136,6 +252,18 @@ export async function restoreLinkedMilkSales(milkRecordId: string): Promise<void
       milkRecordId,
       kind: 'INCOME',
       category: { equals: 'Milk Sale', mode: 'insensitive' },
+      deletedAt: { not: null },
+    },
+    data: {
+      deletedAt: null,
+      deletedByUserId: null,
+    },
+  });
+  await prisma.transaction.updateMany({
+    where: {
+      milkRecordId,
+      kind: 'EXPENSE',
+      category: { equals: 'Calf Milk', mode: 'insensitive' },
       deletedAt: { not: null },
     },
     data: {

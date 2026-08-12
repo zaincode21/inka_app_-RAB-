@@ -6,9 +6,10 @@ import { Alert, Modal, Pressable, Text, TextInput, useWindowDimensions, View } f
 import { KeyboardSafeScroll, KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
 import { useRequireAccess } from '../data/accessGuard';
 import { getCurrentSession } from '../data/authApi';
-import { addCategory, getCategories, parseNumber, updateCategory, useDatabaseQuery } from '../data/farmDatabase';
+import { addCategory, deleteCategory, getCategories, parseNumber, updateCategory, useDatabaseQuery } from '../data/farmDatabase';
 import { canManageFarmSetup } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FarmSetup'>;
 type SetupKind = 'income' | 'expense' | 'breed' | 'group' | 'medicine' | 'event';
@@ -71,6 +72,7 @@ export function FarmSetupScreen({ navigation }: Props) {
       setNewCategory('');
       setNewWithdrawalDays('0');
       await reload();
+      showSuccessToast('Category saved.');
     } catch (error) {
       Alert.alert('Could not save category', error instanceof Error ? error.message : 'Please enter a category name.');
     }
@@ -87,9 +89,35 @@ export function FarmSetupScreen({ navigation }: Props) {
       setEditingId(null);
       setEditingWithdrawal('');
       await reload();
+      showSuccessToast('Category updated.');
     } catch (error) {
       Alert.alert('Could not update', error instanceof Error ? error.message : 'Please try again.');
     }
+  };
+
+  const removeCategory = (id: string, name: string, isDefault: boolean) => {
+    Alert.alert(
+      'Remove category?',
+      isDefault
+        ? `"${name}" is a default. Remove it from this farm if you do not need it? You can add it again later.`
+        : `Remove "${name}" from this farm?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteCategory(id);
+              await reload();
+              showSuccessToast('Category removed.');
+            } catch (error) {
+              Alert.alert('Could not remove', error instanceof Error ? error.message : 'Please try again.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -131,7 +159,9 @@ export function FarmSetupScreen({ navigation }: Props) {
             <Text className="mb-4 text-[13px] text-[#6B7280]">
               {isMedicine
                 ? 'Set default milk withdrawal days for each medicine. Treatment events use this when you select the medicine.'
-                : 'These values feed the professional forms, reports, and dashboards.'}
+                : selectedKind === 'event'
+                  ? 'These event types appear in Add Event. Remove defaults you do not need, or add custom types.'
+                  : 'These values feed the professional forms, reports, and dashboards.'}
             </Text>
 
             <View className="rounded-[14px] border border-[#D9E4E4] bg-[#F8FAFA] px-4 py-2">
@@ -170,10 +200,17 @@ export function FarmSetupScreen({ navigation }: Props) {
                     <View className="flex-row items-center">
                       <Text className="flex-1 text-[15px] text-[#1F2937]">{category.name}</Text>
                       {category.isDefault ? (
-                        <Text className="text-[12px] font-bold text-[#008B8B]">Default</Text>
+                        <Text className="mr-3 text-[12px] font-bold text-[#008B8B]">Default</Text>
                       ) : (
-                        <Text className="text-[12px] text-[#6B7280]">Custom</Text>
+                        <Text className="mr-3 text-[12px] text-[#6B7280]">Custom</Text>
                       )}
+                      <Pressable
+                        onPress={() => removeCategory(category.id, category.name, Boolean(category.isDefault))}
+                        hitSlop={8}
+                        accessibilityLabel={`Remove ${category.name}`}
+                      >
+                        <Feather name="trash-2" size={18} color="#DC2626" />
+                      </Pressable>
                     </View>
                     {isMedicine ? (
                       editingId === category.id ? (

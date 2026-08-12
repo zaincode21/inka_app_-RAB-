@@ -299,6 +299,7 @@ export const openApiDocument = {
           pmTotal: { type: 'number' },
           totalProduced: { type: 'number' },
           totalUsed: { type: 'number' },
+          calfMilk: { type: 'number' },
           rejectedMilk: { type: 'number' },
           destination: { type: 'string' },
           buyer: { type: 'string' },

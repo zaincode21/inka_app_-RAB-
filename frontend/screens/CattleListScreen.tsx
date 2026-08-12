@@ -39,10 +39,10 @@ export function CattleListScreen({ navigation }: Props) {
         <View className="w-[30px]" />
       </View>
 
-      <View className="mx-4 mt-4 flex-row rounded-[14px] bg-[#F3F4F6] p-1">
-        <FilterTab label="Active" active={listFilter === 'active'} onPress={() => setListFilter('active')} />
+      <View className="flex-row px-6 py-4">
+        <FilterTab label="Active" active={listFilter === 'active'} onPress={() => setListFilter('active')} first />
         <FilterTab label="Exited" active={listFilter === 'exited'} onPress={() => setListFilter('exited')} />
-        <FilterTab label="All" active={listFilter === 'all'} onPress={() => setListFilter('all')} />
+        <FilterTab label="All" active={listFilter === 'all'} onPress={() => setListFilter('all')} last />
       </View>
 
       <FlatList
@@ -97,7 +97,7 @@ export function CattleListScreen({ navigation }: Props) {
         <Pressable
           accessibilityRole="button"
           onPress={() => navigation.navigate('AddCattle')}
-          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#008B8B] shadow-lg"
+          className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#E6B86F] shadow-lg"
         >
           <Feather name="plus" size={28} color="#FFFFFF" />
         </Pressable>
@@ -112,10 +112,27 @@ function isActiveCattle(item: Cattle) {
   return item.status.trim().toLowerCase() === 'active';
 }
 
-function FilterTab({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function FilterTab({
+  label,
+  active,
+  onPress,
+  first = false,
+  last = false,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  first?: boolean;
+  last?: boolean;
+}) {
   return (
-    <Pressable onPress={onPress} className={`flex-1 items-center rounded-[12px] py-2 ${active ? 'bg-white' : ''}`}>
-      <Text className={`text-[13px] font-bold ${active ? 'text-[#008B8B]' : 'text-[#6B7280]'}`}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      className={`h-12 flex-1 items-center justify-center rounded-[12px] px-3 ${first ? 'mr-2' : ''} ${last ? 'ml-2' : first || last ? '' : 'mx-1'} ${
+        active ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'
+      }`}
+    >
+      <Text className={`text-[15px] font-bold ${active ? 'text-white' : 'text-[#008B8B]'}`}>{label}</Text>
     </Pressable>
   );
 }

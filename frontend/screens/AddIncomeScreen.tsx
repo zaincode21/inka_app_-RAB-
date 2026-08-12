@@ -10,6 +10,7 @@ import { getCurrentSession } from '../data/authApi';
 import { createTransaction, getCategories, getSystemConfig, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
 import { canWriteFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddIncome'>;
 
@@ -26,11 +27,6 @@ export function AddIncomeScreen({ navigation }: Props) {
   const [sellingPrice, setSellingPrice] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [buyer, setBuyer] = useState('');
-  const [receiptNumber, setReceiptNumber] = useState('');
-  const [taxAmount, setTaxAmount] = useState('');
-  const [discountAmount, setDiscountAmount] = useState('');
-  const [linkedCattleTag, setLinkedCattleTag] = useState('');
   const [notes, setNotes] = useState('');
   const calculatedAmount = parseNumber(milkQuantity) * parseNumber(sellingPrice);
 
@@ -44,9 +40,6 @@ export function AddIncomeScreen({ navigation }: Props) {
         }
         if (config.milkPricePerLiter > 0) {
           setSellingPrice((current) => current || `${config.milkPricePerLiter}`);
-        }
-        if (config.defaultMilkBuyer) {
-          setBuyer((current) => current || config.defaultMilkBuyer);
         }
       } catch {
         // Ignore settings load failures for manual income entry.
@@ -66,9 +59,6 @@ export function AddIncomeScreen({ navigation }: Props) {
         const config = await getSystemConfig();
         if (config.milkPricePerLiter > 0 && !sellingPrice.trim()) {
           setSellingPrice(`${config.milkPricePerLiter}`);
-        }
-        if (config.defaultMilkBuyer && !buyer.trim()) {
-          setBuyer(config.defaultMilkBuyer);
         }
       } catch {
         // Keep current fields.
@@ -93,15 +83,16 @@ export function AddIncomeScreen({ navigation }: Props) {
         quantity: parseNumber(milkQuantity),
         unitPrice: parseNumber(sellingPrice),
         paymentMethod,
-        buyerVendor: buyer.trim(),
-        receiptNumber: receiptNumber.trim(),
-        taxAmount: parseNumber(taxAmount),
-        discountAmount: parseNumber(discountAmount),
-        linkedCattleTag: linkedCattleTag.trim(),
+        buyerVendor: '',
+        receiptNumber: '',
+        taxAmount: 0,
+        discountAmount: 0,
+        linkedCattleTag: '',
         linkedMilkRecordId: '',
         notes: notes.trim(),
       });
-      navigation.navigate('Transactions');
+      showSuccessToast('Income saved.');
+      navigation.goBack();
     } catch (error) {
       Alert.alert('Could not save income', error instanceof Error ? error.message : 'Please check the details and try again.');
     }
@@ -141,11 +132,6 @@ export function AddIncomeScreen({ navigation }: Props) {
 
         <Field label="Amount" placeholder="Enter amount earned" keyboardType="decimal-pad" value={amount} onChangeText={setAmount} />
         <SelectDropdown label="Payment Method" value={paymentMethod} placeholder="Select method" options={paymentMethods} onSelect={setPaymentMethod} />
-        <Field label="Buyer / Customer" placeholder="Enter buyer name" value={buyer} onChangeText={setBuyer} />
-        <Field label="Receipt No" placeholder="Enter receipt number" value={receiptNumber} onChangeText={setReceiptNumber} />
-        <Field label="Tax Amount" placeholder="0" keyboardType="decimal-pad" value={taxAmount} onChangeText={setTaxAmount} />
-        <Field label="Discount Amount" placeholder="0" keyboardType="decimal-pad" value={discountAmount} onChangeText={setDiscountAmount} />
-        <Field label="Linked Cattle Tag" placeholder="Optional animal tag" value={linkedCattleTag} onChangeText={setLinkedCattleTag} />
         <Field label="Notes" placeholder="Write something" multiline value={notes} onChangeText={setNotes} />
       </KeyboardSafeScroll>
 
@@ -190,4 +176,3 @@ function ConditionalInput({ placeholder, value, onChangeText, keyboardType = 'de
     </View>
   );
 }
-

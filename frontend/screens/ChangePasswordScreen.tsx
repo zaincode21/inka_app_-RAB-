@@ -6,6 +6,7 @@ import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { KeyboardSafeScroll } from '../components/KeyboardSafeScroll';
 import { changePassword } from '../data/authApi';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChangePassword'>;
 
@@ -39,9 +40,8 @@ export function ChangePasswordScreen({ navigation }: Props) {
     try {
       setSubmitting(true);
       await changePassword(currentPassword, newPassword);
-      Alert.alert('Password updated', 'Your password was changed successfully.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      showSuccessToast('Your password was changed successfully.', 'Password updated');
+      navigation.goBack();
     } catch (error) {
       Alert.alert('Could not update password', error instanceof Error ? error.message : 'Please try again.');
     } finally {

@@ -178,6 +178,7 @@ export const milkRecordSchema = z.object({
   pmTotal: money,
   totalProduced: money.optional(),
   totalUsed: money,
+  calfMilk: money,
   rejectedMilk: money,
   destination: optionalString,
   buyer: optionalString,

@@ -60,6 +60,7 @@ export type MilkRecord = {
   pmTotal: number;
   totalProduced: number;
   totalUsed: number;
+  calfMilk: number;
   rejectedMilk: number;
   destination: string;
   buyer: string;
@@ -239,6 +240,10 @@ export async function updateCategory(
     ...toJsonBody(input),
     method: 'PATCH',
   });
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  await apiRequest<void>(`/categories/${id}`, { method: 'DELETE' });
 }
 
 export type MilkWithdrawalStatus = {
@@ -692,6 +697,7 @@ export type PeriodReport = {
     records: number;
     produced: number;
     used: number;
+    calfMilk: number;
     rejected: number;
     soldEstimate: number;
   };
@@ -996,6 +1002,7 @@ type BackendMilkRecord = {
   pmTotal: number | string;
   totalProduced: number | string;
   totalUsed: number | string;
+  calfMilk: number | string;
   rejectedMilk: number | string;
   destination?: string | null;
   buyer?: string | null;
@@ -1114,6 +1121,7 @@ function toBackendMilkRecord(input: Omit<MilkRecord, 'id' | 'createdAt' | 'recor
     pmTotal: input.pmTotal,
     totalProduced: input.totalProduced,
     totalUsed: input.totalUsed,
+    calfMilk: input.calfMilk,
     rejectedMilk: input.rejectedMilk,
     destination: emptyToUndefined(input.destination),
     buyer: emptyToUndefined(input.buyer),
@@ -1239,6 +1247,7 @@ function mapBackendMilkRecord(row: BackendMilkRecord): MilkRecord {
     pmTotal: toNumber(row.pmTotal),
     totalProduced: toNumber(row.totalProduced),
     totalUsed: toNumber(row.totalUsed),
+    calfMilk: toNumber(row.calfMilk),
     rejectedMilk: toNumber(row.rejectedMilk),
     destination: row.destination ?? '',
     buyer: row.buyer ?? '',

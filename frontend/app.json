@@ -49,7 +49,8 @@
           "defaultChannel": "inka-reminders"
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-font"
     ]
   }
 }

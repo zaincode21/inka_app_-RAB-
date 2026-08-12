@@ -11,6 +11,7 @@ import { getCurrentSession } from '../data/authApi';
 import { createTransaction, uploadAttachment, getCategories, parseNumber, todayIsoDate, useDatabaseQuery } from '../data/farmDatabase';
 import { canWriteFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showInfoToast, showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddExpense'>;
 
@@ -71,18 +72,19 @@ export function AddExpenseScreen({ navigation }: Props) {
             label: 'Receipt',
           });
         } catch (uploadError) {
-          Alert.alert(
-            'Expense saved',
+          showInfoToast(
             uploadError instanceof Error
-              ? `Expense was saved, but the receipt upload failed: ${uploadError.message}`
-              : 'Expense was saved, but the receipt upload failed.',
+              ? `Expense saved, but receipt upload failed: ${uploadError.message}`
+              : 'Expense saved, but receipt upload failed.',
+            'Expense saved',
           );
-          navigation.navigate('ManageExpenses');
+          navigation.goBack();
           return;
         }
       }
 
-      navigation.navigate('ManageExpenses');
+      showSuccessToast('Expense saved.');
+      navigation.goBack();
     } catch (error) {
       Alert.alert('Could not save expense', error instanceof Error ? error.message : 'Please check the details and try again.');
     }

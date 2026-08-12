@@ -40,11 +40,14 @@ import {
   CowLifeCycleScreen,
   DetailScreen,
 } from './screens';
+import { Feather } from '@expo/vector-icons';
+import * as Font from 'expo-font';
 import { hydrateSession } from './data/authApi';
 import { flushOfflineQueue, subscribeOfflineQueueFlush } from './data/offlineQueue';
 import { syncFarmReminders } from './data/reminderService';
 import { initI18n } from './i18n';
 import type { RootStackParamList } from './navigation/types';
+import Toast from 'react-native-toast-message';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -55,6 +58,11 @@ export default function App() {
   useEffect(() => {
     void (async () => {
       await initI18n();
+      try {
+        await Font.loadAsync(Feather.font);
+      } catch {
+        // Icons still render if the web font request fails.
+      }
       const session = await hydrateSession();
       setInitialRoute(session ? 'Dashboard' : 'Home');
       if (session) {
@@ -78,43 +86,46 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="SignUp" component={SignUpScreen} />
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
-        <Stack.Screen name="Alerts" component={AlertsScreen} />
-        <Stack.Screen name="Profile" component={ProfileScreen} />
-        <Stack.Screen name="CattleList" component={CattleListScreen} />
-        <Stack.Screen name="MilkRecords" component={MilkRecordsScreen} />
-        <Stack.Screen name="Events" component={EventsScreen} />
-        <Stack.Screen name="Transactions" component={TransactionsScreen} />
-        <Stack.Screen name="FarmSetup" component={FarmSetupScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="SystemConfig" component={SystemConfigScreen} />
-        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-        <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
-        <Stack.Screen name="ArchivedRecords" component={ArchivedRecordsScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        <Stack.Screen name="ManageUsers" component={ManageUsersScreen} />
-        <Stack.Screen name="Reports" component={ReportsScreen} />
-        <Stack.Screen name="ManageExpenses" component={ManageExpensesScreen} />
-        <Stack.Screen name="AddCattle" component={AddCattleScreen} />
-        <Stack.Screen name="AddMilkRecord" component={AddMilkRecordScreen} />
-        <Stack.Screen name="AddIndividualEvent" component={AddIndividualEventScreen} />
-        <Stack.Screen name="AddMassEvent" component={AddMassEventScreen} />
-        <Stack.Screen name="AddIncome" component={AddIncomeScreen} />
-        <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
-        <Stack.Screen name="CattleProfile" component={CattleProfileScreen} />
-        <Stack.Screen name="CattleExit" component={CattleExitScreen} />
-        <Stack.Screen name="Inventory" component={InventoryScreen} />
-        <Stack.Screen name="InventoryReceive" component={InventoryReceiveScreen} />
-        <Stack.Screen name="InventoryUse" component={InventoryUseScreen} />
-        <Stack.Screen name="CowLifeCycle" component={CowLifeCycleScreen} />
-        <Stack.Screen name="Detail" component={DetailScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <Stack.Screen name="Alerts" component={AlertsScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="CattleList" component={CattleListScreen} />
+          <Stack.Screen name="MilkRecords" component={MilkRecordsScreen} />
+          <Stack.Screen name="Events" component={EventsScreen} />
+          <Stack.Screen name="Transactions" component={TransactionsScreen} />
+          <Stack.Screen name="FarmSetup" component={FarmSetupScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="SystemConfig" component={SystemConfigScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+          <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
+          <Stack.Screen name="ArchivedRecords" component={ArchivedRecordsScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+          <Stack.Screen name="ManageUsers" component={ManageUsersScreen} />
+          <Stack.Screen name="Reports" component={ReportsScreen} />
+          <Stack.Screen name="ManageExpenses" component={ManageExpensesScreen} />
+          <Stack.Screen name="AddCattle" component={AddCattleScreen} />
+          <Stack.Screen name="AddMilkRecord" component={AddMilkRecordScreen} />
+          <Stack.Screen name="AddIndividualEvent" component={AddIndividualEventScreen} />
+          <Stack.Screen name="AddMassEvent" component={AddMassEventScreen} />
+          <Stack.Screen name="AddIncome" component={AddIncomeScreen} />
+          <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
+          <Stack.Screen name="CattleProfile" component={CattleProfileScreen} />
+          <Stack.Screen name="CattleExit" component={CattleExitScreen} />
+          <Stack.Screen name="Inventory" component={InventoryScreen} />
+          <Stack.Screen name="InventoryReceive" component={InventoryReceiveScreen} />
+          <Stack.Screen name="InventoryUse" component={InventoryUseScreen} />
+          <Stack.Screen name="CowLifeCycle" component={CowLifeCycleScreen} />
+          <Stack.Screen name="Detail" component={DetailScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+      <Toast />
+    </>
   );
 }

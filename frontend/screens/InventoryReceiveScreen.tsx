@@ -9,6 +9,7 @@ import { getCurrentSession } from '../data/authApi';
 import { formatMoney, formatNumber, parseNumber, receiveInventory, todayIsoDate } from '../data/farmDatabase';
 import { canWriteInventory } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InventoryReceive'>;
 
@@ -43,7 +44,8 @@ export function InventoryReceiveScreen({ navigation, route }: Props) {
         vendor: vendor.trim() || undefined,
         createExpense: createExpense && total > 0,
       });
-      navigation.replace('Inventory');
+      showSuccessToast('Stock received.');
+      navigation.goBack();
     } catch (error) {
       Alert.alert('Could not receive stock', error instanceof Error ? error.message : 'Please try again.');
     } finally {

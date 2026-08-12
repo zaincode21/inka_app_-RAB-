@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "MilkRecord" ADD COLUMN "calfMilk" DECIMAL(10,2) NOT NULL DEFAULT 0;

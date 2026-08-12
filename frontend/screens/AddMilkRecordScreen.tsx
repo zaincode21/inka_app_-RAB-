@@ -25,6 +25,7 @@ import {
 import { createMilkRecordOrQueue } from '../data/offlineQueue';
 import { canWriteMilk } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showInfoToast, showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddMilkRecord'>;
 
@@ -49,14 +50,10 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
   const [amTotal, setAmTotal] = useState(editing ? String(editing.amTotal || '') : '');
   const [pmTotal, setPmTotal] = useState(editing ? String(editing.pmTotal || '') : '');
   const [totalUsed, setTotalUsed] = useState(editing ? String(editing.totalUsed || '') : '');
+  const [calfMilk, setCalfMilk] = useState(editing ? String(editing.calfMilk || '') : '');
   const [rejectedMilk, setRejectedMilk] = useState(editing ? String(editing.rejectedMilk || '') : '');
   const [buyer, setBuyer] = useState(editing?.buyer || '');
   const [destination, setDestination] = useState(editing?.destination || '');
-  const [fatPercent, setFatPercent] = useState(editing?.fatPercent ? String(editing.fatPercent) : '');
-  const [proteinPercent, setProteinPercent] = useState(editing?.proteinPercent ? String(editing.proteinPercent) : '');
-  const [somaticCellCount, setSomaticCellCount] = useState(
-    editing?.somaticCellCount ? String(editing.somaticCellCount) : '',
-  );
   const [milkPricePerLiter, setMilkPricePerLiter] = useState(editing?.pricePerLiter || 0);
   const [withdrawal, setWithdrawal] = useState<MilkWithdrawalStatus | null>(null);
   const [notes, setNotes] = useState(editing?.notes || '');
@@ -66,9 +63,11 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
   const totalProduced = parseNumber(amTotal) + parseNumber(pmTotal);
   const underWithdrawal = Boolean(milkType === 'Individual Cow Milk' && withdrawal?.underWithdrawal);
   const usedLiters = parseNumber(totalUsed);
+  const calfLiters = parseNumber(calfMilk);
   const rejectedLiters = underWithdrawal && totalProduced > 0 ? totalProduced : parseNumber(rejectedMilk);
-  const soldLiters = Math.max(0, Number((totalProduced - usedLiters - rejectedLiters).toFixed(2)));
+  const soldLiters = Math.max(0, Number((totalProduced - usedLiters - calfLiters - rejectedLiters).toFixed(2)));
   const estimatedSale = Number((soldLiters * milkPricePerLiter).toFixed(2));
+  const estimatedCalfExpense = Number((calfLiters * milkPricePerLiter).toFixed(2));
 
   const cowOptions = cattle.filter((animal) => {
     if (animal.status.trim().toLowerCase() !== 'active') {
@@ -164,13 +163,14 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
       pmTotal: parseNumber(pmTotal),
       totalProduced,
       totalUsed: usedLiters,
+      calfMilk: calfLiters,
       rejectedMilk: rejectedLiters,
       destination: destination.trim(),
       buyer: buyer.trim(),
       pricePerLiter: milkPricePerLiter,
-      fatPercent: parseNumber(fatPercent),
-      proteinPercent: parseNumber(proteinPercent),
-      somaticCellCount: parseNumber(somaticCellCount),
+      fatPercent: editing?.fatPercent ?? 0,
+      proteinPercent: editing?.proteinPercent ?? 0,
+      somaticCellCount: editing?.somaticCellCount ?? 0,
       notes: notes.trim(),
       createMilkSale,
       paymentMethod: 'Cash',
@@ -194,15 +194,13 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
       } else {
         const result = await createMilkRecordOrQueue(payload);
         if (result.status === 'queued') {
-          Alert.alert(
-            'Saved offline',
-            'No connection right now. This milk record will sync automatically when you are back online.',
-          );
-          navigation.replace('MilkRecords');
+          showInfoToast('Milk record will sync when you are back online.', 'Saved offline');
+          navigation.goBack();
           return;
         }
       }
-      navigation.replace('MilkRecords');
+      showSuccessToast(isEditing ? 'Milk record updated.' : 'Milk record saved.');
+      navigation.goBack();
     } catch (error) {
       Alert.alert(
         isEditing ? 'Could not update milk record' : 'Could not save milk record',
@@ -229,13 +227,8 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
       return;
     }
 
-    if (usedLiters + rejectedLiters > totalProduced + 0.0001) {
-      Alert.alert('Invalid milk split', 'Used + rejected cannot exceed total produced.');
-      return;
-    }
-
-    if (parseNumber(fatPercent) < 0 || parseNumber(proteinPercent) < 0 || parseNumber(somaticCellCount) < 0) {
-      Alert.alert('Invalid quality values', 'Fat %, protein %, and SCC must be zero or greater.');
+    if (usedLiters + calfLiters + rejectedLiters > totalProduced + 0.0001) {
+      Alert.alert('Invalid milk split', 'Used + calf milk + rejected cannot exceed total produced.');
       return;
     }
 
@@ -351,6 +344,29 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
 
         <Label text={t('milk.used')} />
         <Input placeholder="0.0" keyboardType="decimal-pad" value={totalUsed} onChangeText={setTotalUsed} />
+        <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Farm or household use (not for calves).</Text>
+
+        <Label text={t('milk.calfMilk')} />
+        <Input placeholder="0.0" keyboardType="decimal-pad" value={calfMilk} onChangeText={setCalfMilk} />
+        <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Milk fed to calves.</Text>
+        {calfLiters > 0 ? (
+          <View className="mb-4 rounded-[14px] border border-[#D9E4E4] bg-[#FFF7ED] px-4 py-3">
+            <Text className="text-[13px] font-semibold text-[#C2410C]">Calf milk expense</Text>
+            <Text className="mt-1 text-[14px] text-[#9A3412]">
+              Calf milk: {formatNumber(calfLiters)} L × {formatMoney(milkPricePerLiter)} / L
+            </Text>
+            <Text className="mt-1 text-[15px] font-bold text-[#EA580C]">
+              Estimated expense: {formatMoney(estimatedCalfExpense)}
+            </Text>
+            {milkPricePerLiter <= 0 ? (
+              <Text className="mt-2 text-[12px] text-[#DC2626]">
+                Set milk price in Settings → System Configuration to post calf milk expense.
+              </Text>
+            ) : (
+              <Text className="mt-2 text-[12px] text-[#9A3412]">Posted automatically when you save.</Text>
+            )}
+          </View>
+        ) : null}
 
         <Label text={t('milk.rejected')} />
         <Input
@@ -366,25 +382,6 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
           <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Mastitis discard, spill, or withheld milk.</Text>
         )}
 
-        <Text className="mb-2 mt-2 text-[15px] font-bold text-[#1F2937]">
-          Milk quality ({t('milk.optional')})
-        </Text>
-        <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Leave blank when lab results are not available.</Text>
-
-        <Label text={t('milk.fat')} />
-        <Input placeholder="e.g. 3.8" keyboardType="decimal-pad" value={fatPercent} onChangeText={setFatPercent} />
-
-        <Label text={t('milk.protein')} />
-        <Input placeholder="e.g. 3.2" keyboardType="decimal-pad" value={proteinPercent} onChangeText={setProteinPercent} />
-
-        <Label text={t('milk.scc')} />
-        <Input
-          placeholder="e.g. 200000"
-          keyboardType="decimal-pad"
-          value={somaticCellCount}
-          onChangeText={setSomaticCellCount}
-        />
-
         {milkType === 'Whole Farm' ? (
           <>
             <Label text={t('milk.buyer')} />
@@ -394,7 +391,7 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
             <View className="mb-4 rounded-[14px] border border-[#D9E4E4] bg-[#F0FDFA] px-4 py-3">
               <Text className="text-[13px] font-semibold text-[#0F766E]">Sale preview (Whole Farm)</Text>
               <Text className="mt-1 text-[14px] text-[#134E4A]">
-                Sold liters: {formatNumber(soldLiters)} L (produced − used − rejected)
+                Sold liters: {formatNumber(soldLiters)} L (produced − used − calf − rejected)
               </Text>
               <Text className="mt-1 text-[14px] text-[#134E4A]">
                 Price: {formatMoney(milkPricePerLiter)} / L (from Settings)
@@ -467,8 +464,10 @@ export function AddMilkRecordScreen({ navigation, route }: Props) {
                       className={`mb-3 flex-row items-center justify-between rounded-[16px] border px-4 py-4 ${selected ? 'border-[#008B8B] bg-[#E0F7F7]' : 'border-[#E5E7EB] bg-white'}`}
                     >
                       <View className="flex-1">
-                        <Text className={`text-[16px] ${selected ? 'font-bold text-[#008B8B]' : 'font-bold text-[#1F2937]'}`}>{cow.tagNumber}</Text>
-                        <Text className="mt-1 text-[13px] text-[#6B7280]">{cow.name} • {cow.breed} • {cow.stage}</Text>
+                        <Text className={`text-[16px] ${selected ? 'font-bold text-[#008B8B]' : 'font-bold text-[#1F2937]'}`}>
+                          {cow.name.trim() || cow.tagNumber}
+                        </Text>
+                        <Text className="mt-1 text-[13px] text-[#6B7280]">{cow.breed} • {cow.stage}</Text>
                       </View>
                       {selected ? <Feather name="check" size={18} color="#008B8B" /> : null}
                     </Pressable>
@@ -532,10 +531,7 @@ function CowField({ cow, onPress }: { cow: Cattle | null; onPress: () => void })
   return (
     <Pressable onPress={onPress} className="mb-3 min-h-12 justify-center rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3">
       {cow ? (
-        <>
-          <Text className="text-[16px] font-bold text-[#1F2937]">{cow.tagNumber}</Text>
-          <Text className="mt-1 text-[13px] text-[#6B7280]">{cow.name} • {cow.breed}</Text>
-        </>
+        <Text className="text-[16px] font-bold text-[#1F2937]">{cow.name.trim() || cow.tagNumber}</Text>
       ) : (
         <Text className="text-[16px] text-[#6B7280]">Select cow</Text>
       )}

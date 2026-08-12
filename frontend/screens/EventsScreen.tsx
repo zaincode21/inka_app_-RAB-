@@ -15,6 +15,7 @@ import {
   createHealthEvent,
   deleteHealthEvent,
   getCattle,
+  getCategories,
   getHealthEvents,
   todayIsoDate,
   updateHealthEvent,
@@ -22,9 +23,10 @@ import {
 } from '../data/farmDatabase';
 import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
-import { allEventTypeFilterOptions, normalizeMassEventType } from '../utils/eventConstants';
+import { allEventTypeFilterOptions, eventTypeLabel } from '../utils/eventConstants';
 import { isActiveEvent, isEventArchived } from '../utils/eventArchive';
 import { emptyEventFields } from '../utils/reproductiveCycle';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Events'>;
 type EventFilter = 'all' | 'archive' | 'followUpDue';
@@ -34,6 +36,11 @@ export function EventsScreen({ navigation }: Props) {
   const sessionUser = getCurrentSession()?.user;
   const canMutateEvents = canWriteEvents(sessionUser);
   const { data: cattle } = useDatabaseQuery(getCattle, []);
+  const { data: eventTypeCategories } = useDatabaseQuery(() => getCategories('event'), []);
+  const managedEventTypeNames = useMemo(
+    () => eventTypeCategories.map((category) => category.name),
+    [eventTypeCategories],
+  );
   const [selectedScope, setSelectedScope] = useState<'individual' | 'mass'>('individual');
   const [searchQuery, setSearchQuery] = useState('');
   const [eventTypeFilter, setEventTypeFilter] = useState('');
@@ -129,10 +136,10 @@ export function EventsScreen({ navigation }: Props) {
   };
 
   const handleConfirmHeatReturned = (breeding: HealthEvent) => {
-    Alert.alert('Heat returned', 'Record Heat Observed for this animal from Kwimisha?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('events.heatReturnedTitle'), t('events.heatReturnedBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Confirm',
+        text: t('common.save'),
         onPress: async () => {
           try {
             await createHealthEvent(
@@ -144,11 +151,12 @@ export function EventsScreen({ navigation }: Props) {
                 bullResponsible: breeding.bullResponsible,
                 semenUsed: breeding.semenUsed,
                 sourceEventId: breeding.id,
-                notes: `Heat returned after Kwimisha on ${breeding.eventDate}`,
+                notes: `Heat returned after Breeding on ${breeding.eventDate}`,
               }),
             );
             await clearSourceFollowUp(breeding);
             await reload();
+            showSuccessToast(eventTypeLabel('Heat Observed', t));
           } catch (cycleError) {
             Alert.alert('Could not record heat', cycleError instanceof Error ? cycleError.message : 'Please try again.');
           }
@@ -158,10 +166,10 @@ export function EventsScreen({ navigation }: Props) {
   };
 
   const handleConfirmGusama = (breeding: HealthEvent) => {
-    Alert.alert('Confirm Gusama', 'No return heat observed. Create Gusama (Pregnant) from this Kwimisha?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('events.confirmPregnantTitle'), t('events.confirmPregnantBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Create Gusama',
+        text: t('events.createPregnant'),
         onPress: async () => {
           try {
             const serviceDate = breeding.eventDate;
@@ -176,13 +184,14 @@ export function EventsScreen({ navigation }: Props) {
                 bullResponsible: breeding.bullResponsible,
                 vetName: breeding.vetName,
                 sourceEventId: breeding.id,
-                notes: `Confirmed from Kwimisha ${breeding.id} — no return heat by ${breeding.returnHeatDate || 'estimated date'}`,
+                notes: `Confirmed from Breeding ${breeding.id} — no return heat by ${breeding.returnHeatDate || 'estimated date'}`,
               }),
             );
             await clearSourceFollowUp(breeding);
             await reload();
+            showSuccessToast(t('events.pregnantCreated'));
           } catch (cycleError) {
-            Alert.alert('Could not create Gusama', cycleError instanceof Error ? cycleError.message : 'Please try again.');
+            Alert.alert(t('events.couldNotCreatePregnant'), cycleError instanceof Error ? cycleError.message : 'Please try again.');
           }
         },
       },
@@ -199,7 +208,7 @@ export function EventsScreen({ navigation }: Props) {
       return;
     }
     if (!abortNotes.trim()) {
-      Alert.alert('Notes required', 'Please write the reason or details for Kuramburura (abort).');
+      Alert.alert(t('milk.notes'), t('events.abortNotesRequired'));
       return;
     }
     setAbortBusy(true);
@@ -219,8 +228,9 @@ export function EventsScreen({ navigation }: Props) {
       setAbortSource(null);
       setAbortNotes('');
       await reload();
+      showSuccessToast(t('events.abortRecorded'));
     } catch (cycleError) {
-      Alert.alert('Could not create Kuramburura', cycleError instanceof Error ? cycleError.message : 'Please try again.');
+      Alert.alert(t('events.couldNotCreateAbort'), cycleError instanceof Error ? cycleError.message : 'Please try again.');
     } finally {
       setAbortBusy(false);
     }
@@ -258,7 +268,7 @@ export function EventsScreen({ navigation }: Props) {
       details.push({ label: 'Recorded by', value: item.recordedBy });
     }
     navigation.navigate('Detail', {
-      title: item.scope === 'mass' ? normalizeMassEventType(item.eventType) : item.eventType,
+      title: eventTypeLabel(item.eventType, t),
       subtitle: item.scope === 'mass' ? 'Mass herd event' : 'Individual cattle event',
       details,
       imageUri: item.photoUri || undefined,
@@ -297,6 +307,7 @@ export function EventsScreen({ navigation }: Props) {
             try {
               await deleteHealthEvent(event.id);
               await reload();
+              showSuccessToast('Event deleted.');
             } catch (deleteError) {
               Alert.alert('Could not delete event', deleteError instanceof Error ? deleteError.message : 'Please try again.');
             }
@@ -384,9 +395,9 @@ export function EventsScreen({ navigation }: Props) {
               <Text className="mt-2 text-center text-[13px] text-[#6B7280]">
                 {error ??
                   (listFilter === 'archive'
-                    ? 'Events older than 3 days move here automatically. Kwimisha (Breeding) records always stay in All.'
+                    ? t('events.archiveHint')
                     : listFilter === 'followUpDue'
-                      ? 'No active events need follow-up today.'
+                      ? t('events.emptyFollowUp')
                       : `No ${selectedScope} events match your filters.`)}
               </Text>
             </View>
@@ -432,14 +443,16 @@ export function EventsScreen({ navigation }: Props) {
       <Modal visible={Boolean(abortSource)} transparent animationType="fade" onRequestClose={() => setAbortSource(null)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setAbortSource(null)}>
           <KeyboardSafeSheet contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 20 }}>
-            <Text className="mb-1 text-center text-[18px] font-bold text-[#1F2937]">Kuramburura (Abort)</Text>
+            <Text className="mb-1 text-center text-[18px] font-bold text-[#1F2937]">{t('events.abortTitle')}</Text>
             <Text className="mb-4 text-center text-[13px] text-[#6B7280]">
-              {abortSource ? `${abortSource.cattleTag} — write reason, then submit` : ''}
+              {abortSource
+                ? `${cattleByTag.get(abortSource.cattleTag)?.name.trim() || abortSource.cattleTag} — write reason, then submit`
+                : ''}
             </Text>
             <TextInput
               value={abortNotes}
               onChangeText={setAbortNotes}
-              placeholder="Reason / notes for abort..."
+              placeholder={t('events.abortReasonPlaceholder')}
               placeholderTextColor="#6B7280"
               multiline
               className="min-h-[100px] rounded-[14px] border border-[#D9E4E4] bg-[#F8FAFA] px-4 py-3 text-[15px] text-[#1F2937]"
@@ -447,7 +460,7 @@ export function EventsScreen({ navigation }: Props) {
             />
             <View className="mt-4 flex-row">
               <Pressable onPress={() => setAbortSource(null)} className="mr-2 flex-1 items-center justify-center rounded-[12px] border border-[#008B8B] bg-white py-3">
-                <Text className="text-[16px] font-bold text-[#008B8B]">Cancel</Text>
+                <Text className="text-[16px] font-bold text-[#008B8B]">{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -467,7 +480,7 @@ export function EventsScreen({ navigation }: Props) {
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowFilterModal(false)}>
           <Pressable className="rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
             <Text className="mb-4 text-center text-[18px] font-bold text-[#1F2937]">Filter Events</Text>
-            <SelectDropdown label="Event Type" value={eventTypeFilter} placeholder="All event types" options={[{ label: 'All event types', value: '' }, ...allEventTypeFilterOptions().map((type) => ({ label: type, value: type }))]} onSelect={setEventTypeFilter} />
+            <SelectDropdown label="Event Type" value={eventTypeFilter} placeholder={t('events.allEventTypes')} options={[{ label: t('events.allEventTypes'), value: '' }, ...allEventTypeFilterOptions(t, managedEventTypeNames)]} onSelect={setEventTypeFilter} />
             <Pressable onPress={() => setShowFilterModal(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
               <Text className="text-[16px] font-bold text-white">Apply Filters</Text>
             </Pressable>
@@ -495,8 +508,10 @@ export function EventsScreen({ navigation }: Props) {
                   return (
                     <Pressable key={animal.id} onPress={() => setSelectedCattleTag(animal.tagNumber)} className={`mb-3 flex-row items-center justify-between rounded-[16px] border px-4 py-4 ${selected ? 'border-[#008B8B] bg-[#E0F7F7]' : 'border-[#E5E7EB] bg-white'}`}>
                       <View className="flex-1">
-                        <Text className={`text-[16px] ${selected ? 'font-bold text-[#008B8B]' : 'font-bold text-[#1F2937]'}`}>{animal.name || animal.tagNumber}</Text>
-                        <Text className="mt-1 text-[13px] text-[#6B7280]">{animal.tagNumber} • {animal.breed}</Text>
+                        <Text className={`text-[16px] ${selected ? 'font-bold text-[#008B8B]' : 'font-bold text-[#1F2937]'}`}>
+                          {animal.name.trim() || animal.tagNumber}
+                        </Text>
+                        <Text className="mt-1 text-[13px] text-[#6B7280]">{animal.breed} • {animal.stage}</Text>
                       </View>
                       {selected ? <Feather name="check" size={18} color="#008B8B" /> : null}
                     </Pressable>

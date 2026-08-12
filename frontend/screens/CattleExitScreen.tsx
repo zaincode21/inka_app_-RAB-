@@ -17,6 +17,7 @@ import {
 } from '../data/farmDatabase';
 import { canWriteCattle } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CattleExit'>;
 
@@ -92,9 +93,12 @@ export function CattleExitScreen({ navigation, route }: Props) {
         buyerVendor: buyerVendor.trim(),
         paymentMethod: paymentMethod.trim() || 'Cash',
       });
-      Alert.alert('Exit recorded', `${animal.tagNumber} is now ${status}.`, [
-        { text: 'OK', onPress: () => navigation.navigate('CattleList') },
-      ]);
+      showSuccessToast(`${animal.tagNumber} is now ${status}.`, 'Exit recorded');
+      if (navigation.canGoBack()) {
+        navigation.pop(2);
+      } else {
+        navigation.navigate('CattleList');
+      }
     } catch (error) {
       Alert.alert('Could not record exit', error instanceof Error ? error.message : 'Please try again.');
     } finally {

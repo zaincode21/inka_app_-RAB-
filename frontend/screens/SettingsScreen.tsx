@@ -144,17 +144,21 @@ export function SettingsScreen({ navigation }: Props) {
           <View className="flex-row gap-3">
             <Pressable
               onPress={() => void changeAppLanguage('en')}
-              className={`flex-1 items-center rounded-[12px] py-3 ${language === 'en' ? 'bg-[#008B8B]' : 'border border-[#D1D5DB] bg-white'}`}
+              className={`h-12 flex-1 items-center justify-center rounded-[12px] ${
+                language === 'en' ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'
+              }`}
             >
-              <Text className={`text-[14px] font-bold ${language === 'en' ? 'text-white' : 'text-[#374151]'}`}>
+              <Text className={`text-[15px] font-bold ${language === 'en' ? 'text-white' : 'text-[#008B8B]'}`}>
                 {t('common.english')}
               </Text>
             </Pressable>
             <Pressable
               onPress={() => void changeAppLanguage('rw')}
-              className={`flex-1 items-center rounded-[12px] py-3 ${language === 'rw' ? 'bg-[#008B8B]' : 'border border-[#D1D5DB] bg-white'}`}
+              className={`h-12 flex-1 items-center justify-center rounded-[12px] ${
+                language === 'rw' ? 'bg-[#E6B86F]' : 'border border-[#008B8B] bg-white'
+              }`}
             >
-              <Text className={`text-[14px] font-bold ${language === 'rw' ? 'text-white' : 'text-[#374151]'}`}>
+              <Text className={`text-[15px] font-bold ${language === 'rw' ? 'text-white' : 'text-[#008B8B]'}`}>
                 {t('common.kinyarwanda')}
               </Text>
             </Pressable>

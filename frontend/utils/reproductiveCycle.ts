@@ -89,16 +89,17 @@ export function isCycleStepEnded(event: HealthEvent, allEvents: HealthEvent[]): 
   return isEndedBreeding(event, allEvents) || isEndedPregnancy(event, allEvents);
 }
 
+/** English fallback; prefer `eventTypeLabel` from eventConstants with i18n when rendering. */
 export function cycleResolutionLabel(eventType: string): string {
   switch (normalizeType(eventType)) {
     case 'pregnant':
-      return 'Gusama';
+      return 'Pregnant';
     case 'heat observed':
       return 'Heat Observed';
     case 'aborted':
-      return 'Kuramburura';
+      return 'Aborted';
     case 'giving birth':
-      return 'Kubyara';
+      return 'Giving Birth';
     default:
       return eventType;
   }

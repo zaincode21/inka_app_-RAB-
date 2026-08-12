@@ -260,6 +260,7 @@ async function buildExportBundle(
       'pmTotal',
       'totalProduced',
       'totalUsed',
+      'calfMilk',
       'rejectedMilk',
       'destination',
       'buyer',
@@ -279,6 +280,7 @@ async function buildExportBundle(
       Number(row.pmTotal),
       Number(row.totalProduced),
       Number(row.totalUsed),
+      Number(row.calfMilk),
       Number(row.rejectedMilk),
       row.destination ?? '',
       row.buyer ?? '',
@@ -516,7 +518,7 @@ reportRouter.get(
       await Promise.all([
         prisma.milkRecord.aggregate({
           where: milkWhere,
-          _sum: { totalProduced: true, totalUsed: true, rejectedMilk: true },
+          _sum: { totalProduced: true, totalUsed: true, calfMilk: true, rejectedMilk: true },
           _count: true,
         }),
         prisma.healthEvent.count({ where: eventWhere }),
@@ -552,6 +554,7 @@ reportRouter.get(
 
     const produced = Number(milkAgg._sum.totalProduced ?? 0);
     const used = Number(milkAgg._sum.totalUsed ?? 0);
+    const calfMilk = Number(milkAgg._sum.calfMilk ?? 0);
     const rejected = Number(milkAgg._sum.rejectedMilk ?? 0);
     const income = includeFinance ? Number(incomeAgg._sum.amount ?? 0) : 0;
     const expenses = includeFinance ? Number(expenseAgg._sum.amount ?? 0) : 0;
@@ -563,8 +566,9 @@ reportRouter.get(
         records: milkAgg._count,
         produced,
         used,
+        calfMilk,
         rejected,
-        soldEstimate: Math.max(0, Number((produced - used - rejected).toFixed(2))),
+        soldEstimate: Math.max(0, Number((produced - used - calfMilk - rejected).toFixed(2))),
       },
       herd: {
         active: activeCattle,

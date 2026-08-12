@@ -95,10 +95,11 @@ All business routes are under `/api/v1`.
   - `GET /farms/system-config`: system configuration for the caller's farm.
   - `PATCH /farms/system-config`: Owner/Super Admin only — partial update of system settings.
 - `POST /api/v1/auth/switch-farm` `{ farmId }`: switch active farm (updates `User.farmId` / membership role, returns new JWT + `user.farmName`).
-- `/api/v1/categories`: configurable breeds, groups, medicines, event types, income categories, expense categories, and milk destinations. Mutations: Owner/Super Admin only.
+- `/api/v1/categories`: configurable breeds, groups, medicines, event types, income categories, expense categories, and milk destinations. Mutations: Owner/Super Admin only. `DELETE /categories/:id` removes a category (including seeded defaults) for that farm; add forms read event types from these categories.
 - `/api/v1/cattle`: professional cattle identity, lifecycle, production, and lineage records. Listing cattle auto-promotes lifecycle stages by age (never demotes). Create/update stamp `createdByUserId` / `updatedByUserId`; list/get include `createdBy`. `DELETE` soft-archives (`deletedAt`); prefer status change (sold/culled/dead) for herd exits via `POST /cattle/:id/exit` (optional Cattle Sale / Cattle Disposal transaction).
-- `/api/v1/milk-records`: milk production, usage, rejected milk, destinations, buyer, price, and quality records (`fatPercent`, `proteinPercent`, `somaticCellCount`). Actor tracking and soft-delete same as cattle. App supports create, edit (`PATCH`), and soft-delete from Milk Records UI. Individual milk requires an **Active** cattle link.
-  - Whole Farm saves may create/update a linked **Milk Sale** income when `createMilkSale=true`, using `soldLiters = produced − used − rejected` × `pricePerLiter` (locked at save). Duplicate Milk Sale per milk record is prevented. Deleting a milk record soft-archives its linked Milk Sale.
+- `/api/v1/milk-records`: milk production, farm use (`totalUsed`), calf milk (`calfMilk`), rejected milk, destinations, buyer, price, and quality records (`fatPercent`, `proteinPercent`, `somaticCellCount`). Actor tracking and soft-delete same as cattle. App supports create, edit (`PATCH`), and soft-delete from Milk Records UI. Individual milk requires an **Active** cattle link.
+  - Whole Farm saves may create/update a linked **Milk Sale** income when `createMilkSale=true`, using `soldLiters = produced − used − calf − rejected` × `pricePerLiter` (locked at save). Duplicate Milk Sale per milk record is prevented. Deleting a milk record soft-archives its linked Milk Sale.
+  - When `calfMilk > 0`, saves automatically create/update a linked **Calf Milk** expense (`calfMilk × pricePerLiter`). If the record price is missing or 0, the farm milk price from Settings is used. Deleting a milk record soft-archives its linked Calf Milk expense.
 - `/api/v1/events`: individual and mass veterinary, breeding, pregnancy, birth, weighing, vaccination, treatment, and deworming events. Actor tracking and soft-delete same as cattle. Deleting an event also soft-archives linked treatment expenses.
   - `GET /events/latest-breeding?cattleTag=TAG`: latest breeding event for an animal (used by pregnancy form prefill).
   - `GET /events/birth-prefill?cattleTag=TAG`: latest pregnancy event for an animal, falling back to latest breeding event (used by birth form prefill).
@@ -140,7 +141,7 @@ Most resource routes support:
 - `PATCH /:id`: update a record.
 - `DELETE /:id`: soft-archive (`deletedAt`) for cattle, milk-records, events, and transactions; hard delete only where soft-delete is off.
 - `GET /?archived=true`: list soft-archived rows (requires the same permission as delete/restore for that resource).
-- `POST /:id/restore`: clear `deletedAt` / `deletedByUserId` and write a `RESTORE` audit entry. Restoring a milk record also restores its linked Milk Sale; restoring an event restores linked treatment expenses.
+- `POST /:id/restore`: clear `deletedAt` / `deletedByUserId` and write a `RESTORE` audit entry. Restoring a milk record also restores its linked Milk Sale and Calf Milk expense; restoring an event restores linked treatment expenses.
 
 ## Project layout
 
