@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../src/config/prisma.js';
 import { seedFarmCategories } from '../src/services/farmService.js';
 import { ensureMembership } from '../src/services/farmMembershipService.js';
+import { seedRwamaganaFarm } from './seedRwamagana.js';
 
 async function main() {
   const farm = await prisma.farm.upsert({
@@ -108,6 +109,7 @@ async function main() {
 
   await ensureMembership(owner.id, farm.id, 'FARM_OWNER');
   await ensureMembership(owner.id, secondFarm.id, 'FARM_OWNER');
+  await seedRwamaganaFarm(prisma, owner.id);
 
   const staff = [
     { email: 'manager@inka.local', password: 'manager123', firstName: 'Farm', lastName: 'Manager', role: 'FARM_MANAGER' as const, phone: '+250780000001' },
@@ -160,9 +162,9 @@ async function main() {
     });
   }
 
-  console.log(`Seeded farms ${farm.id} and ${secondFarm.id}`);
+  console.log(`Seeded farms ${farm.id}, ${secondFarm.id}, and rwamagana-farm`);
   console.log(`Super Admin: ${superEmail} / ${superPassword}`);
-  console.log(`Demo Owner:  ${ownerEmail} / ${ownerPassword} (member of both farms)`);
+  console.log(`Demo Owner:  ${ownerEmail} / ${ownerPassword} (member of default, East, and Rwamagana farms)`);
   console.log('Demo Manager: manager@inka.local / manager123');
   console.log('Demo Vet:     vet@inka.local / vet123');
   console.log('Demo Worker:  worker@inka.local / worker123');

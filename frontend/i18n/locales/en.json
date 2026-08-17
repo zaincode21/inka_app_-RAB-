@@ -67,7 +67,7 @@
   "alerts": {
     "title": "Alerts",
     "empty": "No alerts right now",
-    "emptyHint": "Milk withdrawal reminders and dated treatment follow-ups will show here when due."
+    "emptyHint": "Weaning, dry-off, milk withdrawal, and treatment follow-ups show here when due."
   },
   "profile": {
     "title": "Profile",

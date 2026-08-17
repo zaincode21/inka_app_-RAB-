@@ -8,7 +8,7 @@ import { KeyboardSafeScroll, KeyboardSafeSheet } from '../components/KeyboardSaf
 import { PhotoPickerField } from '../components/PhotoPickerField';
 import { useRequireAccess } from '../data/accessGuard';
 import { getCurrentSession } from '../data/authApi';
-import { createCattle, getCategories, parseNumber, todayIsoDate, updateCattle, useDatabaseQuery } from '../data/farmDatabase';
+import { type Cattle, createCattle, getCategories, getCattle, parseNumber, todayIsoDate, updateCattle, useDatabaseQuery } from '../data/farmDatabase';
 import { canWriteCattle } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { stageOptionsForGender } from '../utils/lifecycle';
@@ -21,14 +21,13 @@ const defaultBreedOptions = ['Ayrshire', 'Friesian', 'Guernsey', 'Jersey'];
 const createNewBreedOption = 'Create New Breed';
 const obtainedOptions = ['Born on farm', 'Purchased', 'Other'];
 const defaultGroupOptions = ['Milking Cows', 'Dry Cows', 'Calves', 'Bulls'];
-const motherTagOptions = ['UK 722212 123 (Bessie)', 'UK 722212 124 (Daisy)', 'UK 722212 126 (Molly)'];
-const fatherTagOptions = ["UK 722212 125 (Bella's Sire)", 'UK 722212 199 (Max)'];
 
 export function AddCattleScreen({ navigation, route }: Props) {
   const editingCattle = route.params?.cattle;
   const isEditing = Boolean(editingCattle);
   useRequireAccess(canWriteCattle(getCurrentSession()?.user), navigation);
   const { data: categories } = useDatabaseQuery(() => getCategories(), []);
+  const { data: herd } = useDatabaseQuery(getCattle, []);
   const breedOptions = useMemo(() => {
     const categoryBreeds = categories.filter((category) => category.kind === 'breed').map((category) => category.name);
     return [...new Set([...defaultBreedOptions, ...categoryBreeds]), createNewBreedOption];
@@ -56,6 +55,8 @@ export function AddCattleScreen({ navigation, route }: Props) {
   const [newBreedName, setNewBreedName] = useState('');
   const [showCreateBreedDialog, setShowCreateBreedDialog] = useState(false);
   const [activeDatePicker, setActiveDatePicker] = useState<null | 'dateOfBirth' | 'entryDate'>(null);
+  const [parentPicker, setParentPicker] = useState<null | 'mother' | 'father'>(null);
+  const [parentSearch, setParentSearch] = useState('');
   const [activePicker, setActivePicker] = useState<null | {
     label: string;
     value: string;
@@ -65,6 +66,33 @@ export function AddCattleScreen({ navigation, route }: Props) {
 
   const otherSourceVisible = useMemo(() => obtained === 'Other' || showOtherSource, [obtained, showOtherSource]);
   const stageOptions = useMemo(() => (gender ? stageOptionsForGender(gender) : ['Calf', 'Weaner', 'Heifer', 'Cow', 'Steer', 'Bull']), [gender]);
+  const parentCandidates = useMemo(
+    () => herd.filter((animal) => animal.id !== editingCattle?.id && animal.tagNumber.trim().toLowerCase() !== tagNumber.trim().toLowerCase()),
+    [herd, editingCattle?.id, tagNumber],
+  );
+  const parentPickerAnimals = useMemo(() => {
+    const pool = parentPicker === 'father' ? parentCandidates.filter(isMaleCattle) : parentCandidates.filter(isFemaleCattle);
+    const query = parentSearch.trim().toLowerCase();
+    if (!query) {
+      return pool;
+    }
+    return pool.filter((animal) => `${animal.tagNumber} ${animal.name} ${animal.breed}`.toLowerCase().includes(query));
+  }, [parentCandidates, parentPicker, parentSearch]);
+  const parentPickerValue = parentPicker === 'father' ? fatherTag : motherTag;
+
+  const openParentPicker = (kind: 'mother' | 'father') => {
+    setParentSearch('');
+    setParentPicker(kind);
+  };
+
+  const selectParentTag = (value: string) => {
+    if (parentPicker === 'father') {
+      setFatherTag(value);
+    } else {
+      setMotherTag(value);
+    }
+    setParentPicker(null);
+  };
 
   const handleGenderSelect = (value: string) => {
     setGender(value);
@@ -246,8 +274,20 @@ export function AddCattleScreen({ navigation, route }: Props) {
           />
 
           {otherSourceVisible ? <InputField label="Other Source" placeholder="Enter source" value={otherSource} onChangeText={setOtherSource} /> : null}
-          <SelectField label="Mother's Tag No" value={motherTag} placeholder="Select mother tag" onPress={() => setActivePicker({ label: "Mother's Tag No", value: motherTag, options: motherTagOptions, onSelect: setMotherTag })} />
-          <SelectField label="Father's Tag No" value={fatherTag} placeholder="Select father tag" onPress={() => setActivePicker({ label: "Father's Tag No", value: fatherTag, options: fatherTagOptions, onSelect: setFatherTag })} />
+          <ParentTagField
+            label="Mother's Tag No"
+            value={motherTag}
+            placeholder="Select or type mother tag"
+            onChangeText={setMotherTag}
+            onOpenPicker={() => openParentPicker('mother')}
+          />
+          <ParentTagField
+            label="Father's Tag No"
+            value={fatherTag}
+            placeholder="Select or type father tag"
+            onChangeText={setFatherTag}
+            onOpenPicker={() => openParentPicker('father')}
+          />
           <MultilineField label="Notes" placeholder="Write something" value={notes} onChangeText={setNotes} />
 
           <PhotoPickerField
@@ -260,6 +300,73 @@ export function AddCattleScreen({ navigation, route }: Props) {
           />
         </View>
       </KeyboardSafeScroll>
+
+      <Modal visible={parentPicker !== null} transparent animationType="fade" onRequestClose={() => setParentPicker(null)}>
+        <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setParentPicker(null)}>
+          <KeyboardSafeSheet
+            className="max-h-[80%] rounded-t-[24px] bg-white"
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32, paddingTop: 20 }}
+          >
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-[18px] font-bold text-[#1F2937]">{parentPicker === 'father' ? "Father's Tag No" : "Mother's Tag No"}</Text>
+              <Pressable onPress={() => setParentPicker(null)} hitSlop={8}>
+                <Feather name="x" size={22} color="#6B7280" />
+              </Pressable>
+            </View>
+            <View className="mb-4 h-12 flex-row items-center rounded-[14px] border border-[#D9E4E4] bg-white px-4">
+              <Feather name="search" size={18} color="#6B7280" />
+              <TextInput
+                value={parentSearch}
+                onChangeText={setParentSearch}
+                placeholder="Search herd or type a tag"
+                placeholderTextColor="#6B7280"
+                className="ml-3 flex-1 text-[16px] text-[#1F2937]"
+              />
+            </View>
+            <Pressable
+              onPress={() => selectParentTag('')}
+              className={`mb-3 flex-row items-center justify-between rounded-[16px] border px-4 py-4 ${!parentPickerValue.trim() ? 'border-[#008B8B] bg-[#E0F7F7]' : 'border-[#E5E7EB] bg-white'}`}
+            >
+              <Text className={`text-[16px] ${!parentPickerValue.trim() ? 'font-bold text-[#008B8B]' : 'text-[#1F2937]'}`}>None</Text>
+              {!parentPickerValue.trim() ? <Feather name="check" size={18} color="#008B8B" /> : null}
+            </Pressable>
+            {parentSearch.trim() && !parentPickerAnimals.some((animal) => animal.tagNumber.trim().toLowerCase() === parentSearch.trim().toLowerCase()) ? (
+              <Pressable
+                onPress={() => selectParentTag(parentSearch.trim())}
+                className="mb-3 flex-row items-center justify-between rounded-[16px] border border-[#E5E7EB] bg-white px-4 py-4"
+              >
+                <Text className="text-[16px] text-[#1F2937]">Use "{parentSearch.trim()}"</Text>
+                <Feather name="edit-3" size={18} color="#6B7280" />
+              </Pressable>
+            ) : null}
+            {parentPickerAnimals.length === 0 ? (
+              <Text className="py-6 text-center text-[14px] text-[#6B7280]">
+                {parentPicker === 'father' ? 'No males in the herd. Type a father tag instead.' : 'No females in the herd. Type a mother tag instead.'}
+              </Text>
+            ) : (
+              parentPickerAnimals.map((animal) => {
+                const selected = animal.tagNumber.trim().toLowerCase() === parentPickerValue.trim().toLowerCase();
+                return (
+                  <Pressable
+                    key={animal.id}
+                    onPress={() => selectParentTag(animal.tagNumber)}
+                    className={`mb-3 flex-row items-center justify-between rounded-[16px] border px-4 py-4 ${selected ? 'border-[#008B8B] bg-[#E0F7F7]' : 'border-[#E5E7EB] bg-white'}`}
+                  >
+                    <View className="flex-1 pr-3">
+                      <Text className={`text-[16px] ${selected ? 'font-bold text-[#008B8B]' : 'font-bold text-[#1F2937]'}`}>
+                        {animal.tagNumber}
+                        {animal.name.trim() ? ` (${animal.name})` : ''}
+                      </Text>
+                      <Text className="mt-1 text-[13px] text-[#6B7280]">{animal.breed} • {animal.stage}</Text>
+                    </View>
+                    {selected ? <Feather name="check" size={18} color="#008B8B" /> : null}
+                  </Pressable>
+                );
+              })
+            )}
+          </KeyboardSafeSheet>
+        </Pressable>
+      </Modal>
 
       <Modal visible={activePicker !== null} transparent animationType="fade" onRequestClose={() => setActivePicker(null)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setActivePicker(null)}>
@@ -339,10 +446,10 @@ export function AddCattleScreen({ navigation, route }: Props) {
             <DateTimePicker
               value={selectedPickerDate}
               mode="date"
-              display="inline"
+              display="spinner"
               themeVariant="light"
               onChange={handleDateChange}
-              style={{ height: 330, width: '100%' }}
+              style={{ height: 216, width: '100%' }}
             />
             <Pressable onPress={() => setActiveDatePicker(null)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
               <Text className="text-[16px] font-bold text-white">Done</Text>
@@ -422,6 +529,46 @@ function SelectField({
       </Pressable>
     </View>
   );
+}
+
+function ParentTagField({
+  label,
+  value,
+  placeholder,
+  onChangeText,
+  onOpenPicker,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChangeText: (value: string) => void;
+  onOpenPicker: () => void;
+}) {
+  return (
+    <View className="mb-5">
+      <Text className="mb-2 ml-1 text-[14px] font-bold text-[#1F2937]">{label}</Text>
+      <View className="h-12 flex-row items-center rounded-[14px] border border-[#D9E4E4] bg-white px-4">
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor="#6B7280"
+          className="flex-1 text-[16px] text-[#1F2937]"
+        />
+        <Pressable onPress={onOpenPicker} hitSlop={8} accessibilityLabel={`Select ${label}`}>
+          <Feather name="chevron-down" size={18} color="#6B7280" />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function isFemaleCattle(animal: Cattle): boolean {
+  return animal.gender.trim().toLowerCase() === 'female' || ['Cow', 'Heifer'].includes(animal.stage);
+}
+
+function isMaleCattle(animal: Cattle): boolean {
+  return animal.gender.trim().toLowerCase() === 'male' || ['Bull', 'Steer'].includes(animal.stage);
 }
 
 function parseDateForPicker(value: string): Date {

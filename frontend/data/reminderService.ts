@@ -1,13 +1,20 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { getHealthEvents, type HealthEvent } from './farmDatabase';
+import { getCattle, getHealthEvents, type HealthEvent } from './farmDatabase';
 import { isActiveEvent } from '../utils/eventArchive';
+import {
+  buildLifecycleAlerts,
+  formatLifecycleDueLabel,
+  LIFECYCLE_NOTIFY_OFFSETS,
+  type LifecycleAlert,
+} from '../utils/lifecycleAlerts';
 import { isCycleStepEnded } from '../utils/reproductiveCycle';
 import { getRemindersEnabled } from './reminderPrefs';
 
 const CHANNEL_ID = 'inka-reminders';
 const FOLLOWUP_PREFIX = 'inka-followup-';
 const WITHDRAWAL_PREFIX = 'inka-withdrawal-';
+const LIFECYCLE_PREFIX = 'inka-lifecycle-';
 const DIGEST_ID = 'inka-followup-digest';
 
 Notifications.setNotificationHandler({
@@ -21,7 +28,7 @@ Notifications.setNotificationHandler({
 
 export type FarmAlert = {
   id: string;
-  kind: 'followUp' | 'withdrawal';
+  kind: 'followUp' | 'withdrawal' | 'weaning' | 'heiferCheck' | 'dryOff' | 'calving';
   title: string;
   detail: string;
   eventId: string;
@@ -152,6 +159,7 @@ async function cancelInkaReminderNotifications(): Promise<void> {
         (item) =>
           item.identifier.startsWith(FOLLOWUP_PREFIX) ||
           item.identifier.startsWith(WITHDRAWAL_PREFIX) ||
+          item.identifier.startsWith(LIFECYCLE_PREFIX) ||
           item.identifier === DIGEST_ID,
       )
       .map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)),
@@ -188,6 +196,33 @@ async function scheduleFollowUpNotification(event: HealthEvent): Promise<void> {
   });
 }
 
+async function scheduleLifecycleNotification(alert: LifecycleAlert): Promise<void> {
+  await Promise.all(
+    LIFECYCLE_NOTIFY_OFFSETS.map(async (offset) => {
+      const fireDay = new Date(alert.dueDate);
+      fireDay.setDate(fireDay.getDate() - offset);
+      const fireAt = atEightAm(startOfLocalDay(fireDay));
+      if (fireAt.getTime() <= Date.now()) {
+        return;
+      }
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${LIFECYCLE_PREFIX}${alert.kind}-${alert.cattleTag}-${offset}`,
+        content: {
+          title: alert.title,
+          body: offset === 0 ? `${alert.detail} · due today` : `${alert.detail} · ${offset} days left`,
+          data: { type: alert.kind, cattleTag: alert.cattleTag },
+          sound: true,
+          ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: fireAt,
+        },
+      });
+    }),
+  );
+}
+
 async function scheduleWithdrawalNotification(event: HealthEvent): Promise<void> {
   const ends = withdrawalEndsOn(event);
   if (!ends) {
@@ -214,10 +249,25 @@ async function scheduleWithdrawalNotification(event: HealthEvent): Promise<void>
   });
 }
 
+function toLifecycleFarmAlerts(items: LifecycleAlert[]): FarmAlert[] {
+  return items.map((item) => ({
+    id: item.id,
+    kind: item.kind,
+    title: item.title,
+    detail: item.detail,
+    eventId: '',
+    cattleTag: item.cattleTag,
+    dueLabel: formatLifecycleDueLabel(item.daysUntil, item.dueDate),
+  }));
+}
+
 /** Cancel all Inka reminder notifications and reschedule from current events when enabled. */
 export async function syncFarmReminders(events?: HealthEvent[]): Promise<FarmAlert[]> {
-  const list = events ?? (await getHealthEvents());
-  const alerts = buildFarmAlerts(list);
+  const [list, herd] = await Promise.all([events ? Promise.resolve(events) : getHealthEvents(), getCattle()]);
+  const lifecycleWindow = buildLifecycleAlerts(herd, list, new Date(), { windowOnly: true });
+  const alerts = [...buildFarmAlerts(list), ...toLifecycleFarmAlerts(lifecycleWindow)].sort((a, b) =>
+    a.dueLabel.localeCompare(b.dueLabel),
+  );
 
   if (Platform.OS === 'web') {
     return alerts;
@@ -244,10 +294,12 @@ export async function syncFarmReminders(events?: HealthEvent[]): Promise<FarmAle
     }
     return ends.getTime() > Date.now();
   });
+  const lifecycleSchedule = buildLifecycleAlerts(herd, list, new Date(), { windowOnly: false });
 
   await Promise.all([
     ...upcomingFollowUps.slice(0, 40).map((event) => scheduleFollowUpNotification(event)),
     ...endingWithdrawals.slice(0, 40).map((event) => scheduleWithdrawalNotification(event)),
+    ...lifecycleSchedule.slice(0, 40).map((item) => scheduleLifecycleNotification(item)),
   ]);
 
   return alerts;

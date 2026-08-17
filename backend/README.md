@@ -128,7 +128,8 @@ All business routes are under `/api/v1`.
 Seeded demo accounts (from `npm run seed`):
 
 - Super Admin: `admin@inka.local` / `admin123`
-- Farm Owner: `owner@inka.local` / `owner123` (linked to `default-farm` and `second-farm` / Inka East Farm — use Settings or Dashboard to switch)
+- Farm Owner: `owner@inka.local` / `owner123` (linked to `default-farm`, `second-farm` / Inka East Farm, and `rwamagana-farm` / Rwamagana Dairy Farm — use Settings or Dashboard to switch)
+- Rwamagana Dairy Farm seed: 12 animals (calf → weaner → heifer → cow, plus bull/steer) and 6 lifecycle events with 10-day follow-ups: weaning, breeding-heifer check, return heat, pregnancy check, dry-off, calving due.
 - Farm Manager: `manager@inka.local` / `manager123`
 - Veterinarian: `vet@inka.local` / `vet123`
 - Worker: `worker@inka.local` / `worker123`
