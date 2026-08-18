@@ -30,6 +30,12 @@ const healthEventCrud = createCrudRouter({
         tagNumber: true,
       },
     },
+    transactions: {
+      where: { deletedAt: null, kind: 'EXPENSE' },
+      select: { amount: true, category: true },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+    },
   },
   listWhere: (query) => {
     const where: Record<string, unknown> = {
@@ -60,8 +66,8 @@ const healthEventCrud = createCrudRouter({
   afterCreate: async (body, record, auth) => {
     await afterHealthEventCreate(body, record, auth.id);
   },
-  afterUpdate: async (id, body, record) => {
-    await afterHealthEventUpdate(id, body, record);
+  afterUpdate: async (id, body, record, auth) => {
+    await afterHealthEventUpdate(id, body, record, auth.id);
   },
   beforeDelete: async (id, _existing, auth) => {
     await archiveLinkedEventTransactions(id, auth.id);

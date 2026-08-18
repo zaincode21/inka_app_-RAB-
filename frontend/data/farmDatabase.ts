@@ -1052,6 +1052,7 @@ type BackendHealthEvent = {
   photoUri?: string | null;
   createdBy?: BackendActor | null;
   createdAt: string;
+  transactions?: Array<{ amount?: number | string; category?: string | null }>;
 };
 
 type BackendTransaction = {
@@ -1283,6 +1284,7 @@ function mapBackendHealthEvent(row: BackendHealthEvent): HealthEvent {
     followUpDate: toIsoDateTime(row.followUpDate),
     weightKg: toNumber(row.weightKg),
     bodyConditionScore: toNumber(row.bodyConditionScore ?? 0),
+    treatmentCost: toNumber(row.transactions?.[0]?.amount ?? 0),
     semenUsed: row.semenUsed ?? '',
     bullResponsible: row.bullResponsible ?? '',
     returnHeatDate: toIsoDateTime(row.returnHeatDate),

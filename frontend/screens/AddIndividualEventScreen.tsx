@@ -11,7 +11,7 @@ import { SelectDropdown } from '../components/SelectDropdown';
 import { emptyMedicationValues, MedicationFields } from '../components/MedicationFields';
 import { useRequireAccess } from '../data/accessGuard';
 import { getCurrentSession } from '../data/authApi';
-import { addDays, combineDateAndTime, DEFAULT_RETURN_HEAT_DAYS, DEFAULT_RETURN_HEAT_TIME, getBirthPrefillEvent, getCattle, getCategories, getLatestBreedingEvent, getSystemConfig, parseNumber, updateHealthEvent, useDatabaseQuery, type HealthEvent } from '../data/farmDatabase';
+import { addDays, combineDateAndTime, DEFAULT_RETURN_HEAT_DAYS, DEFAULT_RETURN_HEAT_TIME, getBirthPrefillEvent, getCattle, getCategories, getLatestBreedingEvent, getSystemConfig, parseNumber, todayIsoDate, updateHealthEvent, useDatabaseQuery, type HealthEvent } from '../data/farmDatabase';
 import { createHealthEventOrQueue } from '../data/offlineQueue';
 import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
@@ -45,7 +45,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   );
   const [latestBreedingEvent, setLatestBreedingEvent] = useState<HealthEvent | null>(null);
   const [birthPrefillEvent, setBirthPrefillEvent] = useState<HealthEvent | null>(null);
-  const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? '');
+  const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? todayIsoDate());
   const [showEventDatePicker, setShowEventDatePicker] = useState(false);
   const [showHeatDatePicker, setShowHeatDatePicker] = useState(false);
   const [cattleTag, setCattleTag] = useState(editingEvent?.cattleTag ?? route.params?.cattleTag ?? '');
@@ -89,6 +89,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       batchNumber: editingEvent?.batchNumber,
       vetContact: editingEvent?.vetContact,
       followUpDate: editingEvent?.followUpDate,
+      treatmentCost: editingEvent?.treatmentCost ? `${editingEvent.treatmentCost}` : undefined,
     }),
   );
 
@@ -214,6 +215,18 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
     }
   };
 
+  const openEventDatePicker = () => {
+    if (Platform.OS !== 'ios' && !eventDate.trim()) {
+      setEventDate(formatPickerDate(new Date()));
+    }
+    setShowEventDatePicker(true);
+  };
+
+  const confirmEventDate = () => {
+    setEventDate((current) => current.trim() || formatPickerDate(new Date()));
+    setShowEventDatePicker(false);
+  };
+
   const handleHeatDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     const timestamp = event.nativeEvent.timestamp;
     const pickedDate = selectedDate ?? (timestamp ? new Date(timestamp) : undefined);
@@ -227,6 +240,18 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
     if (Platform.OS !== 'ios') {
       setShowHeatDatePicker(false);
     }
+  };
+
+  const openHeatDatePicker = () => {
+    if (Platform.OS !== 'ios' && !breedingDate.trim()) {
+      setBreedingDate(formatPickerDate(new Date()));
+    }
+    setShowHeatDatePicker(true);
+  };
+
+  const confirmHeatDate = () => {
+    setBreedingDate((current) => current.trim() || formatPickerDate(new Date()));
+    setShowHeatDatePicker(false);
   };
 
   const saveEvent = async () => {
@@ -258,7 +283,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       }
     }
 
-    if (!validateEventFields(eventType, breedingMethod, { diagnosis, technician, medicine: medication.medicine, weightResult, semenUsed, vetName, breedingDate, bullResponsible: resolvedBullName })) {
+    if (!validateEventFields(eventType, breedingMethod, { diagnosis, technician, medicine: medication.medicine, treatmentCost: medication.treatmentCost, weightResult, semenUsed, vetName, breedingDate, bullResponsible: resolvedBullName })) {
       return;
     }
 
@@ -370,7 +395,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         }
       >
         <Label text="Event Date" />
-        <DateField value={eventDate} placeholder="Select event date" onPress={() => setShowEventDatePicker(true)} />
+        <DateField value={eventDate} placeholder="Select event date" onPress={openEventDatePicker} />
 
         {route.params?.cattleTag ? (
           <>
@@ -409,7 +434,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
           <>
             <SelectDropdown label="Diagnosis" value={diagnosis} placeholder="Select disease" options={diseaseOptions} onSelect={setDiagnosis} />
             <ConditionalInput placeholder="Technician Name" value={technician} onChangeText={setTechnician} />
-            <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
+            <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} costRequired />
           </>
         ) : null}
 
@@ -435,7 +460,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         {eventType === 'Heat Observed' ? (
           <>
             <Label text="Heat Date" />
-            <DateField value={breedingDate} placeholder="Select heat date" onPress={() => setShowHeatDatePicker(true)} />
+            <DateField value={breedingDate} placeholder="Select heat date" onPress={openHeatDatePicker} />
           </>
         ) : null}
 
@@ -559,7 +584,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
               onChange={handleEventDateChange}
               style={{ height: 216, width: '100%' }}
             />
-            <Pressable onPress={() => setShowEventDatePicker(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
+            <Pressable onPress={confirmEventDate} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
               <Text className="text-[16px] font-bold text-white">Done</Text>
             </Pressable>
           </Pressable>
@@ -583,7 +608,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
               onChange={handleHeatDateChange}
               style={{ height: 216, width: '100%' }}
             />
-            <Pressable onPress={() => setShowHeatDatePicker(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
+            <Pressable onPress={confirmHeatDate} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
               <Text className="text-[16px] font-bold text-white">Done</Text>
             </Pressable>
           </Pressable>
@@ -633,10 +658,14 @@ function inferBreedingMethod(event?: HealthEvent): string {
 function validateEventFields(
   eventType: string,
   breedingMethod: string,
-  values: { diagnosis: string; technician: string; medicine: string; weightResult: string; semenUsed: string; vetName: string; breedingDate: string; bullResponsible: string },
+  values: { diagnosis: string; technician: string; medicine: string; treatmentCost: string; weightResult: string; semenUsed: string; vetName: string; breedingDate: string; bullResponsible: string },
 ): boolean {
   if (eventType === 'Treated' && (!values.diagnosis.trim() || !values.technician.trim() || !values.medicine)) {
     Alert.alert('Missing treatment details', 'Please enter diagnosis, technician name, and medicine.');
+    return false;
+  }
+  if (eventType === 'Treated' && parseNumber(values.treatmentCost) <= 0) {
+    Alert.alert('Missing treatment cost', 'Enter the treatment cost so it is recorded as a Veterinary expense.');
     return false;
   }
   if (requiresMedicine(eventType) && eventType !== 'Hoof Trimming' && !values.medicine) {

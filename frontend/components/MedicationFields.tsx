@@ -22,9 +22,10 @@ type Props = {
   values: MedicationFormValues;
   onChange: (patch: Partial<MedicationFormValues>) => void;
   showTreatmentCost?: boolean;
+  costRequired?: boolean;
 };
 
-export function MedicationFields({ medicineOptions, withdrawalByMedicine, values, onChange, showTreatmentCost = true }: Props) {
+export function MedicationFields({ medicineOptions, withdrawalByMedicine, values, onChange, showTreatmentCost = true, costRequired = false }: Props) {
   const [showFollowUpPicker, setShowFollowUpPicker] = useState(false);
 
   const handleFollowUpChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
@@ -62,12 +63,31 @@ export function MedicationFields({ medicineOptions, withdrawalByMedicine, values
       <Field label="Batch / Lot Number" placeholder="Medicine batch number" value={values.batchNumber} onChangeText={(batchNumber) => onChange({ batchNumber })} />
       <Field label="Vet Contact" placeholder="Phone or clinic name" value={values.vetContact} onChangeText={(vetContact) => onChange({ vetContact })} />
       <Label text="Follow-up Date" />
-      <Pressable onPress={() => setShowFollowUpPicker(true)} className="h-[48px] flex-row items-center justify-between rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3">
+      <Pressable
+        onPress={() => {
+          if (Platform.OS !== 'ios' && !values.followUpDate.trim()) {
+            onChange({ followUpDate: formatPickerDate(new Date()) });
+          }
+          setShowFollowUpPicker(true);
+        }}
+        className="h-[48px] flex-row items-center justify-between rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3"
+      >
         <Text className={values.followUpDate ? 'text-[16px] text-[#1F2937]' : 'text-[16px] text-[#6B7280]'}>{values.followUpDate || 'Select follow-up date'}</Text>
         <Feather name="calendar" size={18} color="#6B7280" />
       </Pressable>
       {showTreatmentCost ? (
-        <Field label="Treatment Cost (RWF)" placeholder="Optional vet/medicine cost" keyboardType="decimal-pad" value={values.treatmentCost} onChangeText={(treatmentCost) => onChange({ treatmentCost })} />
+        <>
+          <Field
+            label="Treatment Cost (RWF)"
+            placeholder={costRequired ? 'Required treatment cost' : 'Optional vet/medicine cost'}
+            keyboardType="decimal-pad"
+            value={values.treatmentCost}
+            onChangeText={(treatmentCost) => onChange({ treatmentCost })}
+          />
+          {costRequired ? (
+            <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">Saved as a Veterinary expense.</Text>
+          ) : null}
+        </>
       ) : null}
 
       {showFollowUpPicker && Platform.OS !== 'ios' ? (
@@ -91,7 +111,15 @@ export function MedicationFields({ medicineOptions, withdrawalByMedicine, values
               onChange={handleFollowUpChange}
               style={{ height: 216, width: '100%' }}
             />
-            <Pressable onPress={() => setShowFollowUpPicker(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
+            <Pressable
+              onPress={() => {
+                if (!values.followUpDate.trim()) {
+                  onChange({ followUpDate: formatPickerDate(new Date()) });
+                }
+                setShowFollowUpPicker(false);
+              }}
+              className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
+            >
               <Text className="text-[16px] font-bold text-white">Done</Text>
             </Pressable>
           </Pressable>

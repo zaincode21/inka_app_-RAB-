@@ -253,8 +253,28 @@ export function AddCattleScreen({ navigation, route }: Props) {
           <SelectField label="Gender" value={gender} placeholder="Select gender" onPress={() => setActivePicker({ label: 'Gender', value: gender, options: genderOptions, onSelect: handleGenderSelect })} />
           <SelectField label="Cattle Stage" value={stage} placeholder={gender ? 'Select cattle stage' : 'Select gender first'} onPress={() => setActivePicker({ label: 'Cattle Stage', value: stage, options: stageOptions, onSelect: setStage })} />
           <InputField label="Weight" placeholder="Enter weight" keyboardType="decimal-pad" value={weight} onChangeText={setWeight} />
-          <DateField label="Date of Birth" value={dateOfBirth} placeholder="Enter date of birth" onPress={() => setActiveDatePicker('dateOfBirth')} />
-          <DateField label="Farm Entry Date" value={entryDate} placeholder="Enter entry date" onPress={() => setActiveDatePicker('entryDate')} />
+          <DateField
+            label="Date of Birth"
+            value={dateOfBirth}
+            placeholder="Enter date of birth"
+            onPress={() => {
+              if (Platform.OS !== 'ios' && !dateOfBirth.trim()) {
+                setDateOfBirth(formatPickerDate(new Date()));
+              }
+              setActiveDatePicker('dateOfBirth');
+            }}
+          />
+          <DateField
+            label="Farm Entry Date"
+            value={entryDate}
+            placeholder="Enter entry date"
+            onPress={() => {
+              if (Platform.OS !== 'ios' && !entryDate.trim()) {
+                setEntryDate(formatPickerDate(new Date()));
+              }
+              setActiveDatePicker('entryDate');
+            }}
+          />
           <SelectField label="Cattle Group" value={group} placeholder="Select group (optional)" onPress={() => setActivePicker({ label: 'Cattle Group', value: group, options: groupOptions, onSelect: setGroup })} />
           <SelectField
             label="How Obtained"
@@ -451,7 +471,18 @@ export function AddCattleScreen({ navigation, route }: Props) {
               onChange={handleDateChange}
               style={{ height: 216, width: '100%' }}
             />
-            <Pressable onPress={() => setActiveDatePicker(null)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
+            <Pressable
+              onPress={() => {
+                if (activeDatePicker === 'dateOfBirth' && !dateOfBirth.trim()) {
+                  setDateOfBirth(formatPickerDate(new Date()));
+                }
+                if (activeDatePicker === 'entryDate' && !entryDate.trim()) {
+                  setEntryDate(formatPickerDate(new Date()));
+                }
+                setActiveDatePicker(null);
+              }}
+              className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3"
+            >
               <Text className="text-[16px] font-bold text-white">Done</Text>
             </Pressable>
           </Pressable>

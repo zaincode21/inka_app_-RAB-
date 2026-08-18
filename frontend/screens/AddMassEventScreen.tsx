@@ -51,6 +51,7 @@ export function AddMassEventScreen({ navigation, route }: Props) {
       batchNumber: editingEvent?.batchNumber,
       vetContact: editingEvent?.vetContact,
       followUpDate: editingEvent?.followUpDate,
+      treatmentCost: editingEvent?.treatmentCost ? `${editingEvent.treatmentCost}` : undefined,
     }),
   );
 
@@ -67,6 +68,11 @@ export function AddMassEventScreen({ navigation, route }: Props) {
 
     if (requiresMedicine(eventType) && !medication.medicine) {
       Alert.alert('Missing medicine', 'Please select medicine information.');
+      return;
+    }
+
+    if (eventType === 'Treated' && parseNumber(medication.treatmentCost) <= 0) {
+      Alert.alert('Missing treatment cost', 'Enter the treatment cost so it is recorded as a Veterinary expense.');
       return;
     }
 
@@ -158,7 +164,7 @@ export function AddMassEventScreen({ navigation, route }: Props) {
         <Input placeholder="Optional supervising vet" value={vetName} onChangeText={setVetName} />
 
         {requiresMedicine(eventType) || eventType === 'Herd Spraying' ? (
-          <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
+          <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} costRequired={eventType === 'Treated'} />
         ) : null}
 
         <Label text="Notes" />

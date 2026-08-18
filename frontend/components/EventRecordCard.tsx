@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
-import { type HealthEvent, formatNumber } from '../data/farmDatabase';
+import { type HealthEvent, formatMoney, formatNumber } from '../data/farmDatabase';
 import { eventTypeLabel } from '../utils/eventConstants';
 import { diseaseLabel } from '../utils/diseases';
 import {
@@ -278,6 +278,9 @@ export function buildEventCardRows(
         { label: 'Diagnosis', value: diagnosisValue },
         { label: 'Technician', value: displayValue(item.technician) },
       );
+      if (item.treatmentCost && item.treatmentCost > 0) {
+        rows.push({ label: 'Expense', value: formatMoney(item.treatmentCost) });
+      }
       appendMedicationRows(rows, item);
       break;
     case 'Vaccinated':

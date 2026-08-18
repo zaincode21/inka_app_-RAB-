@@ -42,6 +42,11 @@ export function assertRequiredHealthEventDetails(body: Record<string, unknown>):
   const bullResponsible = typeof body.bullResponsible === 'string' ? body.bullResponsible.trim() : '';
   const calfName = typeof body.calfTag === 'string' ? body.calfTag.trim() : '';
   const calfGender = typeof body.calfGender === 'string' ? body.calfGender.trim().toUpperCase() : '';
+  const treatmentCost = Number(body.treatmentCost ?? 0);
+
+  if (eventType === 'treated' && !(treatmentCost > 0)) {
+    throw new ApiError(400, 'Treatment cost is required for Treated events so they are recorded as an expense.');
+  }
 
   if (eventType !== 'giving birth') {
     return;
@@ -197,7 +202,7 @@ export async function validateHealthEventUpdate(id: string, body: Record<string,
   const bullResponsible = typeof body.bullResponsible === 'string' ? body.bullResponsible : existing.bullResponsible;
   const calfTag = typeof body.calfTag === 'string' ? body.calfTag : existing.calfTag;
   const calfGender = typeof body.calfGender === 'string' ? body.calfGender : existing.calfGender;
-  assertRequiredHealthEventDetails({ eventType, bullResponsible, calfTag, calfGender });
+  assertRequiredHealthEventDetails({ eventType, bullResponsible, calfTag, calfGender, treatmentCost: body.treatmentCost });
   await assertFemaleCattleForReproductiveEvent({ eventType, cattleId });
   await assertNoInbreedingForHealthEvent({ eventType, cattleId, bullResponsible });
 }
@@ -278,15 +283,33 @@ export async function syncCattleFromHealthEvent(body: Record<string, unknown>, r
   });
 }
 
-export async function linkTreatmentCost(
+export async function syncTreatmentExpense(
   body: Record<string, unknown>,
   record: Record<string, unknown>,
   actorUserId?: string | null,
 ): Promise<void> {
-  const treatmentCost = Number(body.treatmentCost ?? 0);
   const eventId = typeof record.id === 'string' ? record.id : null;
+  if (!eventId) {
+    return;
+  }
 
-  if (!eventId || treatmentCost <= 0) {
+  const treatmentCost = Number(body.treatmentCost ?? 0);
+  const existing = await prisma.transaction.findFirst({
+    where: {
+      healthEventId: eventId,
+      kind: 'EXPENSE',
+      category: { equals: 'Veterinary', mode: 'insensitive' },
+      ...notDeleted,
+    },
+  });
+
+  if (treatmentCost <= 0) {
+    if (existing) {
+      await prisma.transaction.update({
+        where: { id: existing.id },
+        data: actorUserId ? softDeleteData(actorUserId) : { deletedAt: new Date() },
+      });
+    }
     return;
   }
 
@@ -295,8 +318,13 @@ export async function linkTreatmentCost(
       ? body.eventType
       : typeof record.eventType === 'string'
         ? record.eventType
-        : 'Treatment';
-  const medicine = typeof body.medicine === 'string' ? body.medicine.trim() : '';
+        : 'Treated';
+  const medicine =
+    typeof body.medicine === 'string'
+      ? body.medicine.trim()
+      : typeof record.medicine === 'string'
+        ? record.medicine.trim()
+        : '';
   const cattleId =
     typeof body.cattleId === 'string'
       ? body.cattleId
@@ -312,25 +340,32 @@ export async function linkTreatmentCost(
         ? record.eventDate
         : new Date();
 
-  await prisma.transaction.create({
-    data: {
-      farmId,
-      cattleId,
-      healthEventId: eventId,
-      kind: 'EXPENSE',
-      date: eventDate,
-      category: 'Veterinary',
-      title: medicine ? `${eventType} - ${medicine}` : eventType,
-      amount: treatmentCost,
-      notes: 'Linked from health event',
-      ...(actorUserId
-        ? {
-            createdByUserId: actorUserId,
-            updatedByUserId: actorUserId,
-          }
-        : {}),
-    },
-  });
+  const payload = {
+    farmId,
+    cattleId: cattleId || null,
+    healthEventId: eventId,
+    kind: 'EXPENSE' as const,
+    date: eventDate,
+    category: 'Veterinary',
+    title: medicine ? `${eventType} - ${medicine}` : eventType,
+    amount: treatmentCost,
+    notes: 'Linked from Treated event',
+    deletedAt: null,
+    deletedByUserId: null,
+    ...(actorUserId
+      ? {
+          updatedByUserId: actorUserId,
+          ...(!existing ? { createdByUserId: actorUserId } : {}),
+        }
+      : {}),
+  };
+
+  if (existing) {
+    await prisma.transaction.update({ where: { id: existing.id }, data: payload });
+    return;
+  }
+
+  await prisma.transaction.create({ data: payload });
 }
 
 async function generateUniqueCalfTag(motherTag: string, calfName: string): Promise<string> {
@@ -431,15 +466,17 @@ export async function afterHealthEventCreate(
 ): Promise<void> {
   await registerCalfFromBirthEvent(body, record, actorUserId);
   await syncCattleFromHealthEvent(body, record);
-  await linkTreatmentCost(body, record, actorUserId);
+  await syncTreatmentExpense(body, record, actorUserId);
 }
 
 export async function afterHealthEventUpdate(
   _id: string,
   body: Record<string, unknown>,
   record: Record<string, unknown>,
+  actorUserId?: string | null,
 ): Promise<void> {
   await syncCattleFromHealthEvent(body, record);
+  await syncTreatmentExpense(body, record, actorUserId);
 }
 
 export async function archiveLinkedEventTransactions(eventId: string, actorUserId: string): Promise<void> {
