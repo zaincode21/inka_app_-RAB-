@@ -16,7 +16,7 @@ import { createHealthEventOrQueue } from '../data/offlineQueue';
 import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { FEMALE_ONLY_EVENT_TYPES, eventTypeOptionsFromNames, requiresClinicalNotes, requiresMedicationDetails, requiresMedicine } from '../utils/eventConstants';
-import { COW_ONLY_EVENT_TYPES, cowReproductiveIneligibleReason, isEligibleForCowReproductiveEvent, isFemaleCattle } from '../utils/breedingEligibility';
+import { isCowOrHeiferFemale, reproductiveEventIneligibleReason } from '../utils/breedingEligibility';
 import { diseaseOptionsFromNames } from '../utils/diseases';
 import { getInbreedingViolation, INBREEDING_CHECK_EVENT_TYPES } from '../utils/inbreeding';
 import { showInfoToast, showSuccessToast } from '../utils/toast';
@@ -51,31 +51,6 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   const [showHeatDatePicker, setShowHeatDatePicker] = useState(false);
   const [cattleTag, setCattleTag] = useState(editingEvent?.cattleTag ?? route.params?.cattleTag ?? '');
   const [eventType, setEventType] = useState(editingEvent?.eventType ?? route.params?.presetEventType ?? '');
-  const selectedCattle = useMemo(
-    () => cattle.find((animal) => animal.tagNumber === (route.params?.cattleTag ?? cattleTag)),
-    [cattle, cattleTag, route.params?.cattleTag],
-  );
-  const eventTypeOptions = useMemo(() => {
-    const extra = eventType || editingEvent?.eventType || route.params?.presetEventType;
-    const names = eventTypes
-      .map((category) => category.name)
-      .filter((name) => {
-        if (!COW_ONLY_EVENT_TYPES.has(name)) {
-          return true;
-        }
-        if (!selectedCattle) {
-          return true;
-        }
-        return isEligibleForCowReproductiveEvent(name, selectedCattle);
-      });
-    const keepExtra =
-      Boolean(extra) &&
-      (!COW_ONLY_EVENT_TYPES.has(extra) ||
-        isEditing ||
-        !selectedCattle ||
-        isEligibleForCowReproductiveEvent(extra, selectedCattle));
-    return eventTypeOptionsFromNames(names, t, keepExtra ? extra : undefined);
-  }, [eventTypes, t, eventType, editingEvent?.eventType, route.params?.presetEventType, selectedCattle, isEditing]);
   const sourceEventId = editingEvent?.sourceEventId ?? route.params?.sourceEventId ?? '';
   const [breedingMethod, setBreedingMethod] = useState(inferBreedingMethod(editingEvent));
   const [calfName, setCalfName] = useState(editingEvent?.calfTag ?? '');
@@ -112,20 +87,28 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
 
   const cattleTagOptions = useMemo(() => {
     const activeCattle = cattle.filter((animal) => animal.status.trim().toLowerCase() === 'active');
-    const eligibleCattle = COW_ONLY_EVENT_TYPES.has(eventType)
-      ? activeCattle.filter((animal) => isEligibleForCowReproductiveEvent(eventType, animal))
-      : FEMALE_ONLY_EVENT_TYPES.has(eventType)
-        ? activeCattle.filter(isFemaleCattle)
-        : activeCattle;
+    const eligibleCattle = FEMALE_ONLY_EVENT_TYPES.has(eventType)
+      ? activeCattle.filter(isCowOrHeiferFemale)
+      : activeCattle;
     return eligibleCattle.map((animal) => ({
       label: animal.name.trim() || animal.tagNumber,
       value: animal.tagNumber,
     }));
   }, [cattle, eventType]);
   const activeCattleTag = route.params?.cattleTag ?? cattleTag;
+  const selectedCattle = useMemo(() => cattle.find((animal) => animal.tagNumber === activeCattleTag), [cattle, activeCattleTag]);
   const selectedCattleName = selectedCattle?.name.trim() || activeCattleTag;
-  const femaleOnlyEventBlocked = FEMALE_ONLY_EVENT_TYPES.has(eventType) && Boolean(selectedCattle) && !isFemaleCattle(selectedCattle!);
-  const cowEventBlockedReason = selectedCattle ? cowReproductiveIneligibleReason(eventType, selectedCattle) : null;
+  const eventTypeOptions = useMemo(
+    () =>
+      eventTypeOptionsFromNames(
+        eventTypes.map((category) => category.name),
+        t,
+        eventType || editingEvent?.eventType || route.params?.presetEventType,
+      ),
+    [eventTypes, t, eventType, editingEvent?.eventType, route.params?.presetEventType],
+  );
+  const reproductiveBlockedReason =
+    FEMALE_ONLY_EVENT_TYPES.has(eventType) && selectedCattle ? reproductiveEventIneligibleReason(selectedCattle, eventType) : null;
   const returnHeatDate =
     eventType === 'Breeding' && eventDate
       ? combineDateAndTime(addDays(eventDate, returnHeatDays), returnHeatTime)
@@ -154,15 +137,6 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   }, []);
 
   useEffect(() => {
-    if (isEditing || !selectedCattle || !eventType) {
-      return;
-    }
-    if (cowReproductiveIneligibleReason(eventType, selectedCattle)) {
-      setEventType('');
-    }
-  }, [selectedCattle, eventType, isEditing]);
-
-  useEffect(() => {
     if (!cattleTag || route.params?.cattleTag) {
       return;
     }
@@ -170,11 +144,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
     if (!selected) {
       return;
     }
-    if (COW_ONLY_EVENT_TYPES.has(eventType) && !isEligibleForCowReproductiveEvent(eventType, selected)) {
-      setCattleTag('');
-      return;
-    }
-    if (FEMALE_ONLY_EVENT_TYPES.has(eventType) && !isFemaleCattle(selected)) {
+    if (FEMALE_ONLY_EVENT_TYPES.has(eventType) && !isCowOrHeiferFemale(selected)) {
       setCattleTag('');
     }
   }, [eventType, cattle, cattleTag, route.params?.cattleTag]);
@@ -301,16 +271,12 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       return;
     }
     const selectedAnimal = cattle.find((animal) => animal.tagNumber === cattleTag);
-    if (selectedAnimal) {
-      const cowReason = cowReproductiveIneligibleReason(eventType, selectedAnimal);
-      if (cowReason) {
-        Alert.alert('Animal not eligible', cowReason);
+    if (FEMALE_ONLY_EVENT_TYPES.has(eventType) && selectedAnimal) {
+      const reason = reproductiveEventIneligibleReason(selectedAnimal, eventType);
+      if (reason) {
+        Alert.alert('Animal not eligible', reason);
         return;
       }
-    }
-    if (FEMALE_ONLY_EVENT_TYPES.has(eventType) && selectedAnimal && !isFemaleCattle(selectedAnimal)) {
-      Alert.alert('Female cattle only', 'This event can only be recorded for female cattle.');
-      return;
     }
 
     let resolvedBullName = bullResponsible.trim();
@@ -450,24 +416,13 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
             <View className="h-[48px] justify-center rounded-[14px] border border-[#D9E4E4] bg-white px-4 py-3">
               <Text className="text-[16px] text-[#1F2937]">{selectedCattleName}</Text>
             </View>
-            {eventType !== 'Breeding' && femaleOnlyEventBlocked && !cowEventBlockedReason ? (
-              <Text className="mb-4 mt-2 text-sm text-red-600">This event is only for female cattle.</Text>
-            ) : null}
-            {cowEventBlockedReason ? <Text className="mb-4 mt-2 text-sm text-red-600">{cowEventBlockedReason}</Text> : null}
+            {reproductiveBlockedReason ? <Text className="mb-4 mt-2 text-sm text-red-600">{reproductiveBlockedReason}</Text> : null}
           </>
         ) : (
           <SelectDropdown
             label="Animal"
             value={cattleTag}
-            placeholder={
-              eventType === 'Breeding'
-                ? 'Select a cow that is not pregnant'
-                : COW_ONLY_EVENT_TYPES.has(eventType)
-                  ? 'Select a cow'
-                  : FEMALE_ONLY_EVENT_TYPES.has(eventType)
-                    ? 'Select female animal'
-                    : 'Select animal'
-            }
+            placeholder={FEMALE_ONLY_EVENT_TYPES.has(eventType) ? 'Select heifer or cow' : 'Select animal'}
             options={cattleTagOptions}
             onSelect={setCattleTag}
           />

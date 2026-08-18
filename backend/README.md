@@ -109,7 +109,7 @@ All business routes are under `/api/v1`.
   - Saving events can auto-update linked cattle weight, body condition score, reproductive status, parity, and lactation number.
   - Treated events and Breeding (AI / semen) events require `treatmentCost` and always create or update a linked **Veterinary** expense transaction. Deleting the event soft-archives that expense. Natural-service (bull) breeding does not create an expense.
   - `Giving Birth` events require a bull name in `bullResponsible`, plus calf name (`calfTag`) and calf gender. Saving a new Giving Birth event also auto-creates a calf cattle record with mother and bull lineage filled in.
-  - Breeding, Pregnant, Aborted, and Giving Birth are allowed only for cows (not heifers). Breeding also requires the cow is not pregnant.
+  - Breeding, Pregnant, Aborted, and Giving Birth can be recorded for female heifers and cows. Calves, weaners, and males are rejected. Breeding is also blocked for pregnant or dry animals.
   - Breeding and Pregnant events reject bulls that match the female's father or maternal grandfather (mother's father).
   - Reproductive cycle: Kwimisha (Breeding) sets `followUpDate` to the return-heat date. After the return-heat window, the Events UI offers **Heat returned** or **Confirm Gusama**. Open Gusama cards offer **Kuramburura (Abort)** (notes required) or **Kubyara (Birth)** (opens birth form). Linked events store `sourceEventId`. Creating a second open Pregnant for the same animal is blocked until Abort or Birth closes the cycle.
 - `/api/v1/transactions`: income and expense records with category, amount, quantity, unit price, buyer/vendor, payment, receipt, tax, discount, and resource links. Actor tracking and soft-delete same as cattle. Delete: Owner/Super Admin only.

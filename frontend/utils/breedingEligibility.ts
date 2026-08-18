@@ -2,14 +2,16 @@ function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/_/g, ' ');
 }
 
-export const COW_ONLY_EVENT_TYPES = new Set(['Breeding', 'Pregnant', 'Aborted', 'Giving Birth']);
-
 export function isFemaleCattle(animal: { gender: string }): boolean {
   return normalize(animal.gender) === 'female';
 }
 
-export function isCowStage(animal: { stage: string }): boolean {
+export function isCowCattle(animal: { stage: string }): boolean {
   return normalize(animal.stage) === 'cow';
+}
+
+export function isHeiferCattle(animal: { stage: string }): boolean {
+  return normalize(animal.stage) === 'heifer';
 }
 
 function isPregnantOrDry(animal: { reproductiveStatus: string }): boolean {
@@ -17,37 +19,22 @@ function isPregnantOrDry(animal: { reproductiveStatus: string }): boolean {
   return status === 'pregnant' || status === 'dry';
 }
 
-export function isCowOnlyEventType(eventType: string): boolean {
-  return COW_ONLY_EVENT_TYPES.has(eventType);
+export function isCowOrHeiferFemale(animal: { gender: string; stage: string }): boolean {
+  return isFemaleCattle(animal) && (isCowCattle(animal) || isHeiferCattle(animal));
 }
 
-/** Breeding: non-pregnant cows only. Pregnant / Abort / Birth: cows only. Heifers are not eligible. */
-export function isEligibleForCowReproductiveEvent(
-  eventType: string,
+export function reproductiveEventIneligibleReason(
   animal: { gender: string; stage: string; reproductiveStatus: string },
-): boolean {
-  return cowReproductiveIneligibleReason(eventType, animal) === null;
-}
-
-export function cowReproductiveIneligibleReason(
   eventType: string,
-  animal: { gender: string; stage: string; reproductiveStatus: string },
 ): string | null {
-  if (!isCowOnlyEventType(eventType)) {
-    return null;
-  }
   if (!isFemaleCattle(animal)) {
     return 'This event can only be recorded for female cattle.';
   }
-  if (!isCowStage(animal)) {
-    return 'Select a cow. Heifers cannot be recorded for breeding, pregnancy, abort, or birth.';
+  if (!isCowOrHeiferFemale(animal)) {
+    return 'Breeding, pregnancy, abort, and birth are for heifers and cows.';
   }
   if (eventType === 'Breeding' && isPregnantOrDry(animal)) {
-    return 'This cow is already pregnant. Record abort or birth before breeding again.';
+    return 'This animal is already pregnant. Record abort or birth before breeding again.';
   }
   return null;
-}
-
-export function isBreedingEligibleCattle(animal: { gender: string; stage: string; reproductiveStatus: string }): boolean {
-  return isEligibleForCowReproductiveEvent('Breeding', animal);
 }

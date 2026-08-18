@@ -141,8 +141,7 @@ export async function assertNoDuplicateOpenPregnancy(body: Record<string, unknow
 
 export async function assertEligibleCattleForCowReproductiveEvent(body: Record<string, unknown>): Promise<void> {
   const eventType = typeof body.eventType === 'string' ? body.eventType.trim().toLowerCase() : '';
-  const cowOnlyEvents = new Set(['breeding', 'pregnant', 'aborted', 'giving birth']);
-  if (!cowOnlyEvents.has(eventType)) {
+  if (!['breeding', 'pregnant', 'aborted', 'giving birth'].includes(eventType)) {
     return;
   }
 
@@ -162,16 +161,14 @@ export async function assertEligibleCattleForCowReproductiveEvent(body: Record<s
   if (cattle.sex !== 'FEMALE') {
     throw new ApiError(400, 'This event can only be recorded for female cattle.');
   }
-  if (cattle.stage !== 'COW') {
-    throw new ApiError(400, 'Select a cow. Heifers cannot be recorded for breeding, pregnancy, abort, or birth.');
+  if (cattle.stage !== 'HEIFER' && cattle.stage !== 'COW') {
+    throw new ApiError(400, 'Breeding, pregnancy, abort, and birth are for heifers and cows.');
   }
-  if (eventType === 'breeding') {
-    if (cattle.reproductiveStatus === 'PREGNANT' || cattle.reproductiveStatus === 'DRY') {
-      throw new ApiError(400, 'This cow is already pregnant. Record abort or birth before breeding again.');
-    }
-    if (await cattleHasOpenPregnancy(cattleId)) {
-      throw new ApiError(400, 'This cow is already pregnant. Record abort or birth before breeding again.');
-    }
+  if (eventType === 'breeding' && (cattle.reproductiveStatus === 'PREGNANT' || cattle.reproductiveStatus === 'DRY')) {
+    throw new ApiError(400, 'This animal is already pregnant. Record abort or birth before breeding again.');
+  }
+  if (eventType === 'breeding' && (await cattleHasOpenPregnancy(cattleId))) {
+    throw new ApiError(400, 'This animal is already pregnant. Record abort or birth before breeding again.');
   }
 }
 
