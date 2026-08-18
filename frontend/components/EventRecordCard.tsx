@@ -252,6 +252,9 @@ export function buildEventCardRows(
         { label: 'Bull', value: displayValue(item.bullResponsible) },
         { label: 'Return Date', value: formatDisplayDate(item.returnHeatDate) },
       );
+      if (item.semenUsed && item.treatmentCost && item.treatmentCost > 0) {
+        rows.push({ label: 'Expense', value: formatMoney(item.treatmentCost) });
+      }
       break;
     case 'Pregnant':
     case 'Pregnancy Diagnosis':
