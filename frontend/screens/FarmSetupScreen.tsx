@@ -3,16 +3,18 @@ import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { KeyboardSafeScroll, KeyboardSafeSheet } from '../components/KeyboardSafeScroll';
 import { useRequireAccess } from '../data/accessGuard';
 import { getCurrentSession } from '../data/authApi';
 import { addCategory, deleteCategory, getCategories, parseNumber, updateCategory, useDatabaseQuery } from '../data/farmDatabase';
 import { canManageFarmSetup } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
+import { diseaseLabel } from '../utils/diseases';
 import { showSuccessToast } from '../utils/toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FarmSetup'>;
-type SetupKind = 'income' | 'expense' | 'breed' | 'group' | 'medicine' | 'event';
+type SetupKind = 'income' | 'expense' | 'breed' | 'group' | 'medicine' | 'event' | 'disease';
 
 const cards = [
   { id: 'income', title: 'Income Categories', icon: 'dollar-sign' },
@@ -21,10 +23,12 @@ const cards = [
   { id: 'group', title: 'Cattle Groups', icon: 'layers' },
   { id: 'medicine', title: 'Medicines', icon: 'activity' },
   { id: 'event', title: 'Event Types', icon: 'calendar' },
+  { id: 'disease', title: 'Diseases', icon: 'alert-circle' },
 ] as const;
 
 export function FarmSetupScreen({ navigation }: Props) {
   useRequireAccess(canManageFarmSetup(getCurrentSession()?.user), navigation);
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const horizontalPadding = 24;
   const gap = 10;
@@ -161,14 +165,16 @@ export function FarmSetupScreen({ navigation }: Props) {
                 ? 'Set default milk withdrawal days for each medicine. Treatment events use this when you select the medicine.'
                 : selectedKind === 'event'
                   ? 'These event types appear in Add Event. Remove defaults you do not need, or add custom types.'
-                  : 'These values feed the professional forms, reports, and dashboards.'}
+                  : selectedKind === 'disease'
+                    ? 'These diseases appear as diagnosis on Treated events and as cause of death. English is stored; Kinyarwanda shows when that language is selected.'
+                    : 'These values feed the professional forms, reports, and dashboards.'}
             </Text>
 
             <View className="rounded-[14px] border border-[#D9E4E4] bg-[#F8FAFA] px-4 py-2">
               <TextInput
                 value={newCategory}
                 onChangeText={setNewCategory}
-                placeholder={isMedicine ? 'Medicine name' : 'Add new category'}
+                placeholder={isMedicine ? 'Medicine name' : selectedKind === 'disease' ? 'Disease name (English)' : 'Add new category'}
                 placeholderTextColor="#6B7280"
                 className="h-11 text-[16px] text-[#1F2937]"
               />
@@ -198,7 +204,12 @@ export function FarmSetupScreen({ navigation }: Props) {
                 selectedCategories.map((category) => (
                   <View key={category.id} className="mb-2 rounded-[12px] border border-[#F3F4F6] bg-white px-4 py-3">
                     <View className="flex-row items-center">
-                      <Text className="flex-1 text-[15px] text-[#1F2937]">{category.name}</Text>
+                      <Text className="flex-1 text-[15px] text-[#1F2937]">
+                        {selectedKind === 'disease' ? diseaseLabel(category.name, t) : category.name}
+                      </Text>
+                      {selectedKind === 'disease' && diseaseLabel(category.name, t) !== category.name ? (
+                        <Text className="mr-2 text-[11px] text-[#6B7280]">{category.name}</Text>
+                      ) : null}
                       {category.isDefault ? (
                         <Text className="mr-3 text-[12px] font-bold text-[#008B8B]">Default</Text>
                       ) : (

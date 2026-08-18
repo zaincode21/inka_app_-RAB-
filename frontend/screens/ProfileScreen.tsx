@@ -23,8 +23,13 @@ export function ProfileScreen({ navigation }: Props) {
         text: t('common.logout'),
         style: 'destructive',
         onPress: () => {
-          void logout();
-          navigation.replace('Login');
+          void (async () => {
+            await logout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            });
+          })();
         },
       },
     ]);

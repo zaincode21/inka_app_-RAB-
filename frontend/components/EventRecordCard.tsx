@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { type HealthEvent, formatNumber } from '../data/farmDatabase';
 import { eventTypeLabel } from '../utils/eventConstants';
+import { diseaseLabel } from '../utils/diseases';
 import {
   getBreedingResolution,
   getPregnancyResolution,
@@ -56,7 +57,7 @@ export function EventRecordCard({
   onConfirmKubyara,
 }: Props) {
   const { t } = useTranslation();
-  const rows = buildEventCardRows(item, cattleByTag);
+  const rows = buildEventCardRows(item, cattleByTag, t);
   const showViewCattle = Boolean(item.cattleTag && onViewCattle);
   const displayType = eventTypeLabel(item.eventType, t);
   const ended = isCycleStepEnded(item, allEvents);
@@ -214,12 +215,6 @@ function appendMedicationRows(rows: EventCardRow[], item: HealthEvent) {
   if (item.medicine) {
     rows.push({ label: 'Medicine', value: displayValue(item.medicine) });
   }
-  if (item.dosage) {
-    rows.push({ label: 'Dosage', value: displayValue(item.dosage) });
-  }
-  if (item.route) {
-    rows.push({ label: 'Route', value: displayValue(item.route) });
-  }
   if (item.withdrawalDays > 0) {
     rows.push({ label: 'Withdrawal', value: `${formatNumber(item.withdrawalDays)} days` });
   }
@@ -234,9 +229,16 @@ function appendMedicationRows(rows: EventCardRow[], item: HealthEvent) {
   }
 }
 
-export function buildEventCardRows(item: HealthEvent, cattleByTag: Map<string, { tagNumber: string; name: string }>): EventCardRow[] {
+type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
+
+export function buildEventCardRows(
+  item: HealthEvent,
+  cattleByTag: Map<string, { tagNumber: string; name: string }>,
+  t?: TranslateFn,
+): EventCardRow[] {
   const tagLabel = formatTagLabel(item.cattleTag, cattleByTag);
   const rows: EventCardRow[] = [{ label: 'Date', value: formatDisplayDate(item.eventDate) }];
+  const diagnosisValue = displayValue(t ? diseaseLabel(item.diagnosis, t) : item.diagnosis);
 
   if (item.scope === 'individual') {
     rows.push({ label: 'Tag No', value: tagLabel, showSearch: true });
@@ -273,8 +275,7 @@ export function buildEventCardRows(item: HealthEvent, cattleByTag: Map<string, {
       break;
     case 'Treated':
       rows.push(
-        { label: 'Symptoms', value: displayValue(item.symptoms) },
-        { label: 'Diagnosis', value: displayValue(item.diagnosis) },
+        { label: 'Diagnosis', value: diagnosisValue },
         { label: 'Technician', value: displayValue(item.technician) },
       );
       appendMedicationRows(rows, item);
@@ -288,7 +289,6 @@ export function buildEventCardRows(item: HealthEvent, cattleByTag: Map<string, {
     case 'Mastitis':
     case 'Lameness':
       rows.push(
-        { label: 'Signs', value: displayValue(item.symptoms) },
         { label: 'Assessment', value: displayValue(item.diagnosis) },
       );
       appendMedicationRows(rows, item);
@@ -314,7 +314,7 @@ export function buildEventCardRows(item: HealthEvent, cattleByTag: Map<string, {
     case 'Death':
     case 'Euthanasia':
       rows.push(
-        { label: 'Cause', value: displayValue(item.diagnosis) },
+        { label: 'Cause', value: diagnosisValue },
         { label: 'Vet', value: displayValue(item.vetName) },
       );
       break;

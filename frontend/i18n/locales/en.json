@@ -179,6 +179,16 @@
     "lameness": "Lameness",
     "euthanasia": "Euthanasia"
   },
+  "diseases": {
+    "eastCoastFever": "East Coast fever",
+    "brucellosis": "Brucellosis",
+    "anthrax": "Anthrax",
+    "anaplasmosis": "Anaplasmosis",
+    "wormInfestation": "Worm infestation",
+    "footAndMouth": "Foot and mouth disease",
+    "lumpySkin": "Lumpy skin disease",
+    "mastitis": "Mastitis"
+  },
   "nav": {
     "milkRecords": "Milk Records",
     "events": "Events",

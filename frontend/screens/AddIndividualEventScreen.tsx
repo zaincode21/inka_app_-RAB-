@@ -16,6 +16,7 @@ import { createHealthEventOrQueue } from '../data/offlineQueue';
 import { canWriteEvents } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 import { FEMALE_ONLY_EVENT_TYPES, eventTypeOptionsFromNames, requiresClinicalNotes, requiresMedicationDetails, requiresMedicine } from '../utils/eventConstants';
+import { diseaseOptionsFromNames } from '../utils/diseases';
 import { getInbreedingViolation, INBREEDING_CHECK_EVENT_TYPES } from '../utils/inbreeding';
 import { showInfoToast, showSuccessToast } from '../utils/toast';
 
@@ -36,6 +37,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   const { data: cattle } = useDatabaseQuery(getCattle, []);
   const { data: medicines } = useDatabaseQuery(() => getCategories('medicine'), []);
   const { data: eventTypes } = useDatabaseQuery(() => getCategories('event'), []);
+  const { data: diseases } = useDatabaseQuery(() => getCategories('disease'), []);
   const medicineOptions = useMemo(() => medicines.map((category) => category.name), [medicines]);
   const withdrawalByMedicine = useMemo(
     () => Object.fromEntries(medicines.map((category) => [category.name, category.defaultWithdrawalDays])),
@@ -45,6 +47,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   const [birthPrefillEvent, setBirthPrefillEvent] = useState<HealthEvent | null>(null);
   const [eventDate, setEventDate] = useState(editingEvent?.eventDate ?? '');
   const [showEventDatePicker, setShowEventDatePicker] = useState(false);
+  const [showHeatDatePicker, setShowHeatDatePicker] = useState(false);
   const [cattleTag, setCattleTag] = useState(editingEvent?.cattleTag ?? route.params?.cattleTag ?? '');
   const [eventType, setEventType] = useState(editingEvent?.eventType ?? route.params?.presetEventType ?? '');
   const eventTypeOptions = useMemo(
@@ -60,8 +63,11 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
   const [breedingMethod, setBreedingMethod] = useState(inferBreedingMethod(editingEvent));
   const [calfName, setCalfName] = useState(editingEvent?.calfTag ?? '');
   const [calfGender, setCalfGender] = useState(editingEvent?.calfGender ?? '');
-  const [symptoms, setSymptoms] = useState(editingEvent?.symptoms ?? '');
   const [diagnosis, setDiagnosis] = useState(editingEvent?.diagnosis ?? '');
+  const diseaseOptions = useMemo(
+    () => diseaseOptionsFromNames(diseases.map((category) => category.name), t, diagnosis),
+    [diseases, t, diagnosis],
+  );
   const [technician, setTechnician] = useState(editingEvent?.technician ?? '');
   const [vetName, setVetName] = useState(editingEvent?.vetName ?? '');
   const [weightResult, setWeightResult] = useState(editingEvent?.weightKg ? `${editingEvent.weightKg}` : '');
@@ -208,6 +214,21 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
     }
   };
 
+  const handleHeatDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    const timestamp = event.nativeEvent.timestamp;
+    const pickedDate = selectedDate ?? (timestamp ? new Date(timestamp) : undefined);
+    if (event.type === 'dismissed' || !pickedDate) {
+      if (Platform.OS !== 'ios') {
+        setShowHeatDatePicker(false);
+      }
+      return;
+    }
+    setBreedingDate(formatPickerDate(pickedDate));
+    if (Platform.OS !== 'ios') {
+      setShowHeatDatePicker(false);
+    }
+  };
+
   const saveEvent = async () => {
     if (!eventDate.trim() || !eventType) {
       Alert.alert('Missing event details', 'Event date and event type are required.');
@@ -237,7 +258,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       }
     }
 
-    if (!validateEventFields(eventType, breedingMethod, { symptoms, diagnosis, technician, medicine: medication.medicine, weightResult, semenUsed, vetName, breedingDate, bullResponsible: resolvedBullName })) {
+    if (!validateEventFields(eventType, breedingMethod, { diagnosis, technician, medicine: medication.medicine, weightResult, semenUsed, vetName, breedingDate, bullResponsible: resolvedBullName })) {
       return;
     }
 
@@ -264,12 +285,12 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         groupName: '',
         eventDate: eventDate.trim(),
         eventType,
-        symptoms: eventType === 'Treated' || requiresClinicalNotes(eventType) ? symptoms.trim() : '',
+        symptoms: '',
         diagnosis: eventType === 'Treated' || requiresClinicalNotes(eventType) || eventType === 'Pregnancy Diagnosis' || eventType === 'Death' || eventType === 'Euthanasia' ? diagnosis.trim() : '',
         medicine: usesMedication || eventType === 'Treated' ? medication.medicine : '',
-        dosage: usesMedication || eventType === 'Treated' ? medication.dosage.trim() : '',
-        route: usesMedication || eventType === 'Treated' ? medication.route.trim() : '',
-        frequency: usesMedication || eventType === 'Treated' ? medication.frequency.trim() : '',
+        dosage: '',
+        route: '',
+        frequency: '',
         withdrawalDays: usesMedication || eventType === 'Treated' ? parseNumber(medication.withdrawalDays) : 0,
         batchNumber: usesMedication || eventType === 'Treated' ? medication.batchNumber.trim() : '',
         technician: eventType === 'Treated' ? technician.trim() : eventType === 'Hoof Trimming' ? technician.trim() : '',
@@ -386,8 +407,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
 
         {eventType === 'Treated' ? (
           <>
-            <ConditionalInput placeholder="Symptoms" value={symptoms} onChangeText={setSymptoms} />
-            <ConditionalInput placeholder="Diagnosis" value={diagnosis} onChangeText={setDiagnosis} />
+            <SelectDropdown label="Diagnosis" value={diagnosis} placeholder="Select disease" options={diseaseOptions} onSelect={setDiagnosis} />
             <ConditionalInput placeholder="Technician Name" value={technician} onChangeText={setTechnician} />
             <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
           </>
@@ -396,10 +416,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         {requiresMedicine(eventType) && eventType !== 'Treated' ? (
           <>
             {requiresClinicalNotes(eventType) ? (
-              <>
-                <ConditionalInput placeholder={eventType === 'Mastitis' ? 'Affected quarter / signs' : 'Clinical signs'} value={symptoms} onChangeText={setSymptoms} />
-                <ConditionalInput placeholder={eventType === 'Mastitis' ? 'Severity / culture result' : 'Assessment'} value={diagnosis} onChangeText={setDiagnosis} />
-              </>
+              <ConditionalInput placeholder={eventType === 'Mastitis' ? 'Severity / culture result' : 'Assessment'} value={diagnosis} onChangeText={setDiagnosis} />
             ) : null}
             {eventType === 'Hoof Trimming' ? <ConditionalInput placeholder="Technician Name" value={technician} onChangeText={setTechnician} /> : null}
             <MedicationFields medicineOptions={medicineOptions} withdrawalByMedicine={withdrawalByMedicine} values={medication} onChange={(patch) => setMedication((current) => ({ ...current, ...patch }))} />
@@ -418,7 +435,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
         {eventType === 'Heat Observed' ? (
           <>
             <Label text="Heat Date" />
-            <Input placeholder="YYYY-MM-DD" value={breedingDate} onChangeText={setBreedingDate} />
+            <DateField value={breedingDate} placeholder="Select heat date" onPress={() => setShowHeatDatePicker(true)} />
           </>
         ) : null}
 
@@ -443,8 +460,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
 
         {eventType === 'Death' || eventType === 'Euthanasia' ? (
           <>
-            <ConditionalInput placeholder="Cause of death" value={diagnosis} onChangeText={setDiagnosis} />
-            <ConditionalInput placeholder="Observations" value={symptoms} onChangeText={setSymptoms} />
+            <SelectDropdown label="Cause of death" value={diagnosis} placeholder="Select disease or cause" options={diseaseOptions} onSelect={setDiagnosis} />
             <Label text="Veterinarian" />
             <Input placeholder="Reporting vet" value={vetName} onChangeText={setVetName} />
           </>
@@ -523,6 +539,7 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
       </KeyboardSafeScroll>
 
       {showEventDatePicker && Platform.OS !== 'ios' ? <DateTimePicker value={parseDateForPicker(eventDate)} mode="date" display="calendar" onChange={handleEventDateChange} /> : null}
+      {showHeatDatePicker && Platform.OS !== 'ios' ? <DateTimePicker value={parseDateForPicker(breedingDate || eventDate)} mode="date" display="calendar" onChange={handleHeatDateChange} /> : null}
 
       <Modal visible={showEventDatePicker && Platform.OS === 'ios'} transparent animationType="fade" onRequestClose={() => setShowEventDatePicker(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowEventDatePicker(false)}>
@@ -543,6 +560,30 @@ export function AddIndividualEventScreen({ navigation, route }: Props) {
               style={{ height: 216, width: '100%' }}
             />
             <Pressable onPress={() => setShowEventDatePicker(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
+              <Text className="text-[16px] font-bold text-white">Done</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showHeatDatePicker && Platform.OS === 'ios'} transparent animationType="fade" onRequestClose={() => setShowHeatDatePicker(false)}>
+        <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setShowHeatDatePicker(false)}>
+          <Pressable className="rounded-t-[24px] bg-white px-6 pb-8 pt-5" onPress={() => {}}>
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="text-[18px] font-bold text-[#1F2937]">Heat Date</Text>
+              <Pressable onPress={() => setShowHeatDatePicker(false)} hitSlop={8}>
+                <Feather name="x" size={22} color="#6B7280" />
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={parseDateForPicker(breedingDate || eventDate)}
+              mode="date"
+              display="spinner"
+              themeVariant="light"
+              onChange={handleHeatDateChange}
+              style={{ height: 216, width: '100%' }}
+            />
+            <Pressable onPress={() => setShowHeatDatePicker(false)} className="mt-4 items-center justify-center rounded-[12px] bg-[#E6B86F] py-3">
               <Text className="text-[16px] font-bold text-white">Done</Text>
             </Pressable>
           </Pressable>
@@ -592,22 +633,26 @@ function inferBreedingMethod(event?: HealthEvent): string {
 function validateEventFields(
   eventType: string,
   breedingMethod: string,
-  values: { symptoms: string; diagnosis: string; technician: string; medicine: string; weightResult: string; semenUsed: string; vetName: string; breedingDate: string; bullResponsible: string },
+  values: { diagnosis: string; technician: string; medicine: string; weightResult: string; semenUsed: string; vetName: string; breedingDate: string; bullResponsible: string },
 ): boolean {
-  if (eventType === 'Treated' && (!values.symptoms.trim() || !values.diagnosis.trim() || !values.technician.trim() || !values.medicine)) {
-    Alert.alert('Missing treatment details', 'Please enter symptoms, diagnosis, technician name, and medicine.');
+  if (eventType === 'Treated' && (!values.diagnosis.trim() || !values.technician.trim() || !values.medicine)) {
+    Alert.alert('Missing treatment details', 'Please enter diagnosis, technician name, and medicine.');
     return false;
   }
   if (requiresMedicine(eventType) && eventType !== 'Hoof Trimming' && !values.medicine) {
     Alert.alert('Missing medicine', 'Please select medicine information.');
     return false;
   }
-  if (requiresClinicalNotes(eventType) && (!values.symptoms.trim() || !values.diagnosis.trim())) {
-    Alert.alert('Missing clinical details', 'Please enter clinical signs and assessment.');
+  if (requiresClinicalNotes(eventType) && !values.diagnosis.trim()) {
+    Alert.alert('Missing clinical details', 'Please enter assessment.');
     return false;
   }
   if (eventType === 'Aborted' && !values.breedingDate.trim()) {
     Alert.alert('Missing abortion details', 'Please enter the breeding date.');
+    return false;
+  }
+  if (eventType === 'Heat Observed' && !values.breedingDate.trim()) {
+    Alert.alert('Missing heat date', 'Please select the heat date.');
     return false;
   }
   if (eventType === 'Weighed' && !values.weightResult.trim()) {

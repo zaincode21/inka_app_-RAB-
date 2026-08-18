@@ -43,7 +43,7 @@ router.delete('/:id', ...)
 ## Current API surface
 
 - OpenAPI / Swagger UI: `/api/v1/docs` (JSON: `/api/v1/openapi.json`; source `backend/src/openapi/document.ts`)
-- `/api/v1/categories`, `/cattle`, `/milk-records`, `/events`, `/transactions`, `/inventory`
+- `/api/v1/categories` (kinds: breed, group, medicine, event, disease, income, expense, milkDestination), `/cattle`, `/milk-records`, `/events`, `/transactions`, `/inventory`
 - `POST /cattle/:id/exit` for sold/culled/dead/inactive with optional linked sale/disposal transaction
 - `/api/v1/users` (Owner/Super Admin), `/api/v1/users/me`
 - `GET /farms/mine`, `POST /auth/switch-farm` for multi-farm memberships (`FarmMembership`)

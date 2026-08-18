@@ -175,9 +175,19 @@
     "pregnancyDiagnosis": "Gusuzuma Gufata",
     "weighed": "Gupima ibiro",
     "dryOff": "Guhagarika amata",
-    "mastitis": "Mastitis",
+    "mastitis": "Ifumbi",
     "lameness": "Kugagara",
     "euthanasia": "Gupfusha"
+  },
+  "diseases": {
+    "eastCoastFever": "Ikibagarira",
+    "brucellosis": "Amakore",
+    "anthrax": "Ubutaka",
+    "anaplasmosis": "Gasheshe",
+    "wormInfestation": "Inzoka",
+    "footAndMouth": "Uburenge",
+    "lumpySkin": "Igifuruto",
+    "mastitis": "Ifumbi"
   },
   "nav": {
     "milkRecords": "Amata",

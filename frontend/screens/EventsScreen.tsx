@@ -263,7 +263,7 @@ export function EventsScreen({ navigation }: Props) {
   };
 
   const openEventDetail = (item: HealthEvent) => {
-    const details = buildEventCardRows(item, cattleByTag).map((row) => ({ label: row.label, value: row.value }));
+    const details = buildEventCardRows(item, cattleByTag, t).map((row) => ({ label: row.label, value: row.value }));
     if (item.recordedBy) {
       details.push({ label: 'Recorded by', value: item.recordedBy });
     }

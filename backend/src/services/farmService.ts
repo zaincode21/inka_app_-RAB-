@@ -160,23 +160,34 @@ export async function seedFarmCategories(farmId: string): Promise<void> {
     ['medicine', 'Ivermectin', 28],
     ['medicine', 'Multivitamin', 0],
     ['event', 'Treated'],
-    ['event', 'Vaccinated'],
-    ['event', 'Deworming'],
-    ['event', 'Hoof Trimming'],
-    ['event', 'Herd Spraying'],
     ['event', 'Death'],
     ['event', 'Breeding'],
     ['event', 'Pregnant'],
-    ['event', 'Pregnancy Diagnosis'],
     ['event', 'Giving Birth'],
     ['event', 'Aborted'],
     ['event', 'Dry Off'],
     ['event', 'Weaning'],
     ['event', 'Heat Observed'],
+    ['disease', 'East Coast fever'],
+    ['disease', 'Brucellosis'],
+    ['disease', 'Anthrax'],
+    ['disease', 'Anaplasmosis'],
+    ['disease', 'Worm infestation'],
+    ['disease', 'Foot and mouth disease'],
+    ['disease', 'Lumpy skin disease'],
+    ['disease', 'Mastitis'],
     ['milkDestination', 'Home Use'],
     ['milkDestination', 'Processor'],
     ['milkDestination', 'Direct Customer'],
   ];
+
+  await prisma.category.deleteMany({
+    where: {
+      farmId,
+      kind: 'event',
+      name: { in: ['Herd Spraying', 'Hoof Trimming', 'Pregnancy Diagnosis', 'Deworming', 'Vaccinated', 'Vaccination'] },
+    },
+  });
 
   for (const [kind, name, withdrawalDays] of defaultCategories) {
     await prisma.category.upsert({

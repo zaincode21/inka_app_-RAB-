@@ -42,12 +42,12 @@
     "typescript": "~5.9.2"
   },
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "start": "expo start --go",
+    "android": "expo start --go --android",
+    "ios": "expo start --go --ios",
     "web": "expo start --web",
-    "start:usb": "expo start --localhost",
-    "start:tunnel": "expo start --tunnel"
+    "start:usb": "expo start --go --localhost",
+    "start:tunnel": "expo start --go --tunnel"
   },
   "private": true
 }

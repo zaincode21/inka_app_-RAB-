@@ -3,7 +3,6 @@ import { Modal, Platform, Pressable, Text, TextInput, View } from 'react-native'
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Feather } from '@expo/vector-icons';
 import { SelectDropdown } from './SelectDropdown';
-import { MEDICATION_ROUTES } from '../utils/eventConstants';
 
 export type MedicationFormValues = {
   medicine: string;
@@ -54,9 +53,6 @@ export function MedicationFields({ medicineOptions, withdrawalByMedicine, values
   return (
     <>
       <SelectDropdown label="Medicine" value={values.medicine} placeholder="Select medicine" options={medicineOptions} onSelect={selectMedicine} />
-      <Field label="Dosage" placeholder="e.g. 10 ml" value={values.dosage} onChangeText={(dosage) => onChange({ dosage })} />
-      <SelectDropdown label="Route" value={values.route} placeholder="Select route" options={[...MEDICATION_ROUTES]} onSelect={(route) => onChange({ route })} />
-      <Field label="Frequency" placeholder="e.g. Once daily for 3 days" value={values.frequency} onChangeText={(frequency) => onChange({ frequency })} />
       <Field label="Withdrawal Days" placeholder="Milk/meat withholding days" keyboardType="decimal-pad" value={values.withdrawalDays} onChangeText={(withdrawalDays) => onChange({ withdrawalDays })} />
       {withdrawalByMedicine && values.medicine ? (
         <Text className="mb-3 -mt-1 text-[12px] text-[#6B7280]">

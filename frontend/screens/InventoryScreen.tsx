@@ -32,8 +32,13 @@ export function InventoryScreen({ navigation }: Props) {
   const lowStockCount = useMemo(() => items.filter((item) => item.lowStock).length, [items]);
 
   const handleLogout = () => {
-    logout();
-    navigation.replace('Login');
+    void (async () => {
+      await logout();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+    })();
   };
   const openManage = () => {
     if (!canViewFinance(user)) {

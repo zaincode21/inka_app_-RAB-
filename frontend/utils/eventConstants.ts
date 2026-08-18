@@ -1,12 +1,18 @@
+export const RETIRED_EVENT_TYPES = new Set([
+  'Herd Spraying',
+  'Hoof Trimming',
+  'Pregnancy Diagnosis',
+  'Deworming',
+  'Vaccinated',
+  'Vaccination',
+]);
+
 export const INDIVIDUAL_EVENT_TYPE_VALUES = [
   'Treated',
   'Breeding',
   'Giving Birth',
-  'Vaccinated',
   'Pregnant',
   'Aborted',
-  'Deworming',
-  'Hoof Trimming',
   'Death',
 ] as const;
 
@@ -16,7 +22,7 @@ export const INDIVIDUAL_EVENT_TYPES = INDIVIDUAL_EVENT_TYPE_VALUES.map((value) =
   value,
 }));
 
-export const MASS_EVENT_TYPES = ['Vaccinated', 'Herd Spraying', 'Deworming', 'Treated', 'Hoof Trimming'] as const;
+export const MASS_EVENT_TYPES = ['Treated'] as const;
 
 export const MEDICATION_ROUTES = ['IM', 'SC', 'IV', 'Oral', 'Topical', 'Pour-on', 'Intramammary'] as const;
 
@@ -64,7 +70,10 @@ export function eventTypeOptionsFromNames(
   t: TranslateFn,
   extraValue?: string,
 ): Array<{ label: string; value: string }> {
-  const values = [...new Set([...names.map((name) => name.trim()).filter(Boolean), ...(extraValue?.trim() ? [extraValue.trim()] : [])])];
+  const extra = extraValue?.trim() ?? '';
+  const values = [...new Set([...names.map((name) => name.trim()).filter(Boolean), ...(extra ? [extra] : [])])].filter(
+    (value) => !RETIRED_EVENT_TYPES.has(value) || value === extra,
+  );
   return values.map((value) => ({
     label: eventTypeLabel(value, t),
     value,
@@ -80,7 +89,7 @@ export function massEventTypeOptions(t: TranslateFn): Array<{ label: string; val
 }
 
 export function requiresMedicine(eventType: string): boolean {
-  return ['Treated', 'Vaccinated', 'Deworming', 'Hoof Trimming'].includes(eventType);
+  return eventType === 'Treated';
 }
 
 export function requiresMedicationDetails(eventType: string): boolean {
@@ -115,9 +124,9 @@ export function allEventTypeFilterOptions(
   const individual = [...INDIVIDUAL_EVENT_TYPE_VALUES];
   const mass = [...MASS_EVENT_TYPES];
   const managed = managedNames?.map((name) => name.trim()).filter(Boolean) ?? [];
-  const values = [...new Set(managed.length > 0 ? managed : [...individual, ...mass])].sort((a, b) =>
-    a.localeCompare(b),
-  );
+  const values = [...new Set(managed.length > 0 ? managed : [...individual, ...mass])]
+    .filter((value) => !RETIRED_EVENT_TYPES.has(value))
+    .sort((a, b) => a.localeCompare(b));
   if (!t) {
     return values.map((value) => ({ label: value, value }));
   }

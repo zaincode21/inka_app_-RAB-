@@ -45,7 +45,7 @@ export function LoginScreen({ navigation }: Props) {
       className="flex-1 bg-white"
       contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 28, paddingTop: 96, paddingBottom: 40 }}
     >
-        <Pressable onPress={() => navigation.goBack()} className="self-start pb-4">
+        <Pressable onPress={() => navigation.replace('Home')} className="self-start pb-4">
           <Text className="text-[16px] font-semibold text-[#0D8A8D]">{t('common.back')}</Text>
         </Pressable>
 

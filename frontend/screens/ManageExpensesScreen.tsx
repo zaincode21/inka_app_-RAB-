@@ -29,8 +29,13 @@ export function ManageExpensesScreen({ navigation }: Props) {
     { id: 'earnings', label: 'Total Earnings', value: formatMoney(metrics.incomeThisMonth), color: '#16A34A', icon: 'arrow-up' },
   ] as const;
   const handleLogout = () => {
-    logout();
-    navigation.replace('Login');
+    void (async () => {
+      await logout();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+    })();
   };
 
   return (

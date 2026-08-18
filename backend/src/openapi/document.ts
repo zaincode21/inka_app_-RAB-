@@ -840,7 +840,7 @@ export const openApiDocument = {
             name: 'kind',
             in: 'query',
             schema: { type: 'string' },
-            description: 'Filter by kind (breed, medicine, eventType, …)',
+            description: 'Filter by kind (breed, medicine, event, disease, …)',
           },
         ],
         responses: {
