@@ -97,7 +97,7 @@ export function CattleExitScreen({ navigation, route }: Props) {
       if (navigation.canGoBack()) {
         navigation.pop(2);
       } else {
-        navigation.navigate('CattleList');
+        navigation.navigate('CattleList', { stage: '' });
       }
     } catch (error) {
       Alert.alert('Could not record exit', error instanceof Error ? error.message : 'Please try again.');

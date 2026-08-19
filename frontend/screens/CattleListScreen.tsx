@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { type NativeStackScreenProps } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import { type Cattle, getCattle, useDatabaseQuery } from '../data/farmDatabase';
 import { getCurrentSession } from '../data/authApi';
@@ -11,13 +11,32 @@ import type { RootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'CattleList'>;
 type ListFilter = 'active' | 'exited' | 'all';
 
-export function CattleListScreen({ navigation }: Props) {
+const STAGE_TITLES: Record<string, string> = {
+  calf: 'Calves',
+  weaner: 'Weaners',
+  heifer: 'Heifers',
+  cow: 'Cows',
+  bull: 'Bulls',
+  steer: 'Steers',
+};
+
+export function CattleListScreen({ navigation, route }: Props) {
   const { data: cattle, loading, error } = useDatabaseQuery(getCattle, []);
   const canAdd = canWriteCattle(getCurrentSession()?.user);
   const [listFilter, setListFilter] = useState<ListFilter>('active');
+  const stageFilter = route.params?.stage?.trim() ?? '';
+  const stageKey = stageFilter.toLowerCase();
+  const title = STAGE_TITLES[stageKey] ?? 'Cattle List';
+
+  useEffect(() => {
+    setListFilter('active');
+  }, [stageKey]);
 
   const visibleCattle = useMemo(() => {
     return cattle.filter((item) => {
+      if (stageKey && item.stage.trim().toLowerCase() !== stageKey) {
+        return false;
+      }
       const active = isActiveCattle(item);
       if (listFilter === 'active') {
         return active;
@@ -27,7 +46,7 @@ export function CattleListScreen({ navigation }: Props) {
       }
       return true;
     });
-  }, [cattle, listFilter]);
+  }, [cattle, listFilter, stageKey]);
 
   return (
     <View className="flex-1 bg-white">
@@ -35,7 +54,7 @@ export function CattleListScreen({ navigation }: Props) {
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
           <Feather name="arrow-left" size={26} color="#FFFFFF" />
         </Pressable>
-        <Text className="flex-1 text-center text-[24px] font-extrabold text-white">Cattle List</Text>
+        <Text className="flex-1 text-center text-[24px] font-extrabold text-white">{title}</Text>
         <View className="w-[30px]" />
       </View>
 
@@ -52,7 +71,15 @@ export function CattleListScreen({ navigation }: Props) {
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center px-8 pt-24">
             <Text className="text-center text-[16px] font-bold text-[#008B8B]">
-              {loading ? 'Loading cattle...' : listFilter === 'exited' ? 'No exited cattle' : 'No cattle records yet'}
+              {loading
+                ? 'Loading cattle...'
+                : listFilter === 'exited'
+                  ? stageFilter
+                    ? `No exited ${title.toLowerCase()}`
+                    : 'No exited cattle'
+                  : stageFilter
+                    ? `No ${title.toLowerCase()} yet`
+                    : 'No cattle records yet'}
             </Text>
             <Text className="mt-2 text-center text-[13px] text-[#6B7280]">
               {error ??

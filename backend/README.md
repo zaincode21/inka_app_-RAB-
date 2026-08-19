@@ -119,7 +119,7 @@ All business routes are under `/api/v1`.
   - `POST /inventory/:id/receive`: add stock; optional `createExpense` writes a Feed expense transaction.
   - `POST /inventory/:id/use`: deduct stock (cannot exceed on-hand).
   - `GET /inventory/:id/movements`: recent IN/OUT history.
-- `/api/v1/reports/dashboard`: dashboard metrics.
+- `/api/v1/reports/dashboard`: dashboard metrics — active headcount by stage (calves, weaners, heifers, cows, bulls, steers, `totalActive`), milk produced today, overdue follow-up count, and this-month income/expense.
 - `/api/v1/reports/summaries`: report summary cards.
 - `/api/v1/reports/period?from=YYYY-MM-DD&to=YYYY-MM-DD`: milk, herd, events, and (when allowed) finance totals for a date range.
 - `/api/v1/reports/export.csv?from=...&to=...&dataset=milk|transactions|events|cattle`: CSV download for the range with a farm information header (`transactions` requires finance view; optional `kind=INCOME|EXPENSE` filters transaction exports).

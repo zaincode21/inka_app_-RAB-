@@ -6,7 +6,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { AppBottomNav } from '../components/AppBottomNav';
-import { syncFarmReminders, type FarmAlert } from '../data/reminderService';
+import { farmAlertIconName, syncFarmReminders, type FarmAlert } from '../data/reminderService';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Alerts'>;
@@ -91,7 +91,7 @@ export function AlertsScreen({ navigation }: Props) {
                     <Text className="mt-1 text-[13px] text-[#78350F]">{alert.detail}</Text>
                     <Text className="mt-1 text-[12px] text-[#A16207]">{alert.dueLabel}</Text>
                   </View>
-                  <Feather name={alert.kind === 'withdrawal' ? 'droplet' : 'bell'} size={18} color="#B45309" />
+                    <Feather name={farmAlertIconName(alert.kind)} size={18} color="#B45309" />
                 </View>
               </Pressable>
             ))

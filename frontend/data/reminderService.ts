@@ -36,6 +36,25 @@ export type FarmAlert = {
   dueLabel: string;
 };
 
+export function farmAlertIconName(
+  kind: FarmAlert['kind'],
+): 'droplet' | 'coffee' | 'search' | 'minus-circle' | 'heart' | 'bell' {
+  switch (kind) {
+    case 'withdrawal':
+      return 'droplet';
+    case 'weaning':
+      return 'coffee';
+    case 'heiferCheck':
+      return 'search';
+    case 'dryOff':
+      return 'minus-circle';
+    case 'calving':
+      return 'heart';
+    default:
+      return 'bell';
+  }
+}
+
 function parseLocalDate(value: string): Date | null {
   if (!value?.trim()) {
     return null;

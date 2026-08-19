@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { FlatList, Pressable, ScrollView, Text, View } from 'react-native';
 import { logout, getCurrentSession } from '../data/authApi';
 import { useRequireAccess } from '../data/accessGuard';
-import { formatMoney, getDashboardMetrics, getTransactions, useDatabaseQuery } from '../data/farmDatabase';
+import { EMPTY_DASHBOARD_METRICS, formatMoney, getDashboardMetrics, getTransactions, useDatabaseQuery } from '../data/farmDatabase';
 import { canViewFinance, canWriteFinance } from '../data/permissions';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -14,15 +14,7 @@ export function ManageExpensesScreen({ navigation }: Props) {
   const user = getCurrentSession()?.user;
   useRequireAccess(canViewFinance(user), navigation, 'You do not have permission to view financial records.');
   const canWrite = canWriteFinance(user);
-  const { data: metrics } = useDatabaseQuery(getDashboardMetrics, {
-    calves: 0,
-    cows: 0,
-    bulls: 0,
-    totalMilkToday: 0,
-    healthAlerts: 0,
-    incomeThisMonth: 0,
-    expensesThisMonth: 0,
-  });
+  const { data: metrics } = useDatabaseQuery(getDashboardMetrics, EMPTY_DASHBOARD_METRICS);
   const { data: transactions } = useDatabaseQuery(getTransactions, []);
   const summary = [
     { id: 'costs', label: 'Total Costs', value: formatMoney(metrics.expensesThisMonth), color: '#DC2626', icon: 'arrow-down' },

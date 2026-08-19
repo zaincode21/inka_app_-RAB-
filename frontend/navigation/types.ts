@@ -6,7 +6,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   Alerts: undefined;
   Profile: undefined;
-  CattleList: undefined;
+  CattleList: { stage?: string } | undefined;
   MilkRecords: undefined;
   Events: undefined;
   Transactions: undefined;

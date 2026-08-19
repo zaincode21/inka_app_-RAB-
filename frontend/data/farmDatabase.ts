@@ -141,12 +141,30 @@ export type Category = {
 
 export type DashboardMetrics = {
   calves: number;
+  weaners: number;
+  heifers: number;
   cows: number;
   bulls: number;
+  steers: number;
+  totalActive: number;
   totalMilkToday: number;
   healthAlerts: number;
   incomeThisMonth: number;
   expensesThisMonth: number;
+};
+
+export const EMPTY_DASHBOARD_METRICS: DashboardMetrics = {
+  calves: 0,
+  weaners: 0,
+  heifers: 0,
+  cows: 0,
+  bulls: 0,
+  steers: 0,
+  totalActive: 0,
+  totalMilkToday: 0,
+  healthAlerts: 0,
+  incomeThisMonth: 0,
+  expensesThisMonth: 0,
 };
 
 export type ReportSummary = {

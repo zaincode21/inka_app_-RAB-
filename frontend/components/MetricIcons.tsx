@@ -48,3 +48,119 @@ export const BullsIcon: FC<IconProps> = ({ size = 30, color = '#008B8B' }) => (
     />
   </Svg>
 );
+
+export const MilkCanIcon: FC<IconProps> = ({ size = 28, color = '#008B8B' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M9.5 2.5h5v2.2l1.6 2.3v12.2a2.2 2.2 0 0 1-2.2 2.2h-3.8a2.2 2.2 0 0 1-2.2-2.2V7l1.6-2.3V2.5Z"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinejoin="round"
+    />
+    <Path d="M9.5 2.5h5" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    <Path d="M9 10.5h6M9.5 14.5h5" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+  </Svg>
+);
+
+export const LifeCycleIcon: FC<IconProps> = ({ size = 28, color = '#008B8B' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M7.2 8.2c.6-2.2 2.6-3.7 4.8-3.7 2.6 0 4.8 2 4.8 4.6"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+    />
+    <Path d="M14.6 7.2l2.2 1.9 1.8-2.4" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    <Path
+      d="M16.8 15.8c-.6 2.2-2.6 3.7-4.8 3.7-2.6 0-4.8-2-4.8-4.6"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+    />
+    <Path d="M9.4 16.8 7.2 14.9 5.4 17.3" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    <Path
+      d="M9.4 12.2c0-.8.7-1.4 1.4-1.6.3-1.2 1.6-1.6 2.5-.7.6.6.7 1.5.4 2.3.6.3 1 .9 1 1.6 0 1.1-.9 1.8-2.1 1.8h-1.1c-1.2 0-2.1-.7-2.1-1.8Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const BarnIcon: FC<IconProps> = ({ size = 28, color = '#008B8B' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M3.5 11.5 12 3.8l8.5 7.7" stroke={color} strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
+    <Path d="M5 11.5v8.7h14v-8.7" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+    <Path d="M10 20.2v-5.2h4v5.2" stroke={color} strokeWidth={1.8} />
+    <Path d="M10 17.6h4M12 15v5.2" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+    <Path d="M11 7.8h2v2h-2z" fill={color} />
+  </Svg>
+);
+
+export const FeedSackIcon: FC<IconProps> = ({ size = 28, color = '#008B8B' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M8.2 6.2c0-1.4 1.7-2.4 3.8-2.4s3.8 1 3.8 2.4V8H8.2V6.2Z"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M7.2 8h9.6v11.2a2 2 0 0 1-2 2H9.2a2 2 0 0 1-2-2V8Z"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinejoin="round"
+    />
+    <Path d="M9.5 13.2c.8-.8 1.6-1.2 2.5-1.2s1.7.4 2.5 1.2" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+    <Path d="M9.5 16.4c.8-.8 1.6-1.2 2.5-1.2s1.7.4 2.5 1.2" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+  </Svg>
+);
+
+export const FarmClipboardIcon: FC<IconProps> = ({ size = 28, color = '#008B8B' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M8 4.8h8v16.4H8A1.8 1.8 0 0 1 6.2 19.4V6.6A1.8 1.8 0 0 1 8 4.8Z"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinejoin="round"
+    />
+    <Path d="M9.2 4.8V3.8A1.3 1.3 0 0 1 10.5 2.5h3A1.3 1.3 0 0 1 14.8 3.8v1" stroke={color} strokeWidth={1.8} />
+    <Path d="M9.4 10h5.2M9.4 13.4h5.2M9.4 16.8h3.4" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
+  </Svg>
+);
+
+export const FarmReportIcon: FC<IconProps> = ({ size = 28, color = '#008B8B' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M7 3.5h7.2L19 8.3v12.2a1.8 1.8 0 0 1-1.8 1.8H7A1.8 1.8 0 0 1 5.2 20.5V5.3A1.8 1.8 0 0 1 7 3.5Z"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinejoin="round"
+    />
+    <Path d="M14.2 3.5v4.8H19" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+    <Path d="M8.4 18.2V14M11.6 18.2v-6.4M14.8 18.2v-3.4" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+  </Svg>
+);
+
+export const FarmCoinsIcon: FC<IconProps> = ({ size = 28, color = '#008B8B' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M7.5 16.2c0 1.8 3 3.3 6.6 3.3s6.6-1.5 6.6-3.3-3-3.3-6.6-3.3-6.6 1.5-6.6 3.3Z"
+      stroke={color}
+      strokeWidth={1.8}
+    />
+    <Path d="M7.5 16.2V13c0-1.8 3-3.3 6.6-3.3.7 0 1.4.07 2 .2" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    <Path
+      d="M3.5 9.6c0 1.8 3 3.3 6.6 3.3.5 0 1-.04 1.5-.12"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M3.5 9.6c0-1.8 3-3.3 6.6-3.3s6.6 1.5 6.6 3.3"
+      stroke={color}
+      strokeWidth={1.8}
+    />
+    <Path d="M3.5 9.6v6.2c0 1.2 1.4 2.2 3.4 2.8" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+  </Svg>
+);
